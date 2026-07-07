@@ -1,20 +1,13 @@
 import json
 
 
-def parse_json_response(response):
+def parse_json(response):
     """
-    Converte resposta da IA em objeto Python.
+    Converte resposta JSON da IA em dicionário Python.
     """
 
-    cleaned_response = response.strip()
+    response = response.replace("```json", "")
+    response = response.replace("```", "")
+    response = response.strip()
 
-    # Remove blocos markdown caso a IA retorne ```json
-    if cleaned_response.startswith("```"):
-        cleaned_response = (
-            cleaned_response
-            .replace("```json", "")
-            .replace("```", "")
-            .strip()
-        )
-
-    return json.loads(cleaned_response)
+    return json.loads(response)

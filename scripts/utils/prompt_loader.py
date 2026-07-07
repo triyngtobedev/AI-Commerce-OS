@@ -1,21 +1,17 @@
 from pathlib import Path
 
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+PROMPTS_DIR = BASE_DIR / "prompts"
 
 
-def load_prompt(filename):
-    """
-    Carrega um prompt da pasta prompts.
-    """
-
-    prompt_path = ROOT_DIR / "prompts" / filename
+def load_prompt(name):
+    prompt_path = PROMPTS_DIR / f"{name}.md"
 
     if not prompt_path.exists():
         raise FileNotFoundError(
             f"Prompt não encontrado: {prompt_path}"
         )
 
-    return prompt_path.read_text(
-        encoding="utf-8"
-    )
+    return prompt_path.read_text(encoding="utf-8")
