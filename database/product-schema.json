@@ -1,0 +1,20 @@
+{
+  "product_id": "",
+  "nome": "",
+  "categoria": "",
+  "descricao": "",
+  "fonte": "tiktok",
+  "url": "",
+  "metricas": {
+    "visualizacoes": 0,
+    "curtidas": 0,
+    "comentarios": 0,
+    "compartilhamentos": 0
+  },
+  "analise_ia": {
+    "potencial": "",
+    "score": 0,
+    "motivo": ""
+  },
+  "status": "novo"
+}
