@@ -1,27 +1,70 @@
 [
     {
-        "produto": "Mini Aspirador Portátil",
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
         "analise": {
-            "score": 85,
+            "score": 95,
             "potencial": "alto",
-            "publico_alvo": "Pessoas que buscam praticidade na limpeza de pequenos espaços (carros, mesas de escritório, teclados, bancadas), estudantes, proprietários de veículos, gamers, entusiastas de organização.",
+            "publico_alvo": "Pessoas que buscam praticidade na limpeza de pequenos espaços (carros, mesas de trabalho/estudo, teclados, sofás), entusiastas de gadgets, estudantes, profissionais de home office e indivíduos que valorizam a organização e soluções rápidas para o dia a dia.",
             "motivos": [
-                "Alta facilidade de demonstração em vídeo, com resultados visuais imediatos (antes e depois) e satisfatórios, o que gera engajamento e potencial viral.",
-                "Resolve um problema comum e 'chato' (sujeira em locais de difícil acesso ou a necessidade de uma limpeza rápida), gerando alívio e praticidade para o usuário.",
-                "Capacidade de gerar curiosidade sobre a eficácia de um aparelho 'mini' em diversas situações cotidianas, incentivando o compartilhamento e comentários.",
-                "Potencial para criação de diversos cenários de uso (UGC) e segmentação de público (carros, setup gamer, mesa de trabalho), otimizando anúncios."
+                "Excelente potencial viral no TikTok, pois se encaixa perfeitamente nas tendências de vídeos de 'limpeza satisfatória', 'organização' e 'gadgets úteis', com um 'antes e depois' muito apelativo.",
+                "A facilidade de demonstração em vídeo é altíssima. É possível mostrar rapidamente o problema (sujeira em um teclado, carro) e a solução eficaz e surpreendente do mini aspirador, gerando grande curiosidade e desejo de compra por impulso.",
+                "Resolve um problema comum e irritante para um público vasto: a dificuldade de limpar pequenas sujeiras em locais de difícil acesso sem a necessidade de um equipamento grande, oferecendo conveniência e eficiência."
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 95,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
             ]
         }
     },
     {
-        "produto": "Luminária LED Inteligente",
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
         "analise": {
-            "score": 90,
+            "score": 92,
             "potencial": "alto",
-            "publico_alvo": "Jovens e adultos (18-35), gamers, criadores de conteúdo, entusiastas de casa inteligente e decoração que buscam personalizar seus ambientes.",
+            "publico_alvo": "Jovens adultos (18-35), gamers, criadores de conteúdo, entusiastas de tecnologia e decoração, e pessoas buscando personalizar e melhorar a atmosfera de seus ambientes.",
             "motivos": [
-                "Alta capacidade de demonstração visual em vídeos curtos, destacando facilmente efeitos de luz, cores e funcionalidades inteligentes (via app, voz, sincronização, etc.), gerando alto engajamento.",
-                "Gera curiosidade imediata pelo termo 'inteligente' e resolve o problema de personalização e criação de ambientes dinâmicos e funcionais, com forte apelo para 'room makeovers' e setups."
+                "Possui excelente apelo visual e 'efeito uau' para vídeos curtos, demonstrando a capacidade de transformar ambientes com cores, modos e sincronização, ideal para tendências virais de #roommakeover e #gamingsetup.",
+                "Resolve o problema da falta de personalização e conveniência em ambientes, oferecendo controle inteligente (provavelmente via app ou voz), o que gera alta curiosidade sobre suas funcionalidades.",
+                "É extremamente fácil de demonstrar em vídeo, permitindo mostrar suas diversas funcionalidades e o impacto imediato na atmosfera de um espaço, desde setups de games até momentos de relaxamento.",
+                "O produto se alinha a nichos e tendências populares no TikTok, como 'smart home', 'aesthetic room' e 'DIY decor', o que potencializa o alcance orgânico e o engajamento através de conteúdo gerado por usuários."
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 92,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
             ]
         }
     }

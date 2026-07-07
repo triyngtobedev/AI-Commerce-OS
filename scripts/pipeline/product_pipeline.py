@@ -1,5 +1,6 @@
 from scripts.data_sources.tiktok.collector import collect_products
 from scripts.ai.analysts.ai_analyst import analyze_product
+from scripts.affiliate.opportunity_engine import analyze_opportunity
 from database.database_manager import save_product
 
 
@@ -15,9 +16,12 @@ def run_pipeline():
     for product in products:
         analysis = analyze_product(product)
 
+        opportunity = analyze_opportunity(analysis)
+
         result = {
-            "produto": product["nome"],
-            "analise": analysis
+            "produto": product,
+            "analise": analysis,
+            "oportunidade": opportunity
         }
 
         save_product(result)
@@ -32,5 +36,5 @@ if __name__ == "__main__":
 
     for item in pipeline_result:
         print("=" * 40)
-        print(item["produto"])
-        print(item["analise"])
+        print(item["produto"]["nome"])
+        print(item["oportunidade"])
