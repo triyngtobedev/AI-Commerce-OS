@@ -1,0 +1,28 @@
+[
+    {
+        "produto": "Mini Aspirador Portátil",
+        "analise": {
+            "score": 85,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas que buscam praticidade na limpeza de pequenos espaços (carros, mesas de escritório, teclados, bancadas), estudantes, proprietários de veículos, gamers, entusiastas de organização.",
+            "motivos": [
+                "Alta facilidade de demonstração em vídeo, com resultados visuais imediatos (antes e depois) e satisfatórios, o que gera engajamento e potencial viral.",
+                "Resolve um problema comum e 'chato' (sujeira em locais de difícil acesso ou a necessidade de uma limpeza rápida), gerando alívio e praticidade para o usuário.",
+                "Capacidade de gerar curiosidade sobre a eficácia de um aparelho 'mini' em diversas situações cotidianas, incentivando o compartilhamento e comentários.",
+                "Potencial para criação de diversos cenários de uso (UGC) e segmentação de público (carros, setup gamer, mesa de trabalho), otimizando anúncios."
+            ]
+        }
+    },
+    {
+        "produto": "Luminária LED Inteligente",
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Jovens e adultos (18-35), gamers, criadores de conteúdo, entusiastas de casa inteligente e decoração que buscam personalizar seus ambientes.",
+            "motivos": [
+                "Alta capacidade de demonstração visual em vídeos curtos, destacando facilmente efeitos de luz, cores e funcionalidades inteligentes (via app, voz, sincronização, etc.), gerando alto engajamento.",
+                "Gera curiosidade imediata pelo termo 'inteligente' e resolve o problema de personalização e criação de ambientes dinâmicos e funcionais, com forte apelo para 'room makeovers' e setups."
+            ]
+        }
+    }
+]

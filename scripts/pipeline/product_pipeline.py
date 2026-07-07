@@ -1,5 +1,6 @@
 from scripts.data_sources.tiktok.collector import collect_products
 from scripts.ai.analysts.ai_analyst import analyze_product
+from database.database_manager import save_product
 
 
 def run_pipeline():
@@ -14,12 +15,14 @@ def run_pipeline():
     for product in products:
         analysis = analyze_product(product)
 
-        results.append(
-            {
-                "produto": product["nome"],
-                "analise": analysis
-            }
-        )
+        result = {
+            "produto": product["nome"],
+            "analise": analysis
+        }
+
+        save_product(result)
+
+        results.append(result)
 
     return results
 
