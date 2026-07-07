@@ -1,0 +1,7 @@
+{
+  "hook": "Eu não sabia que precisava disso até testar...",
+  "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+  "demonstracao": "Mostra o produto funcionando.",
+  "beneficio": "Limpeza rápida e prática.",
+  "cta": "Clique no link e garanta o seu."
+}

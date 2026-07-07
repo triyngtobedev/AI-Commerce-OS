@@ -1,8 +1,10 @@
+from scripts.content.content_generator import generate_content
+from scripts.creative.ai_script_generator import generate_ai_script
 from scripts.data_sources.tiktok.collector import collect_products
 from scripts.ai.analysts.ai_analyst import analyze_product
 from scripts.affiliate.opportunity_engine import analyze_opportunity
 from database.database_manager import save_product
-
+from scripts.publisher.exporter import export_product
 
 def run_pipeline():
     """
@@ -17,14 +19,22 @@ def run_pipeline():
         analysis = analyze_product(product)
 
         opportunity = analyze_opportunity(analysis)
+        script = generate_ai_script(product, analysis
+        )
+
+        content = generate_content(product, analysis, script)
 
         result = {
             "produto": product,
             "analise": analysis,
-            "oportunidade": opportunity
+            "oportunidade": opportunity,
+            "roteiro": script,
+            "conteudo": content
         }
 
         save_product(result)
+
+        export_product(result)
 
         results.append(result)
 
@@ -37,4 +47,15 @@ if __name__ == "__main__":
     for item in pipeline_result:
         print("=" * 40)
         print(item["produto"]["nome"])
+
+        print("\nANÁLISE:")
+        print(item["analise"])
+
+        print("\nOPORTUNIDADE:")
         print(item["oportunidade"])
+
+        print("\nROTEIRO:")
+        print(item["roteiro"])
+
+        print("\nCONTEÚDO:")
+        print(item["conteudo"])

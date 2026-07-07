@@ -1,0 +1,27 @@
+from scripts.content.content_generator import generate_content
+
+produto = {
+    "nome": "Mini Aspirador Portátil",
+    "categoria": "Casa"
+}
+
+analise = {
+    "score": 95,
+    "potencial": "alto"
+}
+
+roteiro = {
+    "hook": "Eu não sabia que precisava disso...",
+    "problema": "Sujeira em lugares difíceis.",
+    "demonstracao": "Mostra o aspirador funcionando.",
+    "beneficio": "Mais praticidade.",
+    "cta": "Clique no link."
+}
+
+resultado = generate_content(
+    produto,
+    analise,
+    roteiro
+)
+
+print(resultado)

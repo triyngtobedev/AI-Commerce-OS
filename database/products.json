@@ -67,5 +67,753 @@
                 "Esse produto parece inútil, mas olha isso..."
             ]
         }
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 92,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas que buscam praticidade no dia a dia, como estudantes, trabalhadores de home office, gamers, donos de carros e indivíduos que desejam manter espaços pequenos sempre limpos.",
+            "motivos": [
+                "Alta capacidade de demonstração visual e 'satisfação' em vídeos curtos (ASMR de limpeza, antes e depois), ideal para o formato do TikTok.",
+                "Resolve um problema comum e visível (sujeira em locais de difícil acesso como teclados, frestas de carro) de forma prática e conveniente.",
+                "Grande potencial para gerar curiosidade ('Será que funciona mesmo?') e engajamento através de 'life hacks' e truques de limpeza.",
+                "Amplo público-alvo que valoriza gadgets úteis e soluções de limpeza eficientes, com fácil segmentação para anúncios."
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 92,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Seu teclado parece um campo minado? 😱 (Visual: close-up de sujeira no teclado, passando a mão e não sai, frustrado).",
+            "problema": "Pois é, migalhas, poeira em frestas, no seu carro, no setup gamer... É um inferno de limpar com aspirador normal, né? Ninguém merece!",
+            "demonstracao": "(Corte rápido, mini aspirador aparece. Liga ele). Mas OLHA ISSO AQUI! Esse mini aspirador portátil chegou pra mudar o jogo! (Vídeos satisfatórios: limpando teclado, saída de ar do carro, cantinho da mesa, com som ASMR de sucção). Pequeno, potente e suga TUDO! Antes e depois instantâneo!",
+            "beneficio": "Ter seus espaços, seu setup, seu carro sempre impecáveis nunca foi tão fácil e rápido! É a praticidade que você precisava no seu dia a dia pra manter tudo limpo sem esforço!",
+            "cta": "Chega de sujeira! Garanta o seu agora clicando no link da bio ou no carrinho laranja aqui embaixo! Você vai amar!"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Jovens (Geração Z e Millennials) interessados em decoração de interiores, tecnologia smart home, setups de gaming, e criar ambientes personalizados e estéticos.",
+            "motivos": [
+                "Alto potencial visual e de demonstração: Facilmente exibe cores, modos e efeitos em vídeos curtos, capturando a atenção e gerando curiosidade.",
+                "Resolve o problema de ambientes sem personalidade: Permite criar 'vibes' e transformar espaços com facilidade, apelando ao desejo de estética, personalização e humor."
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Esquece a luz branca! Olha como transformo meu quarto em segundos! 🤯",
+            "problema": "Seu quarto tá sem personalidade? Aquele setup gamer sem um toque especial? Eu sei a dor de um ambiente sem vida!",
+            "demonstracao": "Com essa luminária LED inteligente, a mágica acontece na palma da mão! Pelo app, mudo a cor, a intensidade, coloco efeitos pulsantes... olha só que incrível!",
+            "beneficio": "É como ter um DJ de luzes pro seu humor! Pra estudar, jogar, relaxar ou fazer aquela call diferentona. Cada 'vibe' que você quiser, na hora que quiser. Sério, muda TUDO!",
+            "cta": "Se você quer dar um UP no seu espaço e viver uma experiência nova, clica no link da bio e garante a sua antes que acabe! Não perde essa!"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas que buscam praticidade na limpeza diária, incluindo profissionais em home office, estudantes, gamers, motoristas, e entusiastas de organização que precisam de soluções rápidas para pequenas sujeiras em teclados, mesas, e interiores de carros.",
+            "motivos": [
+                "**Alta Capacidade de Demonstração Visual:** O produto é perfeito para vídeos curtos com demonstrações de 'antes e depois' altamente satisfatórias, mostrando a remoção de migalhas, poeira ou sujeiras em teclados, mesas e carros, o que gera grande engajamento e um 'fator wow' no TikTok. Esse tipo de conteúdo tem forte potencial viral.",
+                "**Resolve um Problema Comum e Relatável:** Aborda a dor de limpar pequenas sujeiras em locais de difícil acesso ou que não justificam o uso de um aspirador maior, oferecendo uma solução prática e eficiente para o dia a dia. A resolução de problemas cotidianos ressoa muito bem na plataforma.",
+                "**Potencial Viral e de Curiosidade Comprovado:** As métricas existentes (150.000 visualizações, 12.000 curtidas e 850 comentários) indicam que o produto já gerou interesse e engajamento. Seu aspecto 'mini' e 'portátil' naturalmente gera curiosidade sobre sua eficácia e versatilidade, encaixando-se em tendências de 'life hacks' e gadgets práticos.",
+                "**Amplo Público e Potencial para Anúncios:** Seu design funcional e portabilidade atraem diversos nichos (home office, gamers, entusiastas de carros, estudantes), permitindo a criação de campanhas de anúncios altamente segmentadas e eficazes com múltiplos ângulos de abordagem."
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Ninguém merece migalhas no teclado! 🤯",
+            "problema": "Sabe aquela sujeirinha chata no seu setup, nos cantinhos da mesa ou no carro que você NUNCA consegue tirar direito? E pegar o aspirador grandão pra isso? Que preguicinha!",
+            "demonstracao": "Vem ver o MILAGRE acontecer! Esse mini aspirador portátil é a solução dos seus problemas! Pequeno, mas super potente, ele suga tudo em segundos! Teclado limpo, mesa impecável, carro zerado. ✨",
+            "beneficio": "Tenha seu espaço sempre limpo e organizado em segundos, sem esforço nenhum! Mais foco nos estudos, no trabalho ou na game-play, e menos estresse com a bagunça do dia a dia. Chega de sofrer!",
+            "cta": "Quer essa praticidade na sua vida? Clica no carrinho aqui embaixo e garanta o seu AGORA! Não perca tempo, a promoção é por tempo limitado! 😉"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Público interessado no produto",
+            "motivos": [
+                "Produto possui potencial visual para vídeos curtos",
+                "Resolve um problema comum do consumidor"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Público interessado no produto",
+            "motivos": [
+                "Produto possui potencial visual para vídeos curtos",
+                "Resolve um problema comum do consumidor"
+            ]
+        },
+        "conteudo": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Público interessado no produto",
+            "motivos": [
+                "Produto possui potencial visual para vídeos curtos",
+                "Resolve um problema comum do consumidor"
+            ]
+        }
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "conteudo": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        }
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "conteudo": {
+            "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+            "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+            "hashtags": [
+                "#MiniAspirador",
+                "#AchadinhosTikTok",
+                "#CasaLimpa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+            "duracao": "30 segundos"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "conteudo": {
+            "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+            "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+            "hashtags": [
+                "#MiniAspirador",
+                "#AchadinhosTikTok",
+                "#CasaLimpa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+            "duracao": "30 segundos"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "conteudo": {
+            "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+            "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+            "hashtags": [
+                "#MiniAspirador",
+                "#AchadinhosTikTok",
+                "#CasaLimpa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+            "duracao": "30 segundos"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "conteudo": {
+            "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+            "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+            "hashtags": [
+                "#MiniAspirador",
+                "#AchadinhosTikTok",
+                "#CasaLimpa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+            "duracao": "30 segundos"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "conteudo": {
+            "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+            "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+            "hashtags": [
+                "#MiniAspirador",
+                "#AchadinhosTikTok",
+                "#CasaLimpa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+            "duracao": "30 segundos"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "conteudo": {
+            "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+            "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+            "hashtags": [
+                "#MiniAspirador",
+                "#AchadinhosTikTok",
+                "#CasaLimpa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+            "duracao": "30 segundos"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+            "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+            "hashtags": [
+                "#MiniAspirador",
+                "#AchadinhosTikTok",
+                "#CasaLimpa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+            "duracao": "30 segundos"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+            "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+            "hashtags": [
+                "#MiniAspirador",
+                "#AchadinhosTikTok",
+                "#CasaLimpa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+            "duracao": "30 segundos"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+            "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+            "hashtags": [
+                "#MiniAspirador",
+                "#AchadinhosTikTok",
+                "#CasaLimpa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+            "duracao": "30 segundos"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+            "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+            "hashtags": [
+                "#MiniAspirador",
+                "#AchadinhosTikTok",
+                "#CasaLimpa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+            "duracao": "30 segundos"
+        }
     }
 ]

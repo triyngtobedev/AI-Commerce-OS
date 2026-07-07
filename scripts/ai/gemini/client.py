@@ -11,9 +11,6 @@ load_dotenv(ROOT_DIR / ".env")
 
 
 def get_gemini_client():
-    """
-    Cria cliente do Gemini.
-    """
 
     api_key = os.getenv("GEMINI_API_KEY")
 
@@ -24,12 +21,62 @@ def get_gemini_client():
 
     return client
 
-
 def ask_gemini(prompt):
     """
     Envia um prompt para o Gemini
-    e retorna a resposta.
+    ou usa resposta simulada em desenvolvimento.
     """
+
+    mode = os.getenv(
+        "GEMINI_MODE",
+        "mock"
+    )
+
+    if mode == "mock":
+
+        print("\nPROMPT RECEBIDO:")
+        print(prompt[:300])
+        print("\n")
+
+        if "task: content_generation" in prompt.lower():
+
+            return """
+            {
+                "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
+                "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
+                "hashtags": [
+                    "#MiniAspirador",
+                    "#AchadinhosTikTok",
+                    "#CasaLimpa"
+                ],
+                "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
+                "duracao": "30 segundos"
+            }
+            """
+
+        if "video_script" in prompt.lower():
+
+            return """
+            {
+                "hook": "Eu não sabia que precisava disso até testar...",
+                "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+                "demonstracao": "Mostra o produto funcionando.",
+                "beneficio": "Limpeza rápida e prática.",
+                "cta": "Clique no link e garanta o seu."
+            }
+            """
+
+        return """
+        {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        }
+        """
 
     client = get_gemini_client()
 

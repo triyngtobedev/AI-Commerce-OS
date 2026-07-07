@@ -3,15 +3,15 @@ from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
 
 
-def generate_ai_script(product, analysis):
+def generate_content(product, analysis, script):
     """
-    Gera roteiro de vídeo usando Gemini.
+    Gera pacote completo de conteúdo para publicação.
     """
 
-    prompt = load_prompt("video_script")
+    prompt = load_prompt("content_generation")
 
     full_prompt = f"""
-    TASK: VIDEO_SCRIPT
+    TASK: CONTENT_GENERATION
     
 {prompt}
 
@@ -20,6 +20,9 @@ Produto:
 
 Análise:
 {analysis}
+
+Roteiro:
+{script}
 """
 
     response = ask_gemini(full_prompt)
