@@ -3,6 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from google import genai
+from .mock_data import get_mock_content
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -32,7 +33,7 @@ def ask_gemini(prompt):
         "mock"
     )
 
-    if mode == "mock":
+        if mode == "mock":
 
         print("\nPROMPT RECEBIDO:")
         print(prompt[:300])
@@ -40,19 +41,11 @@ def ask_gemini(prompt):
 
         if "task: content_generation" in prompt.lower():
 
-            return """
-            {
-                "titulo": "O Item Essencial Que Você Não Sabia Que Precisava!",
-                "descricao": "Mini aspirador portátil perfeito para limpar carro, teclado e pequenos espaços.",
-                "hashtags": [
-                    "#MiniAspirador",
-                    "#AchadinhosTikTok",
-                    "#CasaLimpa"
-                ],
-                "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
-                "duracao": "30 segundos"
-            }
-            """
+            product_name = prompt
+
+            return str(
+                get_mock_content(product_name)
+            )
 
         if "video_script" in prompt.lower():
 

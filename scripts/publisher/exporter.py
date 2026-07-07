@@ -41,6 +41,14 @@ def export_product(result):
             indent=4
         )
 
+    with open(folder / "scenes.json", "w", encoding="utf-8") as file:
+        json.dump(
+            result["cenas"],
+            file,
+            ensure_ascii=False,
+            indent=4
+        )
+
     with open(folder / "opportunity.json", "w", encoding="utf-8") as file:
         json.dump(
             result["oportunidade"],

@@ -5,6 +5,7 @@ from scripts.ai.analysts.ai_analyst import analyze_product
 from scripts.affiliate.opportunity_engine import analyze_opportunity
 from database.database_manager import save_product
 from scripts.publisher.exporter import export_product
+from scripts.video.scene_generator import generate_scenes
 
 def run_pipeline():
     """
@@ -22,7 +23,7 @@ def run_pipeline():
         script = generate_ai_script(product, analysis
         )
 
-        content = generate_content(product, analysis, script)
+        content = generate_content(product, analysis, script, content)
 
         result = {
             "produto": product,
@@ -30,6 +31,7 @@ def run_pipeline():
             "oportunidade": opportunity,
             "roteiro": script,
             "conteudo": content
+            "cenas": scenes
         }
 
         save_product(result)
