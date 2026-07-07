@@ -2,3 +2,5 @@
 node_modules/
 *.log
 .vscode/settings.json
+__pycache__/
+*.pyc
