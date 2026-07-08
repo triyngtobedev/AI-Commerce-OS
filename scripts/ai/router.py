@@ -11,9 +11,9 @@ def ask_ai(prompt, task="analysis"):
 
         "analysis": "gemini",
 
-        "script": "openai",
+        "script": "gemini",
 
-        "content": "openai"
+        "content": "gemini"
 
     }
 
