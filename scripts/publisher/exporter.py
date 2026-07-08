@@ -6,10 +6,6 @@ OUTPUT_DIR = Path("output")
 
 
 def slugify(text):
-    """
-    Converte nome do produto para nome de pasta.
-    """
-
     return (
         text.lower()
         .replace(" ", "-")
@@ -18,9 +14,6 @@ def slugify(text):
 
 
 def export_product(result):
-    """
-    Exporta todos os arquivos do produto.
-    """
 
     produto = result["produto"]["nome"]
 
@@ -31,49 +24,38 @@ def export_product(result):
         exist_ok=True
     )
 
-    # JSONs
 
-    with open(folder / "analysis.json", "w", encoding="utf-8") as file:
-        json.dump(
-            result["analise"],
-            file,
-            ensure_ascii=False,
-            indent=4
-        )
+    files = {
+        "analysis.json": result["analise"],
+        "scenes.json": result["cenas"],
+        "opportunity.json": result["oportunidade"],
+        "decision.json": {
+            "acao": result["acao"]
+        },
+        "script.json": result["roteiro"],
+        "content.json": result["conteudo"],
+        "caption.json": result["legenda"],
+        "asset_queries.json": result["asset_queries"],
 
-    with open(folder / "scenes.json", "w", encoding="utf-8") as file:
-        json.dump(
-            result["cenas"],
-            file,
-            ensure_ascii=False,
-            indent=4
-        )
+    
+    }
 
-    with open(folder / "opportunity.json", "w", encoding="utf-8") as file:
-        json.dump(
-            result["oportunidade"],
-            file,
-            ensure_ascii=False,
-            indent=4
-        )
 
-    with open(folder / "script.json", "w", encoding="utf-8") as file:
-        json.dump(
-            result["roteiro"],
-            file,
-            ensure_ascii=False,
-            indent=4
-        )
+    for filename, data in files.items():
 
-    with open(folder / "content.json", "w", encoding="utf-8") as file:
-        json.dump(
-            result["conteudo"],
-            file,
-            ensure_ascii=False,
-            indent=4
-        )
+        with open(
+            folder / filename,
+            "w",
+            encoding="utf-8"
+        ) as file:
 
-    # TXT
+            json.dump(
+                data,
+                file,
+                ensure_ascii=False,
+                indent=4
+            )
+
 
     (folder / "roteiro.txt").write_text(
         json.dumps(
@@ -84,15 +66,18 @@ def export_product(result):
         encoding="utf-8"
     )
 
+
     (folder / "descricao.txt").write_text(
         result["conteudo"]["descricao"],
         encoding="utf-8"
     )
 
+
     (folder / "narracao.txt").write_text(
         result["conteudo"]["texto_narracao"],
         encoding="utf-8"
     )
+
 
     (folder / "hashtags.txt").write_text(
         "\n".join(

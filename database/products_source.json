@@ -1,0 +1,18 @@
+[
+    {
+        "nome": "Mini Aspirador Portátil",
+        "categoria": "Casa",
+        "visualizacoes": 150000,
+        "curtidas": 12000,
+        "comentarios": 850,
+        "preco_estimado": 79.90
+    },
+    {
+        "nome": "Luminária LED Inteligente",
+        "categoria": "Tecnologia",
+        "visualizacoes": 90000,
+        "curtidas": 7000,
+        "comentarios": 400,
+        "preco_estimado": 59.90
+    }
+]
