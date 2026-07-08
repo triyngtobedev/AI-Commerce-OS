@@ -1,4 +1,4 @@
-from scripts.ai.gemini.client import ask_gemini
+from scripts.ai.tasks.script import generate_script
 from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
 
@@ -29,6 +29,6 @@ Oportunidade:
 {opportunity}
 """
 
-    response = ask_gemini(full_prompt)
+    response = generate_script(full_prompt)
 
     return parse_json(response)

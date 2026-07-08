@@ -1,3 +1,4 @@
+from scripts.ai.router import ask_ai
 import os
 import json
 from pathlib import Path
@@ -109,12 +110,4 @@ def ask_gemini(prompt):
         }
         """
 
-
-    client = get_gemini_client()
-
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
-
-    return response.text
+        return ask_ai(prompt)

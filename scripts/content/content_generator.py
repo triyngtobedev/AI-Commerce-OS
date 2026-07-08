@@ -1,4 +1,4 @@
-from scripts.ai.gemini.client import ask_gemini
+from scripts.ai.tasks.content import generate_content_ai
 from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
 
@@ -28,7 +28,7 @@ Roteiro:
 {script}
 """
 
-    response = ask_gemini(full_prompt)
+    response = generate_content_ai(full_prompt)
 
     content = parse_json(response)
 

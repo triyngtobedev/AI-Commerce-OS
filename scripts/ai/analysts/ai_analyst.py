@@ -1,7 +1,7 @@
 import json
 
 from scripts.utils.prompt_loader import load_prompt
-from scripts.ai.gemini.client import ask_gemini
+from scripts.ai.tasks.analysis import generate_analysis
 from scripts.utils.json_parser import parse_json
 
 
@@ -28,7 +28,7 @@ Analise este produto:
 {product_data}
 """
 
-    response = ask_gemini(final_prompt)
+    response = generate_analysis(final_prompt)
 
     analysis = parse_json(response)
 
