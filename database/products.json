@@ -815,5 +815,163 @@
             "texto_narracao": "Eu não sabia que precisava disso até testar. Esse mini aspirador limpa aqueles cantinhos difíceis em segundos.",
             "duracao": "30 segundos"
         }
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O produto que você precisa conhecer!",
+            "descricao": "Produto inovador com potencial para vídeos curtos.",
+            "hashtags": [
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Olha isso que eu encontrei.",
+            "duracao": "30 segundos"
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Mini Aspirador Portátil",
+                    "narracao": "Olha isso que eu encontrei."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Mini Aspirador Portátil funcionando",
+                    "narracao": "Produto inovador com potencial para vídeos curtos."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\mini-aspirador-portátil\\media"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O produto que você precisa conhecer!",
+            "descricao": "Produto inovador com potencial para vídeos curtos.",
+            "hashtags": [
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Olha isso que eu encontrei.",
+            "duracao": "30 segundos"
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Luminária LED Inteligente",
+                    "narracao": "Olha isso que eu encontrei."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Luminária LED Inteligente funcionando",
+                    "narracao": "Produto inovador com potencial para vídeos curtos."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\luminária-led-inteligente\\media"
     }
 ]

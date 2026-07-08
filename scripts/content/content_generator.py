@@ -27,4 +27,10 @@ Roteiro:
 
     response = ask_gemini(full_prompt)
 
-    return parse_json(response)
+    content = parse_json(response)
+
+    print("\n========== CONTENT DEBUG ==========")
+    print(content)
+    print("===================================\n")
+
+    return content

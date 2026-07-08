@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -22,6 +23,21 @@ def get_gemini_client():
 
     return client
 
+
+def extract_product_name(prompt):
+    """
+    Extrai nome do produto do prompt.
+    """
+
+    lines = prompt.split("\n")
+
+    for line in lines:
+        if "Produto:" in line:
+            return line.replace("Produto:", "").strip()
+
+    return "produto"
+
+
 def ask_gemini(prompt):
     """
     Envia um prompt para o Gemini
@@ -33,7 +49,7 @@ def ask_gemini(prompt):
         "mock"
     )
 
-        if mode == "mock":
+    if mode == "mock":
 
         print("\nPROMPT RECEBIDO:")
         print(prompt[:300])
@@ -41,10 +57,12 @@ def ask_gemini(prompt):
 
         if "task: content_generation" in prompt.lower():
 
-            product_name = prompt
+            product_name = extract_product_name(prompt)
 
-            return str(
-                get_mock_content(product_name)
+            return json.dumps(
+                get_mock_content(product_name),
+                ensure_ascii=False,
+                indent=4
             )
 
         if "video_script" in prompt.lower():

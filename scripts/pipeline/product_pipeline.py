@@ -6,6 +6,8 @@ from scripts.affiliate.opportunity_engine import analyze_opportunity
 from database.database_manager import save_product
 from scripts.publisher.exporter import export_product
 from scripts.video.scene_generator import generate_scenes
+from scripts.video.media_manager import prepare_media_folder
+
 
 def run_pipeline():
     """
@@ -23,15 +25,31 @@ def run_pipeline():
         script = generate_ai_script(product, analysis
         )
 
-        content = generate_content(product, analysis, script, content)
+        content = generate_content(
+            product,
+            analysis,
+            script,
+        )
+
+        scenes = generate_scenes(
+            product,
+            content
+        )
+
+        media_folder = prepare_media_folder(
+            product["nome"]
+        )
+
+        
 
         result = {
             "produto": product,
             "analise": analysis,
             "oportunidade": opportunity,
             "roteiro": script,
-            "conteudo": content
-            "cenas": scenes
+            "conteudo": content,
+            "cenas": scenes,
+            "media_folder": str(media_folder)
         }
 
         save_product(result)
