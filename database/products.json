@@ -5526,5 +5526,248 @@
             ]
         },
         "media_folder": "output\\suporte-dobrável-para-notebook\\media"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil USB",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu achei que esse produto era só mais um gadget barato, mas resolvi testar.",
+            "problema": "Eu queria descobrir se ele realmente ajudava no dia a dia.",
+            "teste": "Usei o produto durante alguns dias para ver o resultado.",
+            "resultado": "Ele surpreendeu em algumas situações.",
+            "cta": "Segue @testandogadgets para mais testes reais."
+        },
+        "conteudo": {
+            "titulo": "Testei esse produto para descobrir se vale a pena",
+            "descricao": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ],
+            "texto_narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete.",
+            "duracao": "30 segundos",
+            "modo": "review"
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil USB",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Mini Aspirador Portátil USB",
+                    "narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Mini Aspirador Portátil USB funcionando",
+                    "narracao": "Resolvi testar esse produto e mostrar o resultado real."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\mini-aspirador-portátil-usb\\media"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente RGB",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu achei que esse produto era só mais um gadget barato, mas resolvi testar.",
+            "problema": "Eu queria descobrir se ele realmente ajudava no dia a dia.",
+            "teste": "Usei o produto durante alguns dias para ver o resultado.",
+            "resultado": "Ele surpreendeu em algumas situações.",
+            "cta": "Segue @testandogadgets para mais testes reais."
+        },
+        "conteudo": {
+            "titulo": "Testei esse produto para descobrir se vale a pena",
+            "descricao": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ],
+            "texto_narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete.",
+            "duracao": "30 segundos",
+            "modo": "review"
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente RGB",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Luminária LED Inteligente RGB",
+                    "narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Luminária LED Inteligente RGB funcionando",
+                    "narracao": "Resolvi testar esse produto e mostrar o resultado real."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\luminária-led-inteligente-rgb\\media"
+    },
+    {
+        "produto": {
+            "nome": "Suporte Magnético Veicular para Celular",
+            "categoria": "Automotivo",
+            "visualizacoes": 120000,
+            "curtidas": 9500,
+            "comentarios": 620
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu achei que esse produto era só mais um gadget barato, mas resolvi testar.",
+            "problema": "Eu queria descobrir se ele realmente ajudava no dia a dia.",
+            "teste": "Usei o produto durante alguns dias para ver o resultado.",
+            "resultado": "Ele surpreendeu em algumas situações.",
+            "cta": "Segue @testandogadgets para mais testes reais."
+        },
+        "conteudo": {
+            "titulo": "Testei esse produto para descobrir se vale a pena",
+            "descricao": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ],
+            "texto_narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete.",
+            "duracao": "30 segundos",
+            "modo": "review"
+        },
+        "cenas": {
+            "produto": "Suporte Magnético Veicular para Celular",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Suporte Magnético Veicular para Celular",
+                    "narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Suporte Magnético Veicular para Celular funcionando",
+                    "narracao": "Resolvi testar esse produto e mostrar o resultado real."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\suporte-magnético-veicular-para-celular\\media"
     }
 ]

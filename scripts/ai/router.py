@@ -2,6 +2,7 @@ import os
 
 from scripts.ai.providers import gemini
 from scripts.ai.providers import mock
+from scripts.ai.providers import openai
 
 
 def ask_ai(prompt, task="analysis"):
@@ -10,9 +11,9 @@ def ask_ai(prompt, task="analysis"):
 
         "analysis": "gemini",
 
-        "script": "gemini",
+        "script": "openai",
 
-        "content": "gemini"
+        "content": "openai"
 
     }
 
@@ -32,6 +33,9 @@ def ask_ai(prompt, task="analysis"):
 
         if provider == "gemini":
             return gemini.generate(prompt)
+
+        if provider == "openai":
+            return openai.generate(prompt)
 
 
     return mock.generate(
