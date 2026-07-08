@@ -3,7 +3,7 @@ from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
 
 
-def generate_content(product, analysis, script):
+def generate_content(product, analysis, opportunity, script):
     """
     Gera pacote completo de conteúdo para publicação.
     """
@@ -20,6 +20,9 @@ Produto:
 
 Análise:
 {analysis}
+
+Oportunidade:
+{opportunity}
 
 Roteiro:
 {script}

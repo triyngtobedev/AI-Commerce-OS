@@ -13,6 +13,9 @@ load_dotenv(ROOT_DIR / ".env")
 
 
 def get_gemini_client():
+    """
+    Cria cliente do Gemini.
+    """
 
     api_key = os.getenv("GEMINI_API_KEY")
 
@@ -55,7 +58,9 @@ def ask_gemini(prompt):
         print(prompt[:300])
         print("\n")
 
-        if "task: content_generation" in prompt.lower():
+        prompt_lower = prompt.lower()
+
+        if "task: content_generation" in prompt_lower:
 
             product_name = extract_product_name(prompt)
 
@@ -65,17 +70,32 @@ def ask_gemini(prompt):
                 indent=4
             )
 
-        if "video_script" in prompt.lower():
+
+        if "task: review_script" in prompt_lower or "review_script" in prompt_lower:
+
+            return """
+            {
+                "hook": "Eu achei que esse produto era só mais um gadget barato, mas resolvi testar.",
+                "problema": "Eu queria descobrir se ele realmente ajudava no dia a dia.",
+                "teste": "Usei o produto durante alguns dias para ver o resultado.",
+                "resultado": "Ele surpreendeu em algumas situações e mostrou seus limites.",
+                "cta": "Segue @testandogadgets para mais testes reais."
+            }
+            """
+
+
+        if "video_script" in prompt_lower:
 
             return """
             {
                 "hook": "Eu não sabia que precisava disso até testar...",
-                "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
-                "demonstracao": "Mostra o produto funcionando.",
-                "beneficio": "Limpeza rápida e prática.",
-                "cta": "Clique no link e garanta o seu."
+                "problema": "Eu sempre tinha sujeira pequena no teclado, carro e mesa.",
+                "teste": "Resolvi testar esse produto por alguns dias.",
+                "resultado": "Me surpreendeu pelo tamanho e praticidade.",
+                "cta": "Segue @testandogadgets para ver mais testes reais."
             }
             """
+
 
         return """
         {
@@ -88,6 +108,7 @@ def ask_gemini(prompt):
             ]
         }
         """
+
 
     client = get_gemini_client()
 

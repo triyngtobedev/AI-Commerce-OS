@@ -22,12 +22,14 @@ def run_pipeline():
         analysis = analyze_product(product)
 
         opportunity = analyze_opportunity(analysis)
-        script = generate_ai_script(product, analysis
+
+        script = generate_ai_script(product, analysis, opportunity
         )
 
         content = generate_content(
             product,
             analysis,
+            opportunity,
             script,
         )
 

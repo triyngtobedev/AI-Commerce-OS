@@ -973,5 +973,1156 @@
             ]
         },
         "media_folder": "output\\luminária-led-inteligente\\media"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O produto que você precisa conhecer!",
+            "descricao": "Produto inovador com potencial para vídeos curtos.",
+            "hashtags": [
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Olha isso que eu encontrei.",
+            "duracao": "30 segundos"
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Mini Aspirador Portátil",
+                    "narracao": "Olha isso que eu encontrei."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Mini Aspirador Portátil funcionando",
+                    "narracao": "Produto inovador com potencial para vídeos curtos."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\mini-aspirador-portátil\\media"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O produto que você precisa conhecer!",
+            "descricao": "Produto inovador com potencial para vídeos curtos.",
+            "hashtags": [
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Olha isso que eu encontrei.",
+            "duracao": "30 segundos"
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Luminária LED Inteligente",
+                    "narracao": "Olha isso que eu encontrei."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Luminária LED Inteligente funcionando",
+                    "narracao": "Produto inovador com potencial para vídeos curtos."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\luminária-led-inteligente\\media"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O produto que você precisa conhecer!",
+            "descricao": "Produto inovador com potencial para vídeos curtos.",
+            "hashtags": [
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Olha isso que eu encontrei.",
+            "duracao": "30 segundos"
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Mini Aspirador Portátil",
+                    "narracao": "Olha isso que eu encontrei."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Mini Aspirador Portátil funcionando",
+                    "narracao": "Produto inovador com potencial para vídeos curtos."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\mini-aspirador-portátil\\media"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O produto que você precisa conhecer!",
+            "descricao": "Produto inovador com potencial para vídeos curtos.",
+            "hashtags": [
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Olha isso que eu encontrei.",
+            "duracao": "30 segundos"
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Luminária LED Inteligente",
+                    "narracao": "Olha isso que eu encontrei."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Luminária LED Inteligente funcionando",
+                    "narracao": "Produto inovador com potencial para vídeos curtos."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\luminária-led-inteligente\\media"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 92,
+            "potencial": "alto",
+            "publico_alvo": "Estudantes, profissionais de escritório, donos de carro, gamers, pais e qualquer pessoa que busca conveniência para limpeza rápida e eficaz de pequenos espaços.",
+            "motivos": [
+                "Altíssimo potencial viral no TikTok, pois a demonstração de limpeza de pequenas sujeiras é intrinsecamente satisfatória ('oddly satisfying') e gera forte engajamento, com facilidade para criar conteúdo 'antes e depois'.",
+                "Resolve um problema comum e muitas vezes irritante (sujeira em teclado, migalhas na mesa, poeira no carro) de forma prática e eficiente, despertando grande curiosidade sobre sua eficácia e versatilidade em vídeos curtos.",
+                "A facilidade de demonstração em vídeo, mostrando o produto em ação em diversas situações do dia a dia, torna-o ideal para anúncios e conteúdo orgânico que gerem desejo e senso de necessidade."
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 92,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar... 🤯",
+            "problema": "Se você também sofre com migalhas no teclado, poeira nos cantinhos do carro ou sujeirinha na mesa, SEUS PROBLEMAS ACABARAM!",
+            "demonstracao": "Gente, sério! Esse mini aspirador portátil é INCRÍVEL. Olha a potência dele sugando tudo: teclado, mesa, até o banco do carro. É absurdamente satisfatório ver a sujeira sumir assim!",
+            "beneficio": "Pequeno, mas poderoso! Limpeza rápida e fácil em qualquer lugar, a qualquer hora. Diga adeus ao estresse das sujeirinhas chatas e tenha tudo impecável em segundos.",
+            "cta": "Pra ter o seu e facilitar sua vida, clica no link da bio! Você vai viciar! ✨"
+        },
+        "conteudo": {
+            "titulo": "Eu Não Sabia Que Precisava Disso! 🤯 Mini Aspirador Portátil: Adeus Sujeira!",
+            "descricao": "Gente, sério! Esse mini aspirador portátil virou meu novo vício! Quem mais sofria com migalhas no teclado, poeira no carro ou sujeirinha na mesa? 😩 AGORA NUNCA MAIS! É tão satisfatório ver a sujeira sumir em segundos! ✨ Pequeno, mas poderoso, ele salva meu dia e deixa tudo impecável. Você vai viciar também! Clica no link da bio pra garantir o seu! 🚀 #AchadinhoTikTok #LimpezaExpress",
+            "hashtags": [
+                "#MiniAspirador",
+                "#LimpezaRapida",
+                "#DicaDeLimpeza",
+                "#AchadinhosTikTok",
+                "#ProdutinhoEssencial",
+                "#CasaOrganizada",
+                "#VidaPratica",
+                "#Satisfatorio"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar... 🤯 Se você sofre com migalhas no teclado, poeira no carro ou sujeirinha na mesa, SEUS PROBLEMAS ACABARAM! Gente, sério! Esse mini aspirador portátil é INCRÍVEL. Olha a potência sugando tudo: teclado, mesa, banco do carro. É MUITO satisfatório ver a sujeira sumir! Pequeno, mas poderoso! Limpeza rápida e fácil em qualquer lugar, a qualquer hora. Diga adeus ao estresse das sujeirinhas. Pra ter o seu e facilitar sua vida, clica no link da bio! Você vai viciar! ✨",
+            "duracao": "31 segundos"
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Mini Aspirador Portátil",
+                    "narracao": "Eu não sabia que precisava disso até testar... 🤯 Se você sofre com migalhas no teclado, poeira no carro ou sujeirinha na mesa, SEUS PROBLEMAS ACABARAM! Gente, sério! Esse mini aspirador portátil é INCRÍVEL. Olha a potência sugando tudo: teclado, mesa, banco do carro. É MUITO satisfatório ver a sujeira sumir! Pequeno, mas poderoso! Limpeza rápida e fácil em qualquer lugar, a qualquer hora. Diga adeus ao estresse das sujeirinhas. Pra ter o seu e facilitar sua vida, clica no link da bio! Você vai viciar! ✨"
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Mini Aspirador Portátil funcionando",
+                    "narracao": "Gente, sério! Esse mini aspirador portátil virou meu novo vício! Quem mais sofria com migalhas no teclado, poeira no carro ou sujeirinha na mesa? 😩 AGORA NUNCA MAIS! É tão satisfatório ver a sujeira sumir em segundos! ✨ Pequeno, mas poderoso, ele salva meu dia e deixa tudo impecável. Você vai viciar também! Clica no link da bio pra garantir o seu! 🚀 #AchadinhoTikTok #LimpezaExpress"
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\mini-aspirador-portátil\\media"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Jovens e adultos (16-35+) interessados em decoração moderna e personalizada, tecnologia, games, criação de conteúdo para redes sociais e melhoria da atmosfera do lar.",
+            "motivos": [
+                "Alto potencial viral no TikTok devido à natureza visual e interativa do produto. A mudança de cores, sincronização com música, efeitos dinâmicos e controle por aplicativo são altamente demonstráveis e se encaixam perfeitamente em tendências como 'room tours', 'setup gamers' e 'aesthetic room makeovers'.",
+                "Gera alta curiosidade instantaneamente. O termo 'Inteligente' provoca perguntas sobre suas funcionalidades (controle por voz, agendamento, integração com outros dispositivos, modos de luz), incentivando a permanência no vídeo para ver a demonstração.",
+                "Resolve problemas de ambiência monótona, falta de personalização na decoração e conveniência. Permite que o usuário crie diferentes atmosferas para cada momento (relaxamento, estudo, festa, gaming) de forma fácil e remota.",
+                "Extremamente fácil de demonstrar em vídeos curtos. Pode-se mostrar rapidamente as transições de cores, os modos de iluminação, o controle via smartphone ou voz, e o impacto visual de um 'antes e depois' no ambiente, tornando o conteúdo dinâmico e envolvente.",
+                "O potencial para anúncios é alto, pois o produto possui um forte apelo visual, uma clara proposta de valor (transformação do ambiente) e múltiplas possibilidades de criativos que podem ser segmentados para diferentes nichos dentro do público-alvo (gamers, entusiastas de smart home, criadores de conteúdo)."
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar... Se liga nesse upgrade pro seu quarto!",
+            "problema": "Seu ambiente tá sem aquela vibe que você sempre quis? Seu setup gamer ou cantinho de relax tá meio 'meh'?",
+            "demonstracao": "Com essa luminária LED Inteligente, você transforma qualquer espaço em segundos! Olha como eu mudo do modo festa pro relax em um toque, ou até sincronizo com a música, tudo pelo celular!",
+            "beneficio": "Crie a atmosfera perfeita pra cada momento: game intenso, noite de filmes, foco nos estudos ou só pra relaxar. Personalize seu espaço do seu jeito, sem complicação!",
+            "cta": "Chega de monotonia! Clica no link da bio e pega a sua pra dar um up no seu ambiente também!"
+        },
+        "conteudo": {
+            "titulo": "Eu Não Sabia Que Precisava Disso! A Luminária LED Que Transformou Meu Quarto! ✨",
+            "descricao": "Gente, sério, eu tô CHOCADO com essa luminária! 🤯 Meu setup gamer e meu cantinho de relax nunca mais foram os mesmos depois que instalei a Luminária LED Inteligente. Dá pra mudar a vibe do ambiente em segundos, sincronizar com a música, e o melhor: tudo pelo celular! 📱 Perfeito pra qualquer momento, seja pra focar nos estudos, maratonar série ou fazer aquela festa. Se você quer dar um UP no seu espaço e sair da mesmice, essa é a hora! Corre no link da bio e garanta a sua! 👇 #Publi",
+            "hashtags": [
+                "#LuminariaLEDInteligente",
+                "#SmartHome",
+                "#SetupGamer",
+                "#DecoracaoModerna",
+                "#RoomTour",
+                "#QuartoAesthetic",
+                "#Tecnologia",
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso! Se liga no upgrade do meu quarto! \nSeu ambiente tá sem vida? Seu setup ou cantinho relax meio 'meh'?\nCom a Luminária LED Inteligente, você transforma tudo em segundos! Olha isso: modo festa, relax, sincroniza com a música, tudo pelo celular! É surreal!\nCrie a vibe perfeita pra game, filme, ou só pra relaxar. Personalize fácil!\nChega de monotonia! Pega a sua no link da bio e transforme seu ambiente!",
+            "duracao": "30-35 segundos"
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Luminária LED Inteligente",
+                    "narracao": "Eu não sabia que precisava disso! Se liga no upgrade do meu quarto! \nSeu ambiente tá sem vida? Seu setup ou cantinho relax meio 'meh'?\nCom a Luminária LED Inteligente, você transforma tudo em segundos! Olha isso: modo festa, relax, sincroniza com a música, tudo pelo celular! É surreal!\nCrie a vibe perfeita pra game, filme, ou só pra relaxar. Personalize fácil!\nChega de monotonia! Pega a sua no link da bio e transforme seu ambiente!"
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Luminária LED Inteligente funcionando",
+                    "narracao": "Gente, sério, eu tô CHOCADO com essa luminária! 🤯 Meu setup gamer e meu cantinho de relax nunca mais foram os mesmos depois que instalei a Luminária LED Inteligente. Dá pra mudar a vibe do ambiente em segundos, sincronizar com a música, e o melhor: tudo pelo celular! 📱 Perfeito pra qualquer momento, seja pra focar nos estudos, maratonar série ou fazer aquela festa. Se você quer dar um UP no seu espaço e sair da mesmice, essa é a hora! Corre no link da bio e garanta a sua! 👇 #Publi"
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\luminária-led-inteligente\\media"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Trabalhadores de escritório, estudantes, motoristas, donos de pets, entusiastas de organização e qualquer pessoa que busque praticidade para pequenas limpezas em casa ou no carro.",
+            "motivos": [
+                "**Alta demonstrabilidade e 'satisfaction factor':** O produto é visualmente impactante, ideal para vídeos de 'antes e depois', ASMR de limpeza e mostrando a facilidade de uso em diversos cenários (teclado, carro, mesa), o que é altamente engajador e viralizável no TikTok.",
+                "**Solução prática para um problema universal:** Resolve a dor de sujeira em locais de difícil acesso, como teclados, frestas de carro e mesas, de forma rápida e conveniente, apelando para a necessidade de organização e higiene. Isso facilita a criação de roteiros para anúncios focados em solucionar uma dor.",
+                "**Gera curiosidade e apelo de 'gadget':** O formato 'mini' e portátil naturalmente provoca curiosidade sobre sua eficácia e potência. Produtos que funcionam como 'gadgets úteis' costumam ter bom desempenho na plataforma, incentivando a compra por impulso.",
+                "**Métricas existentes positivas:** As visualizações, curtidas e comentários já indicam um forte interesse e engajamento da audiência para este tipo de produto, confirmando seu potencial de venda."
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Pensei que era só um brinquedo, mas espera pra ver o que essa coisinha fez...",
+            "problema": "Sabe aquelas migalhas insistentes no teclado? A poeira que se acumula nas frestas do carro? Ou aquela sujeirinha chata na mesa que o pano não resolve? Pequenos problemas que causam uma grande dor de cabeça...",
+            "teste": "Peguei esse mini aspirador portátil pra testar. Parece frágil, né? Mas a surpresa foi grande! No teclado, ele suga TUDO, deixando cada tecla impecável. Aquela poeirinha fina do painel do carro? Desapareceu em segundos. E na mesa, até os pelos do meu gato sumiram sem esforço. É super potente para o tamanho e a bateria dura mais do que eu esperava. E o melhor? Fácil de esvaziar e guardar em qualquer lugar.",
+            "resultado": "Pra quem odeia sujeirinha pequena e busca praticidade no dia a dia, esse mini aspirador é um achado. Deixa tudo limpo sem esforço e ocupa quase nada de espaço. Pequeno no tamanho, gigante na utilidade. Eu diria que vale cada centavo pra ter essa paz mental.",
+            "cta": "Quer descobrir mais gadgets que você nem sabia que precisava? Segue @testandogadgets pra não perder os próximos testes!"
+        },
+        "conteudo": {
+            "titulo": "Pensei que era SÓ um brinquedo, mas ESPERA PRA VER! 🤯",
+            "descricao": "Gente, eu juro que não dava NADA por esse mini aspirador! Mas o que essa coisinha fez na minha vida... 😱 Minhas migalhas, poeiras e pelos de pet sumiram em SEGUNDOS! Se você odeia sujeirinha chata e ama praticidade, você PRECISA ver isso! Sério, virou meu novo crush da limpeza. ✨ Curtiu? Deixa um like e me conta nos comentários qual sujeirinha te irrita mais! 👇 #AchadinhosTikTok #GadgetGenial",
+            "hashtags": [
+                "#MiniAspiradorPortatil",
+                "#LimpezaRapida",
+                "#Organizacao",
+                "#DicasDeLimpeza",
+                "#GadgetsQueVocePrecisa",
+                "#tiktokmademebuyit",
+                "#VidaPratica",
+                "#ProdutoQueNaoSabiaQuePrecisava"
+            ],
+            "texto_narracao": "Pensei que era só um brinquedo, mas espera pra ver o que essa coisinha fez! Migalhas no teclado, poeira no carro, sujeira na mesa? Pequenos problemas que irritam! Peguei esse mini aspirador portátil. Parece frágil, mas a surpresa foi grande! No teclado, ele suga TUDO. Poeirinha do carro? Sumiu em segundos. Até pelos de gato da mesa! É potente, bateria dura e fácil de guardar. Pra quem odeia sujeira pequena e quer praticidade, é um achado. Limpa tudo sem esforço e ocupa quase nada. Pequeno no tamanho, gigante na utilidade. Vale muito a pena! Quer mais gadgets que você nem sabia que precisava? Segue @testandogadgets pra não perder!",
+            "duracao": "34 segundos"
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Mini Aspirador Portátil",
+                    "narracao": "Pensei que era só um brinquedo, mas espera pra ver o que essa coisinha fez! Migalhas no teclado, poeira no carro, sujeira na mesa? Pequenos problemas que irritam! Peguei esse mini aspirador portátil. Parece frágil, mas a surpresa foi grande! No teclado, ele suga TUDO. Poeirinha do carro? Sumiu em segundos. Até pelos de gato da mesa! É potente, bateria dura e fácil de guardar. Pra quem odeia sujeira pequena e quer praticidade, é um achado. Limpa tudo sem esforço e ocupa quase nada. Pequeno no tamanho, gigante na utilidade. Vale muito a pena! Quer mais gadgets que você nem sabia que precisava? Segue @testandogadgets pra não perder!"
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Mini Aspirador Portátil funcionando",
+                    "narracao": "Gente, eu juro que não dava NADA por esse mini aspirador! Mas o que essa coisinha fez na minha vida... 😱 Minhas migalhas, poeiras e pelos de pet sumiram em SEGUNDOS! Se você odeia sujeirinha chata e ama praticidade, você PRECISA ver isso! Sério, virou meu novo crush da limpeza. ✨ Curtiu? Deixa um like e me conta nos comentários qual sujeirinha te irrita mais! 👇 #AchadinhosTikTok #GadgetGenial"
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\mini-aspirador-portátil\\media"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Entusiastas de tecnologia, gamers, criadores de conteúdo, pessoas interessadas em decoração moderna e automação residencial, jovens adultos e Millennials.",
+            "motivos": [
+                "Fácil de demonstrar em vídeo com efeitos visuais impactantes (mudança de cor, sincronização com música, controle via app/voz), o que maximiza o potencial viral.",
+                "Gera alta curiosidade devido ao termo 'inteligente', convidando o espectador a descobrir as funcionalidades avançadas além de uma luminária comum (personalização de ambiente, automação, integração).",
+                "Resolve o problema de ambientes sem personalidade ou monótonos, permitindo a criação de atmosferas personalizadas para diferentes atividades (trabalho, lazer, festas, jogos), agregando valor e experiência.",
+                "O alto engajamento já demonstrado (90k visualizações, 7k curtidas, 400 comentários) indica um forte interesse prévio da audiência e a capacidade do produto de capturar a atenção no TikTok.",
+                "Possui grande potencial para anúncios devido à sua natureza visual e capacidade de criar um 'fator uau', podendo ser segmentado para nichos específicos como 'gaming setup' ou 'home decor'."
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu achei que era só mais uma lâmpada, mas isso aqui mudou tudo.",
+            "problema": "Sabe quando você quer dar um toque especial no ambiente, mas a iluminação de sempre é sem graça? Ou quando você precisa de uma luz diferente pra cada momento, mas não quer mil lâmpadas?",
+            "teste": "Passei uma semana testando essa Luminária LED Inteligente. A instalação? Moleza! Mas a mágica acontece quando você abre o app. Sério, a primeira coisa que fiz foi mudar as cores e ver a reação das minhas plantas. Depois, sincronizei com a música e virei um DJ de luzes. E o controle por voz? 'Alexa, modo gamer!' E pronto, o setup inteiro muda. Cenas pré-definidas, temporizadores... parece que tenho um diretor de fotografia morando aqui.",
+            "resultado": "Depois de todos esses testes, posso dizer: essa luminária não é só uma luz. É uma experiência. Ela realmente transforma qualquer cômodo e te dá um controle que eu não esperava. Pra quem busca personalidade no ambiente, vale MUITO a pena!",
+            "cta": "Curtiu a descoberta? Segue @testandogadgets para mais testes surpreendentes como esse!"
+        },
+        "conteudo": {
+            "titulo": "Eu Achei Que Era Só Lâmpada, Mas Essa Luminária LED Mudou TUDO! 🤯",
+            "descricao": "Gente, eu juro que achei que era só mais uma luzinha, mas essa Luminária LED Inteligente virou o jogo aqui em casa! 😱 É surreal o controle que você tem sobre o ambiente. De modo relax a balada, ela faz tudo! Qual modo você criaria primeiro? Me conta nos comentários! 👇 #LinkNaBio pra ter a sua e transformar seu espaço também! ✨",
+            "hashtags": [
+                "#LuminariaLEDInteligente",
+                "#SmartHome",
+                "#DecoraçãoCriativa",
+                "#SetupGamer",
+                "#Tecnologia",
+                "#AchadinhosTikTok",
+                "#HomeDecor",
+                "#TransformaçãoDeAmbiente"
+            ],
+            "texto_narracao": "Eu achei que era só mais uma lâmpada, mas isso aqui mudou tudo. Sabe quando você quer dar um toque especial no ambiente, mas a iluminação de sempre é sem graça? Ou precisa de uma luz diferente pra cada momento sem ter mil lâmpadas?\n\nPassei uma semana testando essa Luminária LED Inteligente. Instalação? Moleza! A mágica acontece no app. Mudei as cores, sincronizei com a música e virei um DJ de luzes! E o controle por voz? 'Alexa, modo gamer!' E pronto, o setup inteiro muda. Cenas pré-definidas, temporizadores... parece que tenho um diretor de fotografia morando aqui!\n\nDepois de tudo, posso dizer: essa luminária não é só luz. É uma experiência. Transforma qualquer cômodo e te dá um controle que eu não esperava. Pra quem busca personalidade, vale MUITO a pena!\n\nCurtiu a descoberta? Segue @testandogadgets pra mais testes surpreendentes!",
+            "duracao": "35 segundos"
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Luminária LED Inteligente",
+                    "narracao": "Eu achei que era só mais uma lâmpada, mas isso aqui mudou tudo. Sabe quando você quer dar um toque especial no ambiente, mas a iluminação de sempre é sem graça? Ou precisa de uma luz diferente pra cada momento sem ter mil lâmpadas?\n\nPassei uma semana testando essa Luminária LED Inteligente. Instalação? Moleza! A mágica acontece no app. Mudei as cores, sincronizei com a música e virei um DJ de luzes! E o controle por voz? 'Alexa, modo gamer!' E pronto, o setup inteiro muda. Cenas pré-definidas, temporizadores... parece que tenho um diretor de fotografia morando aqui!\n\nDepois de tudo, posso dizer: essa luminária não é só luz. É uma experiência. Transforma qualquer cômodo e te dá um controle que eu não esperava. Pra quem busca personalidade, vale MUITO a pena!\n\nCurtiu a descoberta? Segue @testandogadgets pra mais testes surpreendentes!"
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Luminária LED Inteligente funcionando",
+                    "narracao": "Gente, eu juro que achei que era só mais uma luzinha, mas essa Luminária LED Inteligente virou o jogo aqui em casa! 😱 É surreal o controle que você tem sobre o ambiente. De modo relax a balada, ela faz tudo! Qual modo você criaria primeiro? Me conta nos comentários! 👇 #LinkNaBio pra ter a sua e transformar seu espaço também! ✨"
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\luminária-led-inteligente\\media"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O produto que você precisa conhecer!",
+            "descricao": "Produto inovador com potencial para vídeos curtos.",
+            "hashtags": [
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Olha isso que eu encontrei.",
+            "duracao": "30 segundos"
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Mini Aspirador Portátil",
+                    "narracao": "Olha isso que eu encontrei."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Mini Aspirador Portátil funcionando",
+                    "narracao": "Produto inovador com potencial para vídeos curtos."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\mini-aspirador-portátil\\media"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Sujeiras pequenas em lugares difíceis de limpar.",
+            "demonstracao": "Mostra o produto funcionando.",
+            "beneficio": "Limpeza rápida e prática.",
+            "cta": "Clique no link e garanta o seu."
+        },
+        "conteudo": {
+            "titulo": "O produto que você precisa conhecer!",
+            "descricao": "Produto inovador com potencial para vídeos curtos.",
+            "hashtags": [
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Olha isso que eu encontrei.",
+            "duracao": "30 segundos"
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Luminária LED Inteligente",
+                    "narracao": "Olha isso que eu encontrei."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Luminária LED Inteligente funcionando",
+                    "narracao": "Produto inovador com potencial para vídeos curtos."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\luminária-led-inteligente\\media"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "conteudo": {
+            "titulo": "O produto que você precisa conhecer!",
+            "descricao": "Produto inovador com potencial para vídeos curtos.",
+            "hashtags": [
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Olha isso que eu encontrei.",
+            "duracao": "30 segundos"
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Mini Aspirador Portátil",
+                    "narracao": "Olha isso que eu encontrei."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Mini Aspirador Portátil funcionando",
+                    "narracao": "Produto inovador com potencial para vídeos curtos."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\mini-aspirador-portátil\\media"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "conteudo": {
+            "titulo": "O produto que você precisa conhecer!",
+            "descricao": "Produto inovador com potencial para vídeos curtos.",
+            "hashtags": [
+                "#AchadinhosTikTok"
+            ],
+            "texto_narracao": "Olha isso que eu encontrei.",
+            "duracao": "30 segundos"
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Luminária LED Inteligente",
+                    "narracao": "Olha isso que eu encontrei."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Luminária LED Inteligente funcionando",
+                    "narracao": "Produto inovador com potencial para vídeos curtos."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\luminária-led-inteligente\\media"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu achei que esse produto era só mais um gadget barato, mas resolvi testar.",
+            "problema": "Eu queria descobrir se ele realmente ajudava no dia a dia.",
+            "teste": "Usei o produto durante alguns dias para ver o resultado.",
+            "resultado": "Ele surpreendeu em algumas situações e mostrou seus limites.",
+            "cta": "Segue @testandogadgets para mais testes reais."
+        },
+        "conteudo": {
+            "titulo": "Testei esse produto para descobrir se vale a pena",
+            "descricao": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ],
+            "texto_narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete.",
+            "duracao": "30 segundos",
+            "modo": "review"
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Mini Aspirador Portátil",
+                    "narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Mini Aspirador Portátil funcionando",
+                    "narracao": "Resolvi testar esse produto e mostrar o resultado real."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\mini-aspirador-portátil\\media"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 90,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu achei que esse produto era só mais um gadget barato, mas resolvi testar.",
+            "problema": "Eu queria descobrir se ele realmente ajudava no dia a dia.",
+            "teste": "Usei o produto durante alguns dias para ver o resultado.",
+            "resultado": "Ele surpreendeu em algumas situações e mostrou seus limites.",
+            "cta": "Segue @testandogadgets para mais testes reais."
+        },
+        "conteudo": {
+            "titulo": "Testei esse produto para descobrir se vale a pena",
+            "descricao": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ],
+            "texto_narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete.",
+            "duracao": "30 segundos",
+            "modo": "review"
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente",
+            "cenas": [
+                {
+                    "tempo": "0-3s",
+                    "tipo": "hook",
+                    "visual": "Mostrar o problema resolvido pelo Luminária LED Inteligente",
+                    "narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete."
+                },
+                {
+                    "tempo": "3-15s",
+                    "tipo": "demonstracao",
+                    "visual": "Mostrar o Luminária LED Inteligente funcionando",
+                    "narracao": "Resolvi testar esse produto e mostrar o resultado real."
+                },
+                {
+                    "tempo": "15-25s",
+                    "tipo": "beneficio",
+                    "visual": "Mostrar resultado final",
+                    "narracao": "Uma solução simples para o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30s",
+                    "tipo": "cta",
+                    "visual": "Produto em destaque",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "media_folder": "output\\luminária-led-inteligente\\media"
     }
 ]
