@@ -1,66 +1,124 @@
 from scripts.content.content_generator import generate_content
 from scripts.creative.ai_script_generator import generate_ai_script
+
 from scripts.data_sources.tiktok.collector import collect_products
+
 from scripts.ai.analysts.ai_analyst import analyze_product
+
 from scripts.affiliate.opportunity_engine import analyze_opportunity
-from database.database_manager import save_product
-from scripts.publisher.exporter import export_product
-from scripts.video.scene_generator import generate_scenes
-from scripts.video.media_manager import prepare_media_folder
+
 from scripts.scoring.product_score import calculate_product_score
 from scripts.scoring.product_ranker import rank_products
+
 from scripts.decision.decision_engine import decide_action
-from scripts.dashboard.generator import generate_dashboard
+
+
+from scripts.video.scene_generator import generate_scenes
 from scripts.video.caption_generator import generate_caption
 from scripts.video.project_builder import build_video_project
-from scripts.video.renderer import render_video_project
+
 from scripts.video.asset_manager import prepare_assets
 from scripts.video.asset_search import generate_asset_queries
 from scripts.video.media_search import search_media
 from scripts.video.media_downloader import download_videos
-from scripts.video.text_overlay import generate_overlay_text
+
 from scripts.video.subtitle_generator import generate_subtitles
+from scripts.video.renderer import render_video_project
+
+
 from scripts.audio.tts_generator import create_audio
+
+
+from database.database_manager import save_product
+
+from scripts.publisher.exporter import export_product
+
+from scripts.dashboard.generator import generate_dashboard
+
+
+
+def slugify(text):
+
+    return (
+        text
+        .lower()
+        .replace(" ", "-")
+        .replace("/", "-")
+    )
+
 
 
 def run_pipeline():
 
-    print("🚀 AI-Commerce-OS iniciado\n")
+    print(
+        "🚀 Pipeline iniciado\n"
+    )
+
+
 
     products = collect_products()
 
 
+
+    if not products:
+
+        print(
+            "❌ Nenhum produto encontrado"
+        )
+
+        return []
+
+
+
     for product in products:
 
-        product_score = calculate_product_score(product)
-
-        product["score_tecnico"] = product_score
-
-
-    ranked_products = rank_products(products)
+        product["score_tecnico"] = (
+            calculate_product_score(product)
+        )
 
 
-    products = [
-        item["produto"]
-        for item in ranked_products[:5]
-    ]
 
-
-    analyzed_products = []
-
-
-    print(
-        f"Produtos encontrados: {len(products)}"
+    ranked = rank_products(
+        products
     )
 
 
-    # FASE 1 - Inteligência
 
-    for product in products:
+    selected = [
+        item["produto"]
+        for item in ranked[:3]
+    ]
 
-        product_score = calculate_product_score(product)
 
-        product["score_tecnico"] = product_score
+
+    results = []
+
+
+
+    for product in selected:
+
+
+        print(
+            "\n============================"
+        )
+
+
+        print(
+            f"Produto: {product['nome']}"
+        )
+
+
+
+        prepare_assets(
+            product
+        )
+
+
+
+        score = calculate_product_score(
+            product
+        )
+
 
 
         analysis = analyze_product(
@@ -68,56 +126,17 @@ def run_pipeline():
         )
 
 
+
         opportunity = analyze_opportunity(
             analysis,
-            product["score_tecnico"]
+            score
         )
 
 
-        analyzed_products.append(
-            {
-                "produto": product,
-                "analise": analysis,
-                "oportunidade": opportunity
-            }
+
+        action = decide_action(
+            opportunity
         )
-
-
-    # Ranking
-
-    top_products = rank_products(
-        analyzed_products
-    )[:3]
-
-
-    print("\nTOP PRODUTOS:")
-
-
-    for item in ranked_products[:5]:
-
-        print(
-            item["produto"]["nome"],
-            "-",
-            item["score"]
-        )
-
-
-    results = []
-
-
-    # FASE 2 - Criativo
-
-    for item in top_products:
-
-
-        data = item["produto"]
-
-
-        product = data["produto"]
-
-        analysis = data["analise"]
-
-        opportunity = data["oportunidade"]
 
 
 
@@ -138,6 +157,18 @@ def run_pipeline():
 
 
 
+        if not content.get(
+            "texto_narracao"
+        ):
+
+            print(
+                "⚠️ Conteúdo sem narração."
+            )
+
+            continue
+
+
+
         caption = generate_caption(
             content
         )
@@ -151,7 +182,13 @@ def run_pipeline():
 
 
 
-        subtitle_file = generate_subtitles(
+        queries = generate_asset_queries(
+            scenes
+        )
+
+
+
+        subtitles = generate_subtitles(
             {
                 "produto": product,
                 "cenas": scenes
@@ -160,65 +197,30 @@ def run_pipeline():
 
 
 
-        overlay_texts = generate_overlay_text(
-            scenes
-        )
-
-
-
-        asset_queries = generate_asset_queries(
-            scenes
-        )
-
-
-
-        media_search = search_media(
+        media = search_media(
             product,
-            asset_queries
+            queries
         )
 
 
 
         download_videos(
             product,
-            media_search
+            media
         )
 
 
 
-        media_folder = prepare_media_folder(
-            product["nome"]
-        )
-
-
-
-        prepare_assets(
-            product
-        )
-
-
-
-        action = decide_action(
-            opportunity
-        )
-
-
-
-        product_folder = (
-            "output/"
-            + product["nome"]
-            .lower()
-            .replace(" ", "-")
-        )
-
-
-
-        audio_file = create_audio(
+        audio = create_audio(
             {
-                "text": content["texto_narracao"],
-                "output_path": (
-                    product_folder
-                    + "/assets/audio/narracao.mp3"
+                "text":
+                    content["texto_narracao"],
+
+                "output_path":
+                (
+                    f"output/"
+                    f"{slugify(product['nome'])}/"
+                    f"assets/audio/narracao.mp3"
                 )
             }
         )
@@ -227,46 +229,90 @@ def run_pipeline():
 
         result = {
 
-            "produto": product,
+            "produto":
+                product,
 
-            "analise": analysis,
 
-            "oportunidade": opportunity,
+            "analise":
+                analysis,
 
-            "acao": action,
 
-            "roteiro": script,
+            "oportunidade":
+                opportunity,
 
-            "conteudo": content,
 
-            "legenda": caption,
+            "acao":
+                action,
 
-            "overlay_texts": overlay_texts,
 
-            "cenas": scenes,
+            "roteiro":
+                script,
 
-            "audio": str(audio_file),
 
-            "asset_queries": asset_queries,
+            "conteudo":
+                content,
 
-            "media_search": media_search,
 
-            "media_folder": str(media_folder),
+            "legenda":
+                caption,
 
-            "subtitle_file": str(subtitle_file)
+
+            "cenas":
+                scenes,
+
+
+            "asset_queries":
+                queries,
+
+
+            "audio":
+                audio,
+
+
+            "subtitle_file":
+                str(subtitles),
+
+
+            "video":
+                None
 
         }
 
 
 
-        video_project = build_video_project(
+        build_video_project(
             result
         )
 
 
-        render_video_project(
+
+        video = render_video_project(
             result
         )
+
+
+
+        if video:
+
+
+            result["video"] = (
+                str(video)
+            )
+
+
+            print(
+                f"✅ Vídeo criado: {video}"
+            )
+
+
+
+        else:
+
+
+            print(
+                "⚠️ Vídeo não criado."
+            )
+
 
 
         save_product(
@@ -274,9 +320,11 @@ def run_pipeline():
         )
 
 
+
         export_product(
             result
         )
+
 
 
         results.append(
@@ -284,21 +332,11 @@ def run_pipeline():
         )
 
 
+
         generate_dashboard(
             results
         )
 
 
+
     return results
-
-
-
-if __name__ == "__main__":
-
-
-    pipeline_result = run_pipeline()
-
-
-    print(
-        "\nProcesso finalizado."
-    )

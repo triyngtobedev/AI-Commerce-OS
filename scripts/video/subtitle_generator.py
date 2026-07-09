@@ -1,6 +1,7 @@
 from pathlib import Path
 
 
+
 def generate_subtitles(result):
 
     product = result["produto"]["nome"]
@@ -24,11 +25,50 @@ def generate_subtitles(result):
     )
 
 
-    scenes = (
-        result
-        .get("cenas", {})
-        .get("cenas", [])
+    cenas_data = result.get(
+        "cenas",
+        []
     )
+
+
+    # compatibilidade caso venha como {"cenas":[]}
+
+    if isinstance(cenas_data, dict):
+
+        scenes = cenas_data.get(
+            "cenas",
+            []
+        )
+
+    else:
+
+        scenes = cenas_data
+
+
+
+    # fallback usando roteiro caso cenas estejam vazias
+
+    if not scenes:
+
+        texto = (
+            result
+            .get("conteudo", {})
+            .get(
+                "texto_narracao",
+                ""
+            )
+        )
+
+
+        if texto:
+
+            scenes = [
+                {
+                    "tempo": "0-30",
+                    "narracao": texto
+                }
+            ]
+
 
 
     with open(
@@ -44,16 +84,30 @@ def generate_subtitles(result):
         for scene in scenes:
 
 
-            tempo = scene["tempo"]
+            tempo = scene.get(
+                "tempo",
+                "0-5"
+            )
 
 
             inicio, fim = tempo.split("-")
 
 
+
             texto = scene.get(
                 "narracao",
-                ""
+                scene.get(
+                    "texto",
+                    ""
+                )
             )
+
+
+
+            if not texto:
+
+                continue
+
 
 
             file.write(

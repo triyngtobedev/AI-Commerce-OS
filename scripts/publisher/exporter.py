@@ -5,19 +5,36 @@ from pathlib import Path
 OUTPUT_DIR = Path("output")
 
 
+
 def slugify(text):
+
     return (
-        text.lower()
+        text
+        .lower()
         .replace(" ", "-")
         .replace("/", "-")
     )
 
 
+
 def export_product(result):
 
-    produto = result["produto"]["nome"]
+    produto = (
+        result
+        .get("produto", {})
+        .get(
+            "nome",
+            "produto"
+        )
+    )
 
-    folder = OUTPUT_DIR / slugify(produto)
+
+    folder = (
+        OUTPUT_DIR
+        /
+        slugify(produto)
+    )
+
 
     folder.mkdir(
         parents=True,
@@ -25,29 +42,92 @@ def export_product(result):
     )
 
 
-    files = {
-        "analysis.json": result["analise"],
-        "scenes.json": result["cenas"],
-        "opportunity.json": result["oportunidade"],
-        "decision.json": {
-            "acao": result["acao"]
-        },
-        "script.json": result["roteiro"],
-        "content.json": result["conteudo"],
-        "caption.json": result["legenda"],
-        "asset_queries.json": result["asset_queries"],
 
-    
+    conteudo = result.get(
+        "conteudo",
+        {}
+    )
+
+
+    if not isinstance(
+        conteudo,
+        dict
+    ):
+
+        conteudo = {}
+
+
+
+    files = {
+
+        "analysis.json":
+            result.get(
+                "analise",
+                {}
+            ),
+
+
+        "scenes.json":
+            result.get(
+                "cenas",
+                {}
+            ),
+
+
+        "opportunity.json":
+            result.get(
+                "oportunidade",
+                {}
+            ),
+
+
+        "decision.json":
+            {
+                "acao":
+                    result.get(
+                        "acao",
+                        "avaliar"
+                    )
+            },
+
+
+        "script.json":
+            result.get(
+                "roteiro",
+                {}
+            ),
+
+
+        "content.json":
+            conteudo,
+
+
+        "caption.json":
+            result.get(
+                "legenda",
+                {}
+            ),
+
+
+        "asset_queries.json":
+            result.get(
+                "asset_queries",
+                []
+            )
+
     }
 
 
+
     for filename, data in files.items():
+
 
         with open(
             folder / filename,
             "w",
             encoding="utf-8"
         ) as file:
+
 
             json.dump(
                 data,
@@ -57,31 +137,87 @@ def export_product(result):
             )
 
 
+
+    # =========================
+    # ARQUIVOS TEXTO
+    # =========================
+
+
     (folder / "roteiro.txt").write_text(
+
         json.dumps(
-            result["roteiro"],
+            result.get(
+                "roteiro",
+                {}
+            ),
             ensure_ascii=False,
             indent=2
         ),
+
         encoding="utf-8"
+
     )
+
 
 
     (folder / "descricao.txt").write_text(
-        result["conteudo"]["descricao"],
+
+        conteudo.get(
+            "descricao",
+            ""
+        ),
+
         encoding="utf-8"
+
     )
+
 
 
     (folder / "narracao.txt").write_text(
-        result["conteudo"]["texto_narracao"],
+
+        conteudo.get(
+            "texto_narracao",
+            ""
+        ),
+
         encoding="utf-8"
+
     )
+
+
+
+    hashtags = conteudo.get(
+        "hashtags",
+        []
+    )
+
+
+    if not isinstance(
+        hashtags,
+        list
+    ):
+
+        hashtags = [
+            str(hashtags)
+        ]
+
 
 
     (folder / "hashtags.txt").write_text(
+
         "\n".join(
-            result["conteudo"]["hashtags"]
+            hashtags
         ),
+
         encoding="utf-8"
+
     )
+
+
+
+    print(
+        f"📦 Produto exportado: {folder}"
+    )
+
+
+    return folder

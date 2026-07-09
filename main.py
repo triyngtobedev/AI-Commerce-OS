@@ -1,30 +1,38 @@
 """
 AI-Commerce-OS
 
-Sistema principal de análise de produtos.
+Entrada principal do sistema.
+Executa pipeline completo:
+Produto -> IA -> Roteiro -> Mídia -> Vídeo
 """
 
-from scripts.data_sources.tiktok.collector import collect_products
-from scripts.ai.analysts.analyst import analyze_product
+from scripts.pipeline.product_pipeline import run_pipeline
 
 
 def run():
 
-    print("🚀 AI-Commerce-OS iniciado\n")
+    print(
+        "\n🚀 Iniciando AI-Commerce-OS\n"
+    )
 
-    products = collect_products()
+    results = run_pipeline()
 
-    print(f"Produtos encontrados: {len(products)}\n")
 
-    for product in products:
+    print(
+        "\n=============================="
+    )
 
-        analysis = analyze_product(product)
+    print(
+        "PROCESSO FINALIZADO"
+    )
 
-        print("--------------------------------")
-        print(f"Produto: {analysis['produto']}")
-        print(f"Score: {analysis['score']}")
-        print(f"Potencial: {analysis['potencial']}")
-        print(f"Engagement: {analysis['engagement_rate']}%")
+    print(
+        f"Vídeos gerados: {len(results)}"
+    )
+
+    print(
+        "==============================\n"
+    )
 
 
 if __name__ == "__main__":

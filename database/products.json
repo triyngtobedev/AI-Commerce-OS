@@ -51244,5 +51244,442 @@
         },
         "media_folder": "output\\luminária-led-inteligente\\media",
         "subtitle_file": "output\\luminária-led-inteligente\\captions.srt"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850,
+            "preco_estimado": 79.9,
+            "score_tecnico": {
+                "score": 100,
+                "engagement": 8.0,
+                "comment_rate": 0.567
+            }
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 96,
+            "score_ia": 90,
+            "score_mercado": 100,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu achei que esse produto era só mais um gadget barato, mas resolvi testar.",
+            "problema": "Eu queria descobrir se ele realmente ajudava no dia a dia.",
+            "teste": "Usei o produto durante alguns dias para ver o resultado.",
+            "resultado": "Ele surpreendeu em algumas situações.",
+            "cta": "Segue @testandogadgets para mais testes reais."
+        },
+        "conteudo": {
+            "titulo": "Testei esse produto para descobrir se vale a pena",
+            "descricao": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ],
+            "texto_narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete.",
+            "duracao": "30 segundos",
+            "modo": "review"
+        },
+        "legenda": {
+            "legenda": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ]
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3",
+                    "tipo": "hook",
+                    "visual": "person discovering a problem solved by Mini Aspirador Portátil, before and after situation",
+                    "narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete."
+                },
+                {
+                    "tempo": "3-15",
+                    "tipo": "demonstracao",
+                    "visual": "person using Mini Aspirador Portátil in real life, close up demonstration, product in action",
+                    "narracao": "Resolvi testar esse produto e mostrar o resultado real."
+                },
+                {
+                    "tempo": "15-25",
+                    "tipo": "beneficio",
+                    "visual": "clean result after using Mini Aspirador Portátil, happy person showing improvement",
+                    "narracao": "Uma solução simples para facilitar o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30",
+                    "tipo": "cta",
+                    "visual": "Mini Aspirador Portátil product showcase, modern commercial style, close up",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "audio": "output\\mini-aspirador-portátil\\assets\\audio\\narracao.mp3",
+        "subtitle_file": "C:\\Projetos\\AI-Commerce-OS\\output\\mini-aspirador-portátil\\captions.srt"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850,
+            "preco_estimado": 79.9,
+            "score_tecnico": {
+                "score": 100,
+                "engagement": 8.0,
+                "comment_rate": 0.567
+            }
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 96,
+            "score_ia": 90,
+            "score_mercado": 100,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "acao": "CRIAR_VIDEO_AGORA",
+        "roteiro": {
+            "hook": "Eu achei que esse produto era só mais um gadget barato, mas resolvi testar.",
+            "problema": "Eu queria descobrir se ele realmente ajudava no dia a dia.",
+            "teste": "Usei o produto durante alguns dias para ver o resultado.",
+            "resultado": "Ele surpreendeu em algumas situações.",
+            "cta": "Segue @testandogadgets para mais testes reais."
+        },
+        "conteudo": {
+            "titulo": "Testei esse produto para descobrir se vale a pena",
+            "descricao": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ],
+            "texto_narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete.",
+            "duracao": "30 segundos",
+            "modo": "review"
+        },
+        "legenda": {
+            "legenda": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ]
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3",
+                    "tipo": "hook",
+                    "visual": "person discovering a problem solved by Mini Aspirador Portátil, before and after situation",
+                    "narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete."
+                },
+                {
+                    "tempo": "3-15",
+                    "tipo": "demonstracao",
+                    "visual": "person using Mini Aspirador Portátil in real life, close up demonstration, product in action",
+                    "narracao": "Resolvi testar esse produto e mostrar o resultado real."
+                },
+                {
+                    "tempo": "15-25",
+                    "tipo": "beneficio",
+                    "visual": "clean result after using Mini Aspirador Portátil, happy person showing improvement",
+                    "narracao": "Uma solução simples para facilitar o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30",
+                    "tipo": "cta",
+                    "visual": "Mini Aspirador Portátil product showcase, modern commercial style, close up",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "audio": "output\\mini-aspirador-portátil\\assets\\audio\\narracao.mp3",
+        "subtitle_file": "C:\\Projetos\\AI-Commerce-OS\\output\\mini-aspirador-portátil\\captions.srt"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850,
+            "preco_estimado": 79.9,
+            "score_tecnico": {
+                "score": 100,
+                "engagement": 8.0,
+                "comment_rate": 0.567
+            }
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 96,
+            "score_ia": 90,
+            "score_mercado": 100,
+            "decisao": "CRIAR_VIDEO",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "acao": "CRIAR_VIDEO_AGORA",
+        "roteiro": {
+            "hook": "Eu achei que esse produto era só mais um gadget barato, mas resolvi testar.",
+            "problema": "Eu queria descobrir se ele realmente ajudava no dia a dia.",
+            "teste": "Usei o produto durante alguns dias para ver o resultado.",
+            "resultado": "Ele surpreendeu em algumas situações.",
+            "cta": "Segue @testandogadgets para mais testes reais."
+        },
+        "conteudo": {
+            "titulo": "Testei esse produto para descobrir se vale a pena",
+            "descricao": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ],
+            "texto_narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete.",
+            "duracao": "30 segundos",
+            "modo": "review"
+        },
+        "legenda": {
+            "legenda": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ]
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "cenas": [
+                {
+                    "tempo": "0-3",
+                    "tipo": "hook",
+                    "visual": "person discovering a problem solved by Mini Aspirador Portátil, before and after situation",
+                    "narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete."
+                },
+                {
+                    "tempo": "3-15",
+                    "tipo": "demonstracao",
+                    "visual": "person using Mini Aspirador Portátil in real life, close up demonstration, product in action",
+                    "narracao": "Resolvi testar esse produto e mostrar o resultado real."
+                },
+                {
+                    "tempo": "15-25",
+                    "tipo": "beneficio",
+                    "visual": "clean result after using Mini Aspirador Portátil, happy person showing improvement",
+                    "narracao": "Uma solução simples para facilitar o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30",
+                    "tipo": "cta",
+                    "visual": "Mini Aspirador Portátil product showcase, modern commercial style, close up",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "asset_queries": [
+            {
+                "tempo": "0-3",
+                "tipo": "hook",
+                "busca": "person discovering a problem solved by Mini Aspirador Portátil, before and after situation"
+            },
+            {
+                "tempo": "3-15",
+                "tipo": "demonstracao",
+                "busca": "person using Mini Aspirador Portátil in real life, close up demonstration, product in action"
+            },
+            {
+                "tempo": "15-25",
+                "tipo": "beneficio",
+                "busca": "clean result after using Mini Aspirador Portátil, happy person showing improvement"
+            },
+            {
+                "tempo": "25-30",
+                "tipo": "cta",
+                "busca": "Mini Aspirador Portátil product showcase, modern commercial style, close up"
+            }
+        ],
+        "audio": "output\\mini-aspirador-portátil\\assets\\audio\\narracao.mp3",
+        "subtitle_file": "C:\\Projetos\\AI-Commerce-OS\\output\\mini-aspirador-portátil\\captions.srt",
+        "video": "output\\mini-aspirador-portátil\\video_final.mp4"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400,
+            "preco_estimado": 59.9,
+            "score_tecnico": {
+                "score": 70,
+                "engagement": 7.78,
+                "comment_rate": 0.444
+            }
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto",
+            "publico_alvo": "Pessoas interessadas no produto",
+            "motivos": [
+                "Produto visual para vídeos curtos",
+                "Resolve um problema comum"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 78,
+            "score_ia": 90,
+            "score_mercado": 70,
+            "decisao": "TESTAR",
+            "facilidade_video": "media",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "acao": "TESTAR_VIDEO",
+        "roteiro": {
+            "hook": "Eu achei que esse produto era só mais um gadget barato, mas resolvi testar.",
+            "problema": "Eu queria descobrir se ele realmente ajudava no dia a dia.",
+            "teste": "Usei o produto durante alguns dias para ver o resultado.",
+            "resultado": "Ele surpreendeu em algumas situações.",
+            "cta": "Segue @testandogadgets para mais testes reais."
+        },
+        "conteudo": {
+            "titulo": "Testei esse produto para descobrir se vale a pena",
+            "descricao": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ],
+            "texto_narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete.",
+            "duracao": "30 segundos",
+            "modo": "review"
+        },
+        "legenda": {
+            "legenda": "Resolvi testar esse produto e mostrar o resultado real.",
+            "hashtags": [
+                "#TestandoGadgets",
+                "#Achadinhos"
+            ]
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente",
+            "cenas": [
+                {
+                    "tempo": "0-3",
+                    "tipo": "hook",
+                    "visual": "person discovering a problem solved by Luminária LED Inteligente, before and after situation",
+                    "narracao": "Eu encontrei esse produto e resolvi testar para descobrir se ele realmente entrega o que promete."
+                },
+                {
+                    "tempo": "3-15",
+                    "tipo": "demonstracao",
+                    "visual": "person using Luminária LED Inteligente in real life, close up demonstration, product in action",
+                    "narracao": "Resolvi testar esse produto e mostrar o resultado real."
+                },
+                {
+                    "tempo": "15-25",
+                    "tipo": "beneficio",
+                    "visual": "clean result after using Luminária LED Inteligente, happy person showing improvement",
+                    "narracao": "Uma solução simples para facilitar o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30",
+                    "tipo": "cta",
+                    "visual": "Luminária LED Inteligente product showcase, modern commercial style, close up",
+                    "narracao": "Clique e garanta o seu."
+                }
+            ]
+        },
+        "asset_queries": [
+            {
+                "tempo": "0-3",
+                "tipo": "hook",
+                "busca": "person discovering a problem solved by Luminária LED Inteligente, before and after situation"
+            },
+            {
+                "tempo": "3-15",
+                "tipo": "demonstracao",
+                "busca": "person using Luminária LED Inteligente in real life, close up demonstration, product in action"
+            },
+            {
+                "tempo": "15-25",
+                "tipo": "beneficio",
+                "busca": "clean result after using Luminária LED Inteligente, happy person showing improvement"
+            },
+            {
+                "tempo": "25-30",
+                "tipo": "cta",
+                "busca": "Luminária LED Inteligente product showcase, modern commercial style, close up"
+            }
+        ],
+        "audio": "output\\luminária-led-inteligente\\assets\\audio\\narracao.mp3",
+        "subtitle_file": "C:\\Projetos\\AI-Commerce-OS\\output\\luminária-led-inteligente\\captions.srt",
+        "video": "output\\luminária-led-inteligente\\video_final.mp4"
     }
 ]

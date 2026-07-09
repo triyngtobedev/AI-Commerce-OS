@@ -4,6 +4,7 @@ from scripts.utils.json_parser import parse_json
 from scripts.utils.ai_cache import load_cache, save_cache
 
 
+
 def generate_ai_script(
     product,
     analysis,
@@ -11,10 +12,19 @@ def generate_ai_script(
 ):
     """
     Gera roteiro de vídeo usando IA com cache.
+
+    Retorna o roteiro que será usado
+    pelo gerador de conteúdo.
     """
+
 
     product_name = product["nome"]
 
+
+
+    # ===============================
+    # CACHE
+    # ===============================
 
     cached = load_cache(
         "scripts",
@@ -37,26 +47,41 @@ def generate_ai_script(
     )
 
 
+
+    # ===============================
+    # PROMPT
+    # ===============================
+
     prompt = load_prompt(
         "review_script"
     )
 
 
+
     full_prompt = f"""
 TASK: REVIEW_SCRIPT
 
+
 {prompt}
+
 
 Produto:
 {product}
 
+
 Análise:
 {analysis}
+
 
 Oportunidade:
 {opportunity}
 """
 
+
+
+    # ===============================
+    # IA
+    # ===============================
 
     response = ask_ai(
         full_prompt,
@@ -64,16 +89,73 @@ Oportunidade:
     )
 
 
+
+    # ===============================
+    # JSON
+    # ===============================
+
     script = parse_json(
         response
     )
 
+
+
+    if not isinstance(script, dict):
+
+        print(
+            "⚠️ Roteiro inválido retornado pela IA."
+        )
+
+        script = {}
+
+
+
+    # ===============================
+    # GARANTIA DE CONTEÚDO
+    # ===============================
+
+    if not script:
+
+
+        script = {
+
+            "gancho": (
+                f"Você precisa conhecer o {product_name}."
+            ),
+
+            "roteiro": (
+                f"Apresentação do produto {product_name} "
+                "mostrando seus benefícios e vantagens."
+            )
+
+        }
+
+
+
+    # ===============================
+    # CACHE
+    # ===============================
 
     save_cache(
         "scripts",
         product_name,
         script
     )
+
+
+
+    print(
+        "\n========== SCRIPT GERADO =========="
+    )
+
+    print(
+        script
+    )
+
+    print(
+        "===================================\n"
+    )
+
 
 
     return script
