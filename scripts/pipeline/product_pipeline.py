@@ -22,11 +22,13 @@ from scripts.video.text_overlay import generate_overlay_text
 from scripts.video.subtitle_generator import generate_subtitles
 from scripts.audio.tts_generator import create_audio
 
+
 def run_pipeline():
 
     print("🚀 AI-Commerce-OS iniciado\n")
 
     products = collect_products()
+
 
     for product in products:
 
@@ -37,15 +39,19 @@ def run_pipeline():
 
     ranked_products = rank_products(products)
 
+
     products = [
         item["produto"]
         for item in ranked_products[:5]
     ]
 
+
     analyzed_products = []
 
 
-    print(f"Produtos encontrados: {len(products)}")
+    print(
+        f"Produtos encontrados: {len(products)}"
+    )
 
 
     # FASE 1 - Inteligência
@@ -56,12 +62,17 @@ def run_pipeline():
 
         product["score_tecnico"] = product_score
 
-        analysis = analyze_product(product)
+
+        analysis = analyze_product(
+            product
+        )
+
 
         opportunity = analyze_opportunity(
             analysis,
             product["score_tecnico"]
         )
+
 
         analyzed_products.append(
             {
@@ -80,8 +91,10 @@ def run_pipeline():
 
 
     print("\nTOP PRODUTOS:")
-    
+
+
     for item in ranked_products[:5]:
+
         print(
             item["produto"]["nome"],
             "-",
@@ -96,13 +109,16 @@ def run_pipeline():
 
     for item in top_products:
 
+
         data = item["produto"]
+
 
         product = data["produto"]
 
         analysis = data["analise"]
 
         opportunity = data["oportunidade"]
+
 
 
         script = generate_ai_script(
@@ -112,6 +128,7 @@ def run_pipeline():
         )
 
 
+
         content = generate_content(
             product,
             analysis,
@@ -119,9 +136,12 @@ def run_pipeline():
             script
         )
 
+
+
         caption = generate_caption(
             content
         )
+
 
 
         scenes = generate_scenes(
@@ -129,25 +149,35 @@ def run_pipeline():
             content
         )
 
+
+
         subtitle_file = generate_subtitles(
             {
                 "produto": product,
-                "cenas": scenes     
-                }
+                "cenas": scenes
+            }
         )
+
+
 
         overlay_texts = generate_overlay_text(
             scenes
-        )   
+        )
+
+
 
         asset_queries = generate_asset_queries(
             scenes
         )
 
+
+
         media_search = search_media(
             product,
             asset_queries
         )
+
+
 
         download_videos(
             product,
@@ -155,52 +185,108 @@ def run_pipeline():
         )
 
 
+
         media_folder = prepare_media_folder(
             product["nome"]
         )
 
-        prepare_assets(product)
+
+
+        prepare_assets(
+            product
+        )
+
+
 
         action = decide_action(
             opportunity
         )
 
-        audio_file = create_audio(
-    {
-        "text": content["texto_narracao"],
-        "output_path": "output/audio/narracao.mp3"
-    }
+
+
+        product_folder = (
+            "output/"
+            + product["nome"]
+            .lower()
+            .replace(" ", "-")
         )
 
 
+
+        audio_file = create_audio(
+            {
+                "text": content["texto_narracao"],
+                "output_path": (
+                    product_folder
+                    + "/assets/audio/narracao.mp3"
+                )
+            }
+        )
+
+
+
         result = {
+
             "produto": product,
+
             "analise": analysis,
+
             "oportunidade": opportunity,
+
             "acao": action,
+
             "roteiro": script,
+
             "conteudo": content,
+
             "legenda": caption,
+
             "overlay_texts": overlay_texts,
+
             "cenas": scenes,
+
             "audio": str(audio_file),
+
             "asset_queries": asset_queries,
+
             "media_search": media_search,
+
             "media_folder": str(media_folder),
+
             "subtitle_file": str(subtitle_file)
+
         }
 
-        video_project = build_video_project(result)
 
-        render_video_project(result)
 
-        save_product(result)
+        video_project = build_video_project(
+            result
+        )
 
-        export_product(result)
 
-        results.append(result)
+        render_video_project(
+            result
+        )
 
-        generate_dashboard(results)
+
+        save_product(
+            result
+        )
+
+
+        export_product(
+            result
+        )
+
+
+        results.append(
+            result
+        )
+
+
+        generate_dashboard(
+            results
+        )
 
 
     return results
@@ -209,6 +295,10 @@ def run_pipeline():
 
 if __name__ == "__main__":
 
+
     pipeline_result = run_pipeline()
 
-    print("\nProcesso finalizado.")
+
+    print(
+        "\nProcesso finalizado."
+    )

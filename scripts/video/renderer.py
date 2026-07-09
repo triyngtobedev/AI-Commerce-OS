@@ -25,22 +25,44 @@ def render_video_project(result):
     )
 
 
+    audio_file = Path(
+        result.get("audio", "")
+    )
+
+
+    subtitle_file = Path(
+        result.get("subtitle_file", "")
+    )
+
+
     media_files = []
 
 
-    # PRIORIDADE: VÍDEOS
+    # =========================
+    # BUSCAR VÍDEOS
+    # =========================
+
     if videos_folder.exists():
 
         for ext in ("*.mp4", "*.mov"):
+
             media_files.extend(
                 videos_folder.glob(ext)
             )
 
 
-    # FALLBACK: IMAGENS
+    # =========================
+    # FALLBACK IMAGENS
+    # =========================
+
     if not media_files and images_folder.exists():
 
-        for ext in ("*.jpg", "*.jpeg", "*.png"):
+        for ext in (
+            "*.jpg",
+            "*.jpeg",
+            "*.png"
+        ):
+
             media_files.extend(
                 images_folder.glob(ext)
             )
@@ -50,12 +72,23 @@ def render_video_project(result):
 
 
     if not media_files:
-        print("Nenhuma mídia encontrada.")
+
+        print(
+            "❌ Nenhuma mídia encontrada."
+        )
+
         return None
 
 
 
-    list_file = folder / "ffmpeg_input.txt"
+    # =========================
+    # CRIAR LISTA FFMPEG
+    # =========================
+
+    list_file = (
+        folder /
+        "ffmpeg_input.txt"
+    )
 
 
     with open(
@@ -64,17 +97,27 @@ def render_video_project(result):
         encoding="utf-8"
     ) as f:
 
+
         for media in media_files:
 
-            f.write(
-                f"file '{media.resolve()}'\n"
+            path = str(
+                media.resolve()
+            ).replace(
+                "\\",
+                "/"
             )
+
+            f.write(
+                f"file '{path}'\n"
+            )
+
 
             if media.suffix.lower() in [
                 ".jpg",
                 ".jpeg",
                 ".png"
             ]:
+
                 f.write(
                     "duration 3\n"
                 )
@@ -85,15 +128,30 @@ def render_video_project(result):
             ".jpeg",
             ".png"
         ]:
+
+            last = str(
+                media_files[-1].resolve()
+            ).replace(
+                "\\",
+                "/"
+            )
+
             f.write(
-                f"file '{media_files[-1].resolve()}'\n"
+                f"file '{last}'\n"
             )
 
 
 
-    output = folder / "video_final.mp4"
+    output = (
+        folder /
+        "video_final.mp4"
+    )
 
 
+
+    # =========================
+    # FILTRO VIDEO
+    # =========================
 
     video_filter = (
         "scale=1080:1920:"
@@ -102,29 +160,156 @@ def render_video_project(result):
     )
 
 
+
+    # =========================
+    # LEGENDAS
+    # =========================
+
+    if (
+        subtitle_file.exists()
+        and subtitle_file.stat().st_size > 0
+    ):
+
+        subtitle_path = str(
+            subtitle_file.resolve()
+        )
+
+        # caminho compatível com FFmpeg Windows
+        subtitle_path = (
+            subtitle_path
+            .replace("\\", "/")
+            .replace(":", "\\:")
+        )
+
+
+        video_filter += (
+            f",subtitles='{subtitle_path}'"
+        )
+
+
+        print(
+            "📝 Legenda aplicada."
+        )
+
+    else:
+
+        print(
+            "⚠️ Legenda ignorada."
+        )
+
+
+
+    # =========================
+    # COMANDO FFMPEG
+    # =========================
+
     cmd = [
+
         "ffmpeg",
+
         "-y",
+
         "-f",
         "concat",
+
         "-safe",
         "0",
+
         "-i",
-        str(list_file),
-        "-vf",
-        video_filter,
-        "-pix_fmt",
-        "yuv420p",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "veryfast",
-        "-crf",
-        "23",
-        "-movflags",
-        "+faststart",
-        str(output)
+        str(list_file)
+
     ]
+
+
+
+    # =========================
+    # AUDIO
+    # =========================
+
+    if (
+        audio_file.exists()
+        and audio_file.stat().st_size > 0
+    ):
+
+        cmd.extend(
+            [
+                "-i",
+                str(
+                    audio_file.resolve()
+                )
+            ]
+        )
+
+        print(
+            "🎙️ Áudio aplicado."
+        )
+
+    else:
+
+        print(
+            "⚠️ Sem áudio."
+        )
+
+
+
+    cmd.extend(
+        [
+
+            "-vf",
+            video_filter,
+
+            "-pix_fmt",
+            "yuv420p",
+
+            "-c:v",
+            "libx264",
+
+            "-preset",
+            "veryfast",
+
+            "-crf",
+            "23"
+
+        ]
+    )
+
+
+
+    if (
+        audio_file.exists()
+        and audio_file.stat().st_size > 0
+    ):
+
+        cmd.extend(
+            [
+
+                "-c:a",
+                "aac",
+
+                "-b:a",
+                "192k"
+
+            ]
+        )
+
+
+
+    cmd.extend(
+        [
+
+            "-shortest",
+
+            "-t",
+            "30",
+
+            "-movflags",
+            "+faststart",
+
+            str(output)
+
+        ]
+    )
+
 
 
     subprocess.run(
@@ -134,7 +319,7 @@ def render_video_project(result):
 
 
     print(
-        f"Vídeo criado: {output}"
+        f"🎬 Vídeo final criado: {output}"
     )
 
 

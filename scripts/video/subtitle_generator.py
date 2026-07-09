@@ -1,23 +1,35 @@
 from pathlib import Path
 
 
-def generate_subtitles(data):
+def generate_subtitles(result):
 
-    product = data["produto"]["nome"]
+    product = result["produto"]["nome"]
+
 
     folder = (
         Path("output")
         / product.lower().replace(" ", "-")
     )
 
+
     folder.mkdir(
         parents=True,
         exist_ok=True
     )
 
-    subtitle_file = folder / "captions.srt"
 
-    cenas = data["cenas"]["cenas"]
+    subtitle_file = (
+        folder
+        / "captions.srt"
+    )
+
+
+    scenes = (
+        result
+        .get("cenas", {})
+        .get("cenas", [])
+    )
+
 
     with open(
         subtitle_file,
@@ -25,23 +37,47 @@ def generate_subtitles(data):
         encoding="utf-8"
     ) as file:
 
+
         index = 1
 
-        for cena in cenas:
+
+        for scene in scenes:
+
+
+            tempo = scene["tempo"]
+
+
+            inicio, fim = tempo.split("-")
+
+
+            texto = scene.get(
+                "narracao",
+                ""
+            )
+
 
             file.write(
                 f"{index}\n"
             )
 
-            file.write(
-                f"{cena['tempo'].replace('-', ' --> ')}\n"
-            )
 
             file.write(
-                f"{cena['narracao']}\n\n"
+                f"00:00:{inicio},000 --> 00:00:{fim},000\n"
             )
+
+
+            file.write(
+                f"{texto}\n\n"
+            )
+
 
             index += 1
 
 
-    return subtitle_file
+
+    print(
+        f"📝 Legenda criada: {subtitle_file.resolve()}"
+    )
+
+
+    return subtitle_file.resolve()
