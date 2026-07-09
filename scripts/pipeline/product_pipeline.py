@@ -19,8 +19,14 @@ from scripts.video.project_builder import build_video_project
 
 from scripts.video.asset_manager import prepare_assets
 from scripts.video.asset_search import generate_asset_queries
+
 from scripts.video.media_search import search_media
 from scripts.video.media_downloader import download_videos
+
+from scripts.video.persona_media_pipeline import (
+    generate_persona_media,
+    should_use_persona
+)
 
 from scripts.video.subtitle_generator import generate_subtitles
 from scripts.video.renderer import render_video_project
@@ -186,16 +192,67 @@ def run_pipeline():
 
 
 
-            media = search_media(
-                product,
-                queries
-            )
+            # ==================================
+            # ESCOLHA DO SISTEMA DE MÍDIA
+            # ==================================
+            #
+            # stock:
+            # mantém Pexels atual
+            #
+            # persona:
+            # gera influenciadora virtual IA
+            #
+
+            if should_use_persona():
+
+                print(
+                    "🤖 Modo PERSONA ativado."
+                )
+
+                persona_images = generate_persona_media(
+                    product,
+                    scenes
+                )
+
+                if not persona_images:
+
+                    total_scenes = len(
+                        scenes.get(
+                            "cenas",
+                            []
+                        )
+
+                    )
+
+                    print(
+                        "⚠️ Persona falhou em gerar imagens"
+                        f"(0 de {total_scenes} cenas)."
+                        "Usando modo stock como fallback para este produto."
+                    )
+
+                    media = search_media(
+                        product,
+                        queries
+                    )
 
 
-            download_videos(
-                product,
-                media
-            )
+            else:
+
+                print(
+                    "📸 Modo STOCK ativado."
+                )
+
+
+                media = search_media(
+                    product,
+                    queries
+                )
+
+
+                download_videos(
+                    product,
+                    media
+                )
 
 
 
@@ -339,7 +396,7 @@ def run_pipeline():
     )
 
     print(
-        f"PROCESSO FINALIZADO"
+        "PROCESSO FINALIZADO"
     )
 
     print(
