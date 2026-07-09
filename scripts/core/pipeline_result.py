@@ -1,68 +1,217 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Any, Dict, Optional
+
 
 
 @dataclass
 class PipelineResult:
     """
-    Estrutura padrão de dados que percorre o AI-Commerce-OS.
+    Modelo central de dados do AI-Commerce-OS.
 
-    Todo produto processado pelo pipeline deve seguir esse modelo.
+    Todo produto processado pelo sistema
+    deve passar por essa estrutura.
+
+    Fluxo:
+
+    Produto
+        ↓
+    Análise
+        ↓
+    Oportunidade
+        ↓
+    Decisão
+        ↓
+    Roteiro
+        ↓
+    Conteúdo
+        ↓
+    Assets
+        ↓
+    Vídeo
     """
+
 
     produto: Dict[str, Any]
 
-    analise: Dict[str, Any] = field(default_factory=dict)
 
-    oportunidade: Dict[str, Any] = field(default_factory=dict)
+    analise: Dict[str, Any] = field(
+        default_factory=dict
+    )
+
+
+    oportunidade: Dict[str, Any] = field(
+        default_factory=dict
+    )
+
 
     acao: str = "avaliar"
 
-    roteiro: Dict[str, Any] = field(default_factory=dict)
 
-    conteudo: Dict[str, Any] = field(default_factory=dict)
+    roteiro: Dict[str, Any] = field(
+        default_factory=dict
+    )
 
-    legenda: Dict[str, Any] = field(default_factory=dict)
 
-    cenas: Dict[str, Any] = field(default_factory=dict)
+    conteudo: Dict[str, Any] = field(
+        default_factory=dict
+    )
 
-    asset_queries: list = field(default_factory=list)
+
+    legenda: Dict[str, Any] = field(
+        default_factory=dict
+    )
+
+
+    cenas: Dict[str, Any] = field(
+        default_factory=dict
+    )
+
+
+    asset_queries: list = field(
+        default_factory=list
+    )
+
 
     audio: Optional[str] = None
 
+
     subtitle_file: Optional[str] = None
+
 
     video: Optional[str] = None
 
 
+
+    def update(self, **kwargs):
+        """
+        Atualiza campos existentes do resultado.
+        """
+
+        for key, value in kwargs.items():
+
+            if hasattr(
+                self,
+                key
+            ):
+
+                setattr(
+                    self,
+                    key,
+                    value
+                )
+
+        return self
+
+
+
     def to_dict(self):
         """
-        Converte o objeto para o formato antigo
-        usado pelos módulos existentes.
+        Converte para formato compatível
+        com os módulos antigos.
         """
 
-        return {
-            "produto": self.produto,
+        return asdict(
+            self
+        )
 
-            "analise": self.analise,
 
-            "oportunidade": self.oportunidade,
 
-            "acao": self.acao,
+    @classmethod
+    def from_dict(
+        cls,
+        data: dict
+    ):
+        """
+        Reconstrói um PipelineResult
+        salvo anteriormente.
+        """
 
-            "roteiro": self.roteiro,
+        return cls(
 
-            "conteudo": self.conteudo,
+            produto=data.get(
+                "produto",
+                {}
+            ),
 
-            "legenda": self.legenda,
+            analise=data.get(
+                "analise",
+                {}
+            ),
 
-            "cenas": self.cenas,
+            oportunidade=data.get(
+                "oportunidade",
+                {}
+            ),
 
-            "asset_queries": self.asset_queries,
+            acao=data.get(
+                "acao",
+                "avaliar"
+            ),
 
-            "audio": self.audio,
+            roteiro=data.get(
+                "roteiro",
+                {}
+            ),
 
-            "subtitle_file": self.subtitle_file,
+            conteudo=data.get(
+                "conteudo",
+                {}
+            ),
 
-            "video": self.video,
-        }
+            legenda=data.get(
+                "legenda",
+                {}
+            ),
+
+            cenas=data.get(
+                "cenas",
+                {}
+            ),
+
+            asset_queries=data.get(
+                "asset_queries",
+                []
+            ),
+
+            audio=data.get(
+                "audio"
+            ),
+
+            subtitle_file=data.get(
+                "subtitle_file"
+            ),
+
+            video=data.get(
+                "video"
+            )
+        )
+
+
+
+    def validate(self):
+        """
+        Verifica se o resultado possui
+        dados mínimos para continuar.
+        """
+
+        errors = []
+
+
+        if not self.produto:
+
+            errors.append(
+                "Produto ausente"
+            )
+
+
+        if not isinstance(
+            self.produto,
+            dict
+        ):
+
+            errors.append(
+                "Produto deve ser um dicionário"
+            )
+
+
+        return errors
