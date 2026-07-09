@@ -1,42 +1,123 @@
 import subprocess
+import json
+import time
+
 from pathlib import Path
+
+
+
+def slugify(text):
+
+    return (
+        str(text)
+        .lower()
+        .replace(" ", "-")
+        .replace("/", "-")
+        .replace("\\", "-")
+    )
+
+
+
+def update_project_status(
+    folder,
+    video_path
+):
+
+    project_file = (
+        folder
+        /
+        "video_project.json"
+    )
+
+
+    if not project_file.exists():
+
+        return
+
+
+
+    with open(
+        project_file,
+        "r",
+        encoding="utf-8"
+    ) as file:
+
+        project = json.load(
+            file
+        )
+
+
+
+    project["status"] = (
+        "RENDER_COMPLETED"
+    )
+
+
+    project["video"] = (
+        str(video_path)
+    )
+
+
+
+    with open(
+        project_file,
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        json.dump(
+            project,
+            file,
+            ensure_ascii=False,
+            indent=4
+        )
 
 
 
 def render_video_project(result):
 
-    product = result["produto"]["nome"]
+
+    product = (
+        result
+        .get("produto", {})
+        .get(
+            "nome",
+            "produto"
+        )
+    )
+
 
 
     folder = (
         Path("output")
-        / product.lower().replace(" ", "-")
+        /
+        slugify(product)
+    )
+
+
+
+    folder.mkdir(
+        parents=True,
+        exist_ok=True
     )
 
 
 
     videos_folder = (
         folder
-        / "assets"
-        / "videos"
+        /
+        "assets"
+        /
+        "videos"
     )
 
 
     images_folder = (
         folder
-        / "assets"
-        / "images"
-    )
-
-
-
-    audio_file = Path(
-        result.get("audio", "")
-    )
-
-
-    subtitle_file = Path(
-        result.get("subtitle_file", "")
+        /
+        "assets"
+        /
+        "images"
     )
 
 
@@ -45,38 +126,31 @@ def render_video_project(result):
 
 
 
-    # =========================
-    # BUSCAR VÍDEOS
-    # =========================
-
     if videos_folder.exists():
 
-        for ext in (
-            "*.mp4",
-            "*.mov"
-        ):
+        media_files.extend(
+            videos_folder.glob("*.mp4")
+        )
 
-            media_files.extend(
-                videos_folder.glob(ext)
-            )
-
+        media_files.extend(
+            videos_folder.glob("*.mov")
+        )
 
 
-    # =========================
-    # FALLBACK IMAGENS
-    # =========================
 
     if not media_files and images_folder.exists():
 
-        for ext in (
-            "*.jpg",
-            "*.jpeg",
-            "*.png"
-        ):
+        media_files.extend(
+            images_folder.glob("*.jpg")
+        )
 
-            media_files.extend(
-                images_folder.glob(ext)
-            )
+        media_files.extend(
+            images_folder.glob("*.jpeg")
+        )
+
+        media_files.extend(
+            images_folder.glob("*.png")
+        )
 
 
 
@@ -96,10 +170,6 @@ def render_video_project(result):
 
 
 
-    # =========================
-    # CRIAR LISTA FFMPEG
-    # =========================
-
     list_file = (
         folder
         /
@@ -112,19 +182,23 @@ def render_video_project(result):
         list_file,
         "w",
         encoding="utf-8"
-    ) as f:
+    ) as file:
 
 
         for media in media_files:
 
-
             path = (
-                str(media.resolve())
-                .replace("\\", "/")
+                str(
+                    media.resolve()
+                )
+                .replace(
+                    "\\",
+                    "/"
+                )
             )
 
 
-            f.write(
+            file.write(
                 f"file '{path}'\n"
             )
 
@@ -136,30 +210,34 @@ def render_video_project(result):
                 ".png"
             ]:
 
-                f.write(
+                file.write(
                     "duration 3\n"
                 )
 
 
 
-        if media_files[-1].suffix.lower() in [
+        last = media_files[-1]
+
+
+        if last.suffix.lower() in [
             ".jpg",
             ".jpeg",
             ".png"
         ]:
 
-
-            last = (
+            path = (
                 str(
-                    media_files[-1]
-                    .resolve()
+                    last.resolve()
                 )
-                .replace("\\", "/")
+                .replace(
+                    "\\",
+                    "/"
+                )
             )
 
 
-            f.write(
-                f"file '{last}'\n"
+            file.write(
+                f"file '{path}'\n"
             )
 
 
@@ -172,10 +250,6 @@ def render_video_project(result):
 
 
 
-    # =========================
-    # FILTRO BASE
-    # =========================
-
     video_filter = (
 
         "scale=1080:1920:"
@@ -186,58 +260,69 @@ def render_video_project(result):
 
 
 
-    # =========================
-    # LEGENDAS
-    # =========================
-
-    if (
-        subtitle_file.exists()
-        and subtitle_file.stat().st_size > 0
-    ):
+    subtitle_file = result.get(
+        "subtitle_file"
+    )
 
 
-        subtitle_path = (
-            str(
-                subtitle_file.resolve()
-            )
-            .replace(
-                "\\",
-                "/"
-            )
-            .replace(
-                ":",
-                "\\:"
-            )
-            .replace(
-                "'",
-                "\\'"
-            )
+
+    if subtitle_file:
+
+        subtitle = Path(
+            subtitle_file
         )
 
 
+        if subtitle.exists():
 
-        video_filter += (
-            f",subtitles='{subtitle_path}'"
+            subtitle_path = (
+                subtitle
+                .resolve()
+                .as_posix()
+                .replace(
+                    ":",
+                    "\\:"
+                )
+            )
+
+
+            video_filter += (
+                f",subtitles='{subtitle_path}'"
+            )
+
+
+            print(
+                "📝 Legenda aplicada."
+            )
+
+
+
+    audio_file = result.get(
+        "audio"
+    )
+
+
+    has_audio = False
+
+
+    audio = None
+
+
+
+    if audio_file:
+
+        audio = Path(
+            audio_file
         )
 
 
-
-        print(
-            "📝 Legenda aplicada."
+        has_audio = (
+            audio.exists()
+            and
+            audio.stat().st_size > 0
         )
 
 
-    else:
-
-        print(
-            "⚠️ Legenda ignorada."
-        )
-
-
-
-    # =========================
-    # COMANDO FFMPEG
-    # =========================
 
     cmd = [
 
@@ -258,34 +343,14 @@ def render_video_project(result):
 
 
 
-    # =========================
-    # AUDIO
-    # =========================
-
-    has_audio = (
-
-        audio_file.exists()
-
-        and
-
-        audio_file.stat().st_size > 0
-
-    )
-
-
-
     if has_audio:
-
 
         cmd.extend(
             [
-
                 "-i",
-
                 str(
-                    audio_file.resolve()
+                    audio.resolve()
                 )
-
             ]
         )
 
@@ -295,36 +360,23 @@ def render_video_project(result):
         )
 
 
-    else:
-
-
-        print(
-            "⚠️ Sem áudio."
-        )
-
-
 
     cmd.extend(
         [
 
             "-vf",
-
             video_filter,
 
             "-pix_fmt",
-
             "yuv420p",
 
             "-c:v",
-
             "libx264",
 
             "-preset",
-
             "veryfast",
 
             "-crf",
-
             "23"
 
         ]
@@ -334,16 +386,13 @@ def render_video_project(result):
 
     if has_audio:
 
-
         cmd.extend(
             [
 
                 "-c:a",
-
                 "aac",
 
                 "-b:a",
-
                 "192k"
 
             ]
@@ -356,12 +405,7 @@ def render_video_project(result):
 
             "-shortest",
 
-            "-t",
-
-            "30",
-
             "-movflags",
-
             "+faststart",
 
             str(output)
@@ -377,9 +421,34 @@ def render_video_project(result):
 
 
 
-    subprocess.run(
-        cmd,
-        check=True
+    try:
+
+        subprocess.run(
+            cmd,
+            check=True
+        )
+
+
+    except subprocess.CalledProcessError as error:
+
+        print(
+            "❌ Erro no FFmpeg:"
+        )
+
+        print(error)
+
+        return None
+
+
+
+    # Aguarda o Windows liberar o arquivo
+    time.sleep(1)
+
+
+
+    update_project_status(
+        folder,
+        output
     )
 
 

@@ -1,5 +1,9 @@
 import json
+import shutil
+import time
+
 from pathlib import Path
+
 
 
 OUTPUT_DIR = Path("output")
@@ -13,7 +17,25 @@ def slugify(text):
         .lower()
         .replace(" ", "-")
         .replace("/", "-")
+        .replace("\\", "-")
     )
+
+
+
+def save_json(path, data):
+
+    with open(
+        path,
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        json.dump(
+            data,
+            file,
+            ensure_ascii=False,
+            indent=4
+        )
 
 
 
@@ -22,14 +44,14 @@ def export_product(result):
     """
     Exporta todos os dados gerados pelo pipeline.
 
-    Responsável por criar os arquivos finais
-    de cada produto processado.
+    Cada produto vira um pacote completo
+    pronto para análise e publicação.
     """
 
 
 
     # =========================
-    # GARANTIR DICIONÁRIO
+    # NORMALIZAR RESULTADO
     # =========================
 
     if hasattr(result, "to_dict"):
@@ -51,12 +73,14 @@ def export_product(result):
     # =========================
 
     produto = (
+
         result
         .get("produto", {})
         .get(
             "nome",
             "produto"
         )
+
     )
 
 
@@ -93,8 +117,144 @@ def export_product(result):
 
 
     # =========================
-    # EXPORTAÇÃO JSON
+    # COPIAR VÍDEO FINAL
     # =========================
+
+    video_path = result.get(
+        "video"
+    )
+
+
+
+    final_video = None
+
+
+
+    if video_path:
+
+        source = Path(
+            video_path
+        )
+
+
+        if source.exists():
+
+            destination = (
+                folder
+                /
+                "video_final.mp4"
+            )
+
+
+            copied = False
+
+
+            for attempt in range(5):
+
+                try:
+
+                    shutil.copy2(
+                        source,
+                        destination
+                    )
+
+
+                    copied = True
+
+                    break
+
+
+                except PermissionError:
+
+
+                    print(
+                        "⚠️ Arquivo ocupado. Tentativa "
+                        f"{attempt + 1}/5"
+                    )
+
+
+                    time.sleep(1)
+
+
+
+            if copied:
+
+
+                final_video = str(
+                    destination
+                )
+
+
+            else:
+
+                print(
+                    "❌ Não foi possível copiar o vídeo."
+                )
+
+
+
+    # =========================
+    # PACOTE TIKTOK
+    # =========================
+
+
+    hashtags = conteudo.get(
+        "hashtags",
+        []
+    )
+
+
+    if not isinstance(
+        hashtags,
+        list
+    ):
+
+        hashtags = [
+            str(hashtags)
+        ]
+
+
+
+    post_package = {
+
+
+        "produto":
+            produto,
+
+
+        "video":
+            final_video,
+
+
+        "titulo":
+            conteudo.get(
+                "titulo",
+                produto
+            ),
+
+
+        "descricao":
+            conteudo.get(
+                "descricao",
+                ""
+            ),
+
+
+        "hashtags":
+            hashtags,
+
+
+        "status":
+            "READY_TO_POST"
+
+    }
+
+
+
+    # =========================
+    # JSONS
+    # =========================
+
 
     files = {
 
@@ -174,21 +334,28 @@ def export_product(result):
         "media.json":
 
             {
+
                 "audio":
                     result.get(
                         "audio"
                     ),
+
 
                 "subtitle_file":
                     result.get(
                         "subtitle_file"
                     ),
 
+
                 "video":
-                    result.get(
-                        "video"
-                    )
-            }
+                    final_video
+
+            },
+
+
+        "post_package.json":
+
+            post_package
 
     }
 
@@ -196,46 +363,27 @@ def export_product(result):
 
     for filename, data in files.items():
 
-
-        with open(
+        save_json(
             folder / filename,
-            "w",
-            encoding="utf-8"
-        ) as file:
-
-
-            json.dump(
-
-                data,
-
-                file,
-
-                ensure_ascii=False,
-
-                indent=4
-
-            )
+            data
+        )
 
 
 
     # =========================
-    # ARQUIVOS TEXTO
+    # TXT
     # =========================
 
 
     (folder / "roteiro.txt").write_text(
 
         json.dumps(
-
             result.get(
                 "roteiro",
                 {}
             ),
-
             ensure_ascii=False,
-
             indent=2
-
         ),
 
         encoding="utf-8"
@@ -274,24 +422,6 @@ def export_product(result):
 
 
 
-    hashtags = conteudo.get(
-        "hashtags",
-        []
-    )
-
-
-
-    if not isinstance(
-        hashtags,
-        list
-    ):
-
-        hashtags = [
-            str(hashtags)
-        ]
-
-
-
     (folder / "hashtags.txt").write_text(
 
         "\n".join(
@@ -308,9 +438,11 @@ def export_product(result):
         "\n📦 EXPORTAÇÃO CONCLUÍDA"
     )
 
+
     print(
         f"Produto: {produto}"
     )
+
 
     print(
         f"Local: {folder}"
