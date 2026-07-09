@@ -9,7 +9,7 @@ OUTPUT_DIR = Path("output")
 def slugify(text):
 
     return (
-        text
+        str(text)
         .lower()
         .replace(" ", "-")
         .replace("/", "-")
@@ -18,6 +18,37 @@ def slugify(text):
 
 
 def export_product(result):
+
+    """
+    Exporta todos os dados gerados pelo pipeline.
+
+    Responsável por criar os arquivos finais
+    de cada produto processado.
+    """
+
+
+
+    # =========================
+    # GARANTIR DICIONÁRIO
+    # =========================
+
+    if hasattr(result, "to_dict"):
+
+        result = result.to_dict()
+
+
+
+    if not isinstance(result, dict):
+
+        raise TypeError(
+            "Resultado do pipeline inválido."
+        )
+
+
+
+    # =========================
+    # PRODUTO
+    # =========================
 
     produto = (
         result
@@ -29,11 +60,13 @@ def export_product(result):
     )
 
 
+
     folder = (
         OUTPUT_DIR
         /
         slugify(produto)
     )
+
 
 
     folder.mkdir(
@@ -49,6 +82,7 @@ def export_product(result):
     )
 
 
+
     if not isinstance(
         conteudo,
         dict
@@ -58,30 +92,42 @@ def export_product(result):
 
 
 
+    # =========================
+    # EXPORTAÇÃO JSON
+    # =========================
+
     files = {
 
+
         "analysis.json":
+
             result.get(
                 "analise",
                 {}
             ),
 
 
+
         "scenes.json":
+
             result.get(
                 "cenas",
                 {}
             ),
 
 
+
         "opportunity.json":
+
             result.get(
                 "oportunidade",
                 {}
             ),
 
 
+
         "decision.json":
+
             {
                 "acao":
                     result.get(
@@ -91,29 +137,58 @@ def export_product(result):
             },
 
 
+
         "script.json":
+
             result.get(
                 "roteiro",
                 {}
             ),
 
 
+
         "content.json":
+
             conteudo,
 
 
+
         "caption.json":
+
             result.get(
                 "legenda",
                 {}
             ),
 
 
+
         "asset_queries.json":
+
             result.get(
                 "asset_queries",
                 []
-            )
+            ),
+
+
+
+        "media.json":
+
+            {
+                "audio":
+                    result.get(
+                        "audio"
+                    ),
+
+                "subtitle_file":
+                    result.get(
+                        "subtitle_file"
+                    ),
+
+                "video":
+                    result.get(
+                        "video"
+                    )
+            }
 
     }
 
@@ -130,10 +205,15 @@ def export_product(result):
 
 
             json.dump(
+
                 data,
+
                 file,
+
                 ensure_ascii=False,
+
                 indent=4
+
             )
 
 
@@ -146,12 +226,16 @@ def export_product(result):
     (folder / "roteiro.txt").write_text(
 
         json.dumps(
+
             result.get(
                 "roteiro",
                 {}
             ),
+
             ensure_ascii=False,
+
             indent=2
+
         ),
 
         encoding="utf-8"
@@ -162,9 +246,11 @@ def export_product(result):
 
     (folder / "descricao.txt").write_text(
 
-        conteudo.get(
-            "descricao",
-            ""
+        str(
+            conteudo.get(
+                "descricao",
+                ""
+            )
         ),
 
         encoding="utf-8"
@@ -175,9 +261,11 @@ def export_product(result):
 
     (folder / "narracao.txt").write_text(
 
-        conteudo.get(
-            "texto_narracao",
-            ""
+        str(
+            conteudo.get(
+                "texto_narracao",
+                ""
+            )
         ),
 
         encoding="utf-8"
@@ -190,6 +278,7 @@ def export_product(result):
         "hashtags",
         []
     )
+
 
 
     if not isinstance(
@@ -216,8 +305,17 @@ def export_product(result):
 
 
     print(
-        f"📦 Produto exportado: {folder}"
+        "\n📦 EXPORTAÇÃO CONCLUÍDA"
     )
+
+    print(
+        f"Produto: {produto}"
+    )
+
+    print(
+        f"Local: {folder}"
+    )
+
 
 
     return folder
