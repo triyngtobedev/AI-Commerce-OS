@@ -17,11 +17,10 @@ from scripts.video.renderer import render_video_project
 from scripts.video.asset_manager import prepare_assets
 from scripts.video.asset_search import generate_asset_queries
 from scripts.video.media_search import search_media
-from scripts.video.media_downloader import download_images
+from scripts.video.media_downloader import download_videos
 from scripts.video.text_overlay import generate_overlay_text
 from scripts.video.subtitle_generator import generate_subtitles
 from scripts.audio.tts_generator import create_audio
-from scripts.audio.tts_generator import generate_audio
 
 def run_pipeline():
 
@@ -150,7 +149,7 @@ def run_pipeline():
             asset_queries
         )
 
-        download_images(
+        download_videos(
             product,
             media_search
         )
@@ -167,10 +166,10 @@ def run_pipeline():
         )
 
         audio_file = create_audio(
-            {
-                "produto": product,
-                "conteudo": content
-            }
+    {
+        "text": content["texto_narracao"],
+        "output_path": "output/audio/narracao.mp3"
+    }
         )
 
 
@@ -194,11 +193,6 @@ def run_pipeline():
         video_project = build_video_project(result)
 
         render_video_project(result)
-
-        generate_audio(
-            "Teste de voz do produto",
-            "output/audio/teste.mp3"
-        )
 
         save_product(result)
 
