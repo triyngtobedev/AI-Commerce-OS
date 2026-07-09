@@ -12,7 +12,6 @@ from scripts.scoring.product_ranker import rank_products
 
 from scripts.decision.decision_engine import decide_action
 
-
 from scripts.video.scene_generator import generate_scenes
 from scripts.video.caption_generator import generate_caption
 from scripts.video.project_builder import build_video_project
@@ -25,15 +24,15 @@ from scripts.video.media_downloader import download_videos
 from scripts.video.subtitle_generator import generate_subtitles
 from scripts.video.renderer import render_video_project
 
-
 from scripts.audio.tts_generator import create_audio
-
 
 from database.database_manager import save_product
 
 from scripts.publisher.exporter import export_product
 
 from scripts.dashboard.generator import generate_dashboard
+
+from scripts.core.pipeline_result import PipelineResult
 
 
 
@@ -55,9 +54,7 @@ def run_pipeline():
     )
 
 
-
     products = collect_products()
-
 
 
     if not products:
@@ -213,8 +210,7 @@ def run_pipeline():
 
         audio = create_audio(
             {
-                "text":
-                    content["texto_narracao"],
+                "text": content["texto_narracao"],
 
                 "output_path":
                 (
@@ -227,56 +223,35 @@ def run_pipeline():
 
 
 
-        result = {
+        pipeline_result = PipelineResult(
 
-            "produto":
-                product,
+            produto=product,
 
+            analise=analysis,
 
-            "analise":
-                analysis,
+            oportunidade=opportunity,
 
+            acao=action,
 
-            "oportunidade":
-                opportunity,
+            roteiro=script,
 
+            conteudo=content,
 
-            "acao":
-                action,
+            legenda=caption,
 
+            cenas=scenes,
 
-            "roteiro":
-                script,
+            asset_queries=queries,
 
+            audio=audio,
 
-            "conteudo":
-                content,
+            subtitle_file=str(subtitles),
 
-
-            "legenda":
-                caption,
+        )
 
 
-            "cenas":
-                scenes,
 
-
-            "asset_queries":
-                queries,
-
-
-            "audio":
-                audio,
-
-
-            "subtitle_file":
-                str(subtitles),
-
-
-            "video":
-                None
-
-        }
+        result = pipeline_result.to_dict()
 
 
 
@@ -294,10 +269,7 @@ def run_pipeline():
 
         if video:
 
-
-            result["video"] = (
-                str(video)
-            )
+            result["video"] = str(video)
 
 
             print(
@@ -305,9 +277,7 @@ def run_pipeline():
             )
 
 
-
         else:
-
 
             print(
                 "⚠️ Vídeo não criado."
