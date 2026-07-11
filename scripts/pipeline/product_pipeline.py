@@ -15,6 +15,7 @@ from scripts.decision.decision_engine import decide_action
 
 from scripts.video.scene_generator import generate_scenes
 from scripts.video.caption_generator import generate_caption
+from scripts.video.shopee_caption_generator import generate_shopee_caption
 from scripts.video.project_builder import build_video_project
 
 from scripts.video.asset_manager import prepare_assets
@@ -171,6 +172,11 @@ def run_pipeline():
                 content
             )
 
+            shopee_caption = generate_shopee_caption(
+                product,
+                content
+            )
+
 
             scenes = generate_scenes(
                 product,
@@ -235,6 +241,11 @@ def run_pipeline():
                         queries
                     )
 
+                    download_videos(
+                        product,
+                        media
+                    )
+
 
             else:
 
@@ -252,7 +263,7 @@ def run_pipeline():
                 download_videos(
                     product,
                     media
-                )
+                ) 
 
 
 
@@ -287,6 +298,8 @@ def run_pipeline():
                 conteudo=content,
 
                 legenda=caption,
+
+                legenda_shopee=shopee_caption,
 
                 cenas=scenes,
 

@@ -61,6 +61,10 @@ class PipelineResult:
         default_factory=dict
     )
 
+    legenda_shopee: Dict[str, Any] = field(
+        default_factory=dict
+    )
+
 
     cenas: Dict[str, Any] = field(
         default_factory=dict
@@ -160,6 +164,11 @@ class PipelineResult:
 
             legenda=data.get(
                 "legenda",
+                {}
+            ),
+
+            legenda_shopee=data.get(
+                "legenda_shopee",
                 {}
             ),
 

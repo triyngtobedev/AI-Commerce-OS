@@ -5,9 +5,7 @@ import time
 from pathlib import Path
 
 
-
 OUTPUT_DIR = Path("output")
-
 
 
 def slugify(text):
@@ -19,7 +17,6 @@ def slugify(text):
         .replace("/", "-")
         .replace("\\", "-")
     )
-
 
 
 def save_json(path, data):
@@ -38,7 +35,6 @@ def save_json(path, data):
         )
 
 
-
 def export_product(result):
 
     """
@@ -47,7 +43,6 @@ def export_product(result):
     Cada produto vira um pacote completo
     pronto para análise e publicação.
     """
-
 
 
     # =========================
@@ -59,7 +54,6 @@ def export_product(result):
         result = result.to_dict()
 
 
-
     if not isinstance(result, dict):
 
         raise TypeError(
@@ -67,22 +61,14 @@ def export_product(result):
         )
 
 
-
-    # =========================
-    # PRODUTO
-    # =========================
-
     produto = (
-
         result
         .get("produto", {})
         .get(
             "nome",
             "produto"
         )
-
     )
-
 
 
     folder = (
@@ -92,19 +78,16 @@ def export_product(result):
     )
 
 
-
     folder.mkdir(
         parents=True,
         exist_ok=True
     )
 
 
-
     conteudo = result.get(
         "conteudo",
         {}
     )
-
 
 
     if not isinstance(
@@ -115,7 +98,6 @@ def export_product(result):
         conteudo = {}
 
 
-
     # =========================
     # COPIAR VÍDEO FINAL
     # =========================
@@ -124,10 +106,7 @@ def export_product(result):
         "video"
     )
 
-
-
     final_video = None
-
 
 
     if video_path:
@@ -146,57 +125,65 @@ def export_product(result):
             )
 
 
-            copied = False
+            try:
 
+                if source.resolve() == destination.resolve():
 
-            for attempt in range(5):
-
-                try:
-
-                    shutil.copy2(
-                        source,
+                    final_video = str(
                         destination
                     )
 
+                else:
 
-                    copied = True
-
-                    break
-
-
-                except PermissionError:
+                    copied = False
 
 
-                    print(
-                        "⚠️ Arquivo ocupado. Tentativa "
-                        f"{attempt + 1}/5"
-                    )
+                    for attempt in range(5):
+
+                        try:
+
+                            shutil.copy2(
+                                source,
+                                destination
+                            )
+
+                            copied = True
+                            break
 
 
-                    time.sleep(1)
+                        except PermissionError:
+
+                            print(
+                                "⚠️ Arquivo ocupado. Tentativa "
+                                f"{attempt + 1}/5"
+                            )
+
+                            time.sleep(1)
 
 
+                    if copied:
 
-            if copied:
+                        final_video = str(
+                            destination
+                        )
+
+                    else:
+
+                        print(
+                            "❌ Não foi possível copiar o vídeo."
+                        )
 
 
-                final_video = str(
-                    destination
-                )
-
-
-            else:
+            except Exception as error:
 
                 print(
-                    "❌ Não foi possível copiar o vídeo."
+                    f"⚠️ Erro ao exportar vídeo: {error}"
                 )
-
 
 
     # =========================
     # PACOTE TIKTOK
     # =========================
-
 
     hashtags = conteudo.get(
         "hashtags",
@@ -214,17 +201,13 @@ def export_product(result):
         ]
 
 
-
     post_package = {
-
 
         "produto":
             produto,
 
-
         "video":
             final_video,
-
 
         "titulo":
             conteudo.get(
@@ -232,17 +215,14 @@ def export_product(result):
                 produto
             ),
 
-
         "descricao":
             conteudo.get(
                 "descricao",
                 ""
             ),
 
-
         "hashtags":
             hashtags,
-
 
         "status":
             "READY_TO_POST"
@@ -250,44 +230,27 @@ def export_product(result):
     }
 
 
-
-    # =========================
-    # JSONS
-    # =========================
-
-
     files = {
 
-
         "analysis.json":
-
             result.get(
                 "analise",
                 {}
             ),
 
-
-
         "scenes.json":
-
             result.get(
                 "cenas",
                 {}
             ),
 
-
-
         "opportunity.json":
-
             result.get(
                 "oportunidade",
                 {}
             ),
 
-
-
         "decision.json":
-
             {
                 "acao":
                     result.get(
@@ -296,69 +259,53 @@ def export_product(result):
                     )
             },
 
-
-
         "script.json":
-
             result.get(
                 "roteiro",
                 {}
             ),
 
-
-
         "content.json":
-
             conteudo,
 
-
-
         "caption.json":
-
             result.get(
                 "legenda",
                 {}
             ),
 
-
-
         "asset_queries.json":
-
             result.get(
                 "asset_queries",
                 []
             ),
 
-
-
         "media.json":
-
             {
-
                 "audio":
                     result.get(
                         "audio"
                     ),
-
 
                 "subtitle_file":
                     result.get(
                         "subtitle_file"
                     ),
 
-
                 "video":
                     final_video
-
             },
 
-
         "post_package.json":
+            post_package,
 
-            post_package
+        "shopee_caption.json":
+            result.get(
+                "legenda_shopee",
+                {}
+            )
 
     }
-
 
 
     for filename, data in files.items():
@@ -367,12 +314,6 @@ def export_product(result):
             folder / filename,
             data
         )
-
-
-
-    # =========================
-    # TXT
-    # =========================
 
 
     (folder / "roteiro.txt").write_text(
@@ -391,7 +332,6 @@ def export_product(result):
     )
 
 
-
     (folder / "descricao.txt").write_text(
 
         str(
@@ -404,7 +344,6 @@ def export_product(result):
         encoding="utf-8"
 
     )
-
 
 
     (folder / "narracao.txt").write_text(
@@ -421,7 +360,6 @@ def export_product(result):
     )
 
 
-
     (folder / "hashtags.txt").write_text(
 
         "\n".join(
@@ -432,6 +370,19 @@ def export_product(result):
 
     )
 
+
+    lembrete_shopee = (
+        "IMPORTANTE: a comissão da Shopee Video só é válida "
+        "se o produto for vinculado DIRETO no vídeo pela função "
+        "'Adicionar Produto' do app, na hora de publica. "
+        "Link na legenda não gera comissão."
+    )
+
+
+    (folder / "LEMBRETE_SHOPEE.txt").write_text(
+        lembrete_shopee,
+        encoding="utf-8"
+    )
 
 
     print(
@@ -447,7 +398,6 @@ def export_product(result):
     print(
         f"Local: {folder}"
     )
-
 
 
     return folder
