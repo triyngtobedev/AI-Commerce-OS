@@ -337,6 +337,31 @@ Preparar publicação automática (V2).
 
 ---
 
+# Backlog Arquitetural
+
+Melhorias de qualidade arquitetural adiadas em favor de funcionalidades da V1.
+
+## Contrato público do Strategy Engine (sprint futura)
+
+Formalizar a saída de `generate_creative_strategy` como contrato estável
+para os motores downstream (Script, Content, Scene, Render).
+
+Escopo proposto:
+
+- `CreativeStrategy` como TypedDict (7 campos atuais + `schema_version`)
+- Enums documentados para `angulo` e `estilo_video`
+- Função `validate_creative_strategy()` (validação leve, sem transformação)
+- Validação na saída do Strategy Engine
+- Exportar `strategy.json` no pacote de exportação
+- Mapeamento de nomenclatura legada (`hook` ↔ `gancho`, `angulos` ↔ `angulo`)
+
+Não implementar nesta sprint.
+
+Motivo: aumenta qualidade arquitetural, mas não aumenta capacidade
+de produção de conteúdo na V1.
+
+---
+
 # Forma de Trabalho
 
 Sempre trabalhar em pequenas tarefas.

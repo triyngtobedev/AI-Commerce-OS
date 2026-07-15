@@ -3,13 +3,12 @@ from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
 from scripts.utils.ai_cache import load_cache, save_cache
 
-
-
 def generate_content(
     product,
     analysis,
     opportunity,
-    script
+    script,
+    creative_strategy=None # <-- NOVO: Recebendo a estratégia
 ):
     """
     Gera conteúdo para o vídeo.
@@ -23,187 +22,89 @@ def generate_content(
     Possui sistema de cache.
     """
 
-
     product_name = product["nome"]
-
-
 
     # ===============================
     # CACHE
     # ===============================
-
-    cached = load_cache(
-        "content",
-        product_name
-    )
-
+    cached = load_cache("content", product_name)
 
     if cached:
-
         if "texto_narracao" in cached:
-
-            print(
-                f"♻️ Conteúdo em cache: {product_name}"
-            )
-
+            print(f"♻️ Conteúdo em cache: {product_name}")
             return cached
-
         else:
+            print("⚠️ Cache encontrado, mas sem texto_narracao. Regenerando...")
 
-            print(
-                "⚠️ Cache encontrado, mas sem texto_narracao. Regenerando..."
-            )
-
-
-
-    print(
-        f"📝 Gerando conteúdo: {product_name}"
-    )
-
-
+    print(f"📝 Gerando conteúdo: {product_name}")
 
     # ===============================
     # PROMPT
     # ===============================
+    prompt = load_prompt("content_generation")
 
-    prompt = load_prompt(
-        "content_generation"
-    )
-
-
+    # NOVO: Injetando a estratégia no Prompt
+    estrategia_texto = f"Estratégia Criativa a seguir:\n{creative_strategy}" if creative_strategy else "Nenhuma estratégia específica fornecida."
 
     full_prompt = f"""
 TASK: CONTENT_GENERATION
 
 {prompt}
 
-
 Produto:
 {product}
-
 
 Análise:
 {analysis}
 
-
 Oportunidade:
 {opportunity}
 
-
 Roteiro:
 {script}
+
+{estrategia_texto}
 """
-
-
 
     # ===============================
     # IA
     # ===============================
-
-    response = ask_ai(
-        full_prompt,
-        "content",
-    )
-
-
+    response = ask_ai(full_prompt, "content")
 
     # ===============================
     # PARSE JSON
     # ===============================
-
-    content = parse_json(
-        response
-    )
-
-
+    content = parse_json(response)
 
     if not isinstance(content, dict):
-
-        print(
-            "❌ Erro: conteúdo retornado pela IA não é JSON válido."
-        )
-
+        print("❌ Erro: conteúdo retornado pela IA não é JSON válido.")
         content = {}
-
-
 
     # ===============================
     # GARANTIA DE NARRAÇÃO
     # ===============================
-
     if "texto_narracao" not in content:
-
-
-        print(
-            "⚠️ IA não retornou texto_narracao. Tentando corrigir..."
-        )
-
-
+        print("⚠️ IA não retornou texto_narracao. Tentando corrigir...")
         content["texto_narracao"] = (
-
-            content.get(
-                "narracao",
-                ""
-            )
-
-            or
-
-            content.get(
-                "texto",
-                ""
-            )
-
-            or
-
-            content.get(
-                "script",
-                ""
-            )
-
+            content.get("narracao", "")
+            or content.get("texto", "")
+            or content.get("script", "")
         )
-
-
 
     if not content["texto_narracao"]:
-
-
-        print(
-            "⚠️ Texto de narração vazio."
-        )
-
-
+        print("⚠️ Texto de narração vazio.")
         content["texto_narracao"] = (
-
             f"Conheça o {product_name}. "
             "Uma oportunidade incrível para quem busca praticidade e qualidade."
         )
 
-
-
     # ===============================
     # CACHE
     # ===============================
+    save_cache("content", product_name, content)
 
-    save_cache(
-        "content",
-        product_name,
-        content
-    )
-
-
-
-    print(
-        "\n========== CONTENT GERADO =========="
-    )
-
-    print(
-        content
-    )
-
-    print(
-        "====================================\n"
-    )
-
-
+    print("\n========== CONTENT GERADO ==========")
+    print(content)
+    print("====================================\n")
 
     return content

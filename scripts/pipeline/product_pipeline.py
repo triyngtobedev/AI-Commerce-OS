@@ -160,7 +160,8 @@ def run_pipeline():
                 product,
                 analysis,
                 opportunity,
-                script
+                script,
+                creative_strategy
             )
 
 
@@ -183,7 +184,8 @@ def run_pipeline():
 
             scenes = generate_scenes(
                 product,
-                content
+                content,
+                creative_strategy
             )
 
 
