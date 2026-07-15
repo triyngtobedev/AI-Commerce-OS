@@ -191,4 +191,18 @@ def generate_scenes(
         ]
     }
 
-    return scenes
+    # ===============================
+    # SEGURANÇA DO PIPELINE
+    # ===============================
+    
+    try:
+        return scenes
+    except Exception as e:
+        print(f"⚠️ Erro inesperado no Scene Generator: {e}")
+        # Retorno de segurança para manter o pipeline fluindo
+        return {
+            "produto": nome,
+            "angulo": "fallback",
+            "estilo_video": "default",
+            "cenas": []
+        }

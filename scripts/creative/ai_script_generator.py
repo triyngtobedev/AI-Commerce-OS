@@ -103,16 +103,19 @@ Estratégia criativa:
 {creative_strategy}
 """
 
-
-
     # ===============================
     # IA
     # ===============================
 
-    response = ask_ai(
-        full_prompt,
-        "script"
-    )
+    try:
+        response = ask_ai(full_prompt, "script")
+    except Exception as e:
+        print(f"⚠️ Falha na IA: {e}")
+        # Retorna um script de fallback para manter o pipeline rodando
+        return {
+            "gancho": f"Descubra o {product_name}.",
+            "roteiro": f"Apresentação rápida do {product_name}."
+        }
 
 
 
