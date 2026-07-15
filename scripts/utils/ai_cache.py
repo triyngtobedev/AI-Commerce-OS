@@ -1,65 +1,24 @@
+import os
 import json
-from pathlib import Path
 
+# Define onde os arquivos de cache serão salvos
+CACHE_DIR = "cache"
 
-CACHE_DIR = Path("database/ai_cache")
+def _get_path(category, name):
+    if not os.path.exists(CACHE_DIR):
+        os.makedirs(CACHE_DIR)
+    # Sanitiza o nome para evitar problemas com nomes de arquivos no Windows/Linux
+    safe_name = "".join([c for c in name if c.isalnum() or c in (' ', '-', '_')]).rstrip()
+    return os.path.join(CACHE_DIR, f"{category}_{safe_name}.json")
 
+def load_cache(category, name):
+    path = _get_path(category, name)
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return None
 
-def get_cache_path(category, product_name):
-
-    filename = (
-        product_name
-        .lower()
-        .replace(" ", "-")
-        + ".json"
-    )
-
-    return CACHE_DIR / category / filename
-
-
-
-def save_cache(category, product_name, data):
-
-    path = get_cache_path(
-        category,
-        product_name
-    )
-
-    path.parent.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    with open(
-        path,
-        "w",
-        encoding="utf-8"
-    ) as file:
-
-        json.dump(
-            data,
-            file,
-            ensure_ascii=False,
-            indent=4
-        )
-
-
-
-def load_cache(category, product_name):
-
-    path = get_cache_path(
-        category,
-        product_name
-    )
-
-    if not path.exists():
-        return None
-
-
-    with open(
-        path,
-        "r",
-        encoding="utf-8"
-    ) as file:
-
-        return json.load(file)
+def save_cache(category, name, data):
+    path = _get_path(category, name)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)

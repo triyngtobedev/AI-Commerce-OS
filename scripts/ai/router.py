@@ -1,44 +1,30 @@
 import os
+import google.generativeai as genai
+from groq import Groq
+from dotenv import load_dotenv
 
-from scripts.ai.providers import gemini
-from scripts.ai.providers import mock
-from scripts.ai.providers import openai
+load_dotenv()
 
+# Configuração
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-def ask_ai(prompt, task="analysis"):
+def ask_ai(prompt, context_type):
+    # 1. Tenta Gemini
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        print(f"⚠️ Gemini indisponível, tentando Groq...")
 
-    providers = {
-
-        "analysis": "gemini",
-
-        "script": "gemini",
-
-        "content": "gemini"
-
-    }
-
-    provider = providers.get(
-        task,
-        "gemini"
-    )
-
-
-    mode = os.getenv(
-        "GEMINI_MODE",
-        "mock"
-    )
-
-
-    if mode == "live":
-
-        if provider == "gemini":
-            return gemini.generate(prompt)
-
-        if provider == "openai":
-            return openai.generate(prompt)
-
-
-    return mock.generate(
-        prompt,
-        task
-    )
+    # 2. Tenta Groq (Usando modelo atualizado)
+    try:
+        completion = groq_client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.3-70b-versatile",
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        print(f"❌ Falha total: {e}")
+        raise Exception("Nenhuma API de IA disponível.")

@@ -1,40 +1,17 @@
 from scripts.ai.router import ask_ai
 from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
-from scripts.utils.ai_cache import load_cache, save_cache
+# TEMPORARIAMENTE DESATIVADO PARA O TESTE: 
+# from scripts.utils.ai_cache import load_cache, save_cache
 
 def generate_content(
     product,
     analysis,
     opportunity,
     script,
-    creative_strategy=None # <-- NOVO: Recebendo a estratégia
+    creative_strategy=None
 ):
-    """
-    Gera conteúdo para o vídeo.
-
-    Responsável por criar:
-    - texto_narracao
-    - títulos
-    - descrição
-    - informações usadas pelo vídeo
-
-    Possui sistema de cache.
-    """
-
     product_name = product["nome"]
-
-    # ===============================
-    # CACHE
-    # ===============================
-    cached = load_cache("content", product_name)
-
-    if cached:
-        if "texto_narracao" in cached:
-            print(f"♻️ Conteúdo em cache: {product_name}")
-            return cached
-        else:
-            print("⚠️ Cache encontrado, mas sem texto_narracao. Regenerando...")
 
     print(f"📝 Gerando conteúdo: {product_name}")
 
@@ -43,7 +20,7 @@ def generate_content(
     # ===============================
     prompt = load_prompt("content_generation")
 
-    # NOVO: Injetando a estratégia no Prompt
+    # Injetando a estratégia no Prompt
     estrategia_texto = f"Estratégia Criativa a seguir:\n{creative_strategy}" if creative_strategy else "Nenhuma estratégia específica fornecida."
 
     full_prompt = f"""
@@ -97,11 +74,6 @@ Roteiro:
             f"Conheça o {product_name}. "
             "Uma oportunidade incrível para quem busca praticidade e qualidade."
         )
-
-    # ===============================
-    # CACHE
-    # ===============================
-    save_cache("content", product_name, content)
 
     print("\n========== CONTENT GERADO ==========")
     print(content)
