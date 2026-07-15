@@ -297,13 +297,7 @@ def export_product(result):
             },
 
         "post_package.json":
-            post_package,
-
-        "shopee_caption.json":
-            result.get(
-                "legenda_shopee",
-                {}
-            )
+            post_package
 
     }
 
@@ -368,20 +362,6 @@ def export_product(result):
 
         encoding="utf-8"
 
-    )
-
-
-    lembrete_shopee = (
-        "IMPORTANTE: a comissão da Shopee Video só é válida "
-        "se o produto for vinculado DIRETO no vídeo pela função "
-        "'Adicionar Produto' do app, na hora de publica. "
-        "Link na legenda não gera comissão."
-    )
-
-
-    (folder / "LEMBRETE_SHOPEE.txt").write_text(
-        lembrete_shopee,
-        encoding="utf-8"
     )
 
 

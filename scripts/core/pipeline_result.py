@@ -47,6 +47,11 @@ class PipelineResult:
     acao: str = "avaliar"
 
 
+    estrategia: Dict[str, Any] = field(
+        default_factory=dict
+    )
+
+
     roteiro: Dict[str, Any] = field(
         default_factory=dict
     )
@@ -58,10 +63,6 @@ class PipelineResult:
 
 
     legenda: Dict[str, Any] = field(
-        default_factory=dict
-    )
-
-    legenda_shopee: Dict[str, Any] = field(
         default_factory=dict
     )
 
@@ -152,6 +153,11 @@ class PipelineResult:
                 "avaliar"
             ),
 
+            estrategia=data.get(
+                "estrategia",
+                {}
+            ),
+
             roteiro=data.get(
                 "roteiro",
                 {}
@@ -164,11 +170,6 @@ class PipelineResult:
 
             legenda=data.get(
                 "legenda",
-                {}
-            ),
-
-            legenda_shopee=data.get(
-                "legenda_shopee",
                 {}
             ),
 

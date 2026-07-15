@@ -5,10 +5,23 @@ from scripts.utils.ai_cache import load_cache, save_cache
 
 
 
+def _script_cache_key(product_name, creative_strategy=None):
+    if not creative_strategy:
+        return product_name
+
+    angle = creative_strategy.get(
+        "angulo",
+        "default"
+    )
+
+    return f"{product_name}--{angle}"
+
+
 def generate_ai_script(
     product,
     analysis,
-    opportunity
+    opportunity,
+    creative_strategy=None
 ):
     """
     Gera roteiro de vídeo usando IA com cache.
@@ -20,6 +33,11 @@ def generate_ai_script(
 
     product_name = product["nome"]
 
+    cache_key = _script_cache_key(
+        product_name,
+        creative_strategy
+    )
+
 
 
     # ===============================
@@ -28,7 +46,7 @@ def generate_ai_script(
 
     cached = load_cache(
         "scripts",
-        product_name
+        cache_key
     )
 
 
@@ -75,6 +93,14 @@ Análise:
 
 Oportunidade:
 {opportunity}
+"""
+
+    if creative_strategy:
+
+        full_prompt += f"""
+
+Estratégia criativa:
+{creative_strategy}
 """
 
 
@@ -138,7 +164,7 @@ Oportunidade:
 
     save_cache(
         "scripts",
-        product_name,
+        cache_key,
         script
     )
 

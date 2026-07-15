@@ -1,5 +1,6 @@
 from scripts.content.content_generator import generate_content
 from scripts.creative.ai_script_generator import generate_ai_script
+from scripts.creative.creative_strategy_engine import generate_creative_strategy
 
 from scripts.data_sources.tiktok.collector import collect_products
 
@@ -15,7 +16,6 @@ from scripts.decision.decision_engine import decide_action
 
 from scripts.video.scene_generator import generate_scenes
 from scripts.video.caption_generator import generate_caption
-from scripts.video.shopee_caption_generator import generate_shopee_caption
 from scripts.video.project_builder import build_video_project
 
 from scripts.video.asset_manager import prepare_assets
@@ -141,10 +141,18 @@ def run_pipeline():
             )
 
 
-            script = generate_ai_script(
+            creative_strategy = generate_creative_strategy(
                 product,
                 analysis,
                 opportunity
+            )
+
+
+            script = generate_ai_script(
+                product,
+                analysis,
+                opportunity,
+                creative_strategy
             )
 
 
@@ -169,11 +177,6 @@ def run_pipeline():
 
 
             caption = generate_caption(
-                content
-            )
-
-            shopee_caption = generate_shopee_caption(
-                product,
                 content
             )
 
@@ -293,13 +296,13 @@ def run_pipeline():
 
                 acao=action,
 
+                estrategia=creative_strategy,
+
                 roteiro=script,
 
                 conteudo=content,
 
                 legenda=caption,
-
-                legenda_shopee=shopee_caption,
 
                 cenas=scenes,
 
