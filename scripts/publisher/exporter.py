@@ -111,9 +111,7 @@ def export_product(result):
 
     if video_path:
 
-        source = Path(
-            video_path
-        )
+        source = Path(video_path)
 
 
         if source.exists():
@@ -127,29 +125,46 @@ def export_product(result):
 
             try:
 
-                if source.resolve() == destination.resolve():
+                # Usa caminhos absolutos para comparação confiável
+                # (evita armadilhas com paths relativos no Windows)
+                source_path = source.resolve()
+                dest_path = destination.resolve()
 
-                    final_video = str(
-                        destination
+                if source_path == dest_path:
+
+                    print(
+                        "✅ Vídeo já está no destino correto. Pulando cópia."
                     )
+
+                    final_video = str(dest_path)
 
                 else:
 
                     copied = False
-
 
                     for attempt in range(5):
 
                         try:
 
                             shutil.copy2(
-                                source,
-                                destination
+                                source_path,
+                                dest_path
                             )
 
                             copied = True
                             break
 
+                        except shutil.SameFileError:
+
+                            # Fallback: SO detectou que é o mesmo arquivo
+                            # mesmo com paths aparentemente diferentes
+                            print(
+                                "✅ Vídeo já está no destino "
+                                "(detectado pelo SO). Pulando cópia."
+                            )
+
+                            copied = True
+                            break
 
                         except PermissionError:
 
@@ -160,17 +175,24 @@ def export_product(result):
 
                             time.sleep(1)
 
+                        except Exception as e:
+
+                            print(
+                                f"❌ Erro inesperado ao copiar vídeo: {e}"
+                            )
+
+                            # Usa o source como fallback para não perder o vídeo
+                            final_video = str(source_path)
+                            break
 
                     if copied:
 
-                        final_video = str(
-                            destination
-                        )
+                        final_video = str(dest_path)
 
                     else:
 
                         print(
-                            "❌ Não foi possível copiar o vídeo."
+                            "❌ Não foi possível copiar o vídeo após 5 tentativas."
                         )
 
 

@@ -26,7 +26,7 @@ from scripts.video.media_downloader import download_videos
 
 from scripts.video.persona_media_pipeline import (
     generate_persona_media,
-    should_use_persona
+    should_use_persona,
 )
 
 from scripts.video.subtitle_generator import generate_subtitles
@@ -54,6 +54,94 @@ def slugify(text):
         .replace(" ", "-")
         .replace("/", "-")
     )
+
+
+
+def _run_media_pipeline(product, scenes, queries):
+    """
+    Decide e executa o pipeline de mídia correto.
+
+    Modo PERSONA:
+        Tenta gerar imagens com a influenciadora virtual.
+        Só limpa assets antigos se a geração foi bem-sucedida.
+        Faz fallback para stock se persona retornar 0 imagens.
+
+    Modo STOCK:
+        Busca e baixa mídia do Pexels diretamente.
+
+    Retorna:
+        "persona"  — usou persona com sucesso
+        "stock"    — usou stock (direto ou via fallback)
+    """
+
+    if not should_use_persona():
+
+        print(
+            "📸 Modo STOCK ativado."
+        )
+
+        media = search_media(
+            product,
+            queries
+        )
+
+        download_videos(
+            product,
+            media
+        )
+
+        return "stock"
+
+
+    # ================================
+    # MODO PERSONA
+    # ================================
+
+    print(
+        "🤖 Modo PERSONA ativado."
+    )
+
+    persona_images = generate_persona_media(
+        product,
+        scenes
+    )
+
+    if persona_images:
+
+        # Persona gerou imagens — pipeline encerrado aqui.
+        # clear_old_assets já foi chamado internamente
+        # pelo generate_persona_media após confirmação.
+        print(
+            f"✅ Persona: {len(persona_images)} imagem(ns) gerada(s)."
+        )
+
+        return "persona"
+
+
+    # ================================
+    # FALLBACK: PERSONA → STOCK
+    # ================================
+
+    total_scenes = len(
+        scenes.get("cenas", [])
+    )
+
+    print(
+        f"⚠️ Persona falhou (0 de {total_scenes} cenas). "
+        "Usando stock como fallback."
+    )
+
+    media = search_media(
+        product,
+        queries
+    )
+
+    download_videos(
+        product,
+        media
+    )
+
+    return "stock"
 
 
 
@@ -202,74 +290,19 @@ def run_pipeline():
             )
 
 
+            # ================================
+            # PIPELINE DE MÍDIA
+            # ================================
+            # Isolado em _run_media_pipeline para
+            # deixar o fluxo principal limpo e
+            # garantir que o fallback funcione
+            # sem efeitos colaterais nos assets.
 
-            # ==================================
-            # ESCOLHA DO SISTEMA DE MÍDIA
-            # ==================================
-            #
-            # stock:
-            # mantém Pexels atual
-            #
-            # persona:
-            # gera influenciadora virtual IA
-            #
-
-            if should_use_persona():
-
-                print(
-                    "🤖 Modo PERSONA ativado."
-                )
-
-                persona_images = generate_persona_media(
-                    product,
-                    scenes
-                )
-
-                if not persona_images:
-
-                    total_scenes = len(
-                        scenes.get(
-                            "cenas",
-                            []
-                        )
-
-                    )
-
-                    print(
-                        "⚠️ Persona falhou em gerar imagens"
-                        f"(0 de {total_scenes} cenas)."
-                        "Usando modo stock como fallback para este produto."
-                    )
-
-                    media = search_media(
-                        product,
-                        queries
-                    )
-
-                    download_videos(
-                        product,
-                        media
-                    )
-
-
-            else:
-
-                print(
-                    "📸 Modo STOCK ativado."
-                )
-
-
-                media = search_media(
-                    product,
-                    queries
-                )
-
-
-                download_videos(
-                    product,
-                    media
-                ) 
-
+            _run_media_pipeline(
+                product,
+                scenes,
+                queries
+            )
 
 
             audio = create_audio(
