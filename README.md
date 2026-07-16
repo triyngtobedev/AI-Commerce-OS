@@ -73,7 +73,7 @@ O projeto é organizado em **engines modulares** orquestradas por pipelines espe
 | **Scenes** | `scripts/video/`, `scripts/youtube/youtube_scenes.py` | Estruturação de cenas |
 | **Asset Search** | `scripts/video/asset_search.py` | Queries de busca de mídia |
 | **Media Pipeline** | `scripts/pipeline/shared_media.py` | Busca e download (Pexels) ou persona |
-| **TTS** | `scripts/audio/` | Narração Edge-TTS com preparação de texto |
+| **TTS** | `scripts/audio/` | Narração Azure SSML → Edge-TTS → gTTS (fallback) |
 | **Scene Timeline** | `scripts/video/scene_timeline.py` | Sincronização cenas ↔ áudio |
 | **Subtitles** | `scripts/video/subtitle_generator.py` | Legendas SRT sincronizadas |
 | **Renderer** | `scripts/video/renderer.py` | Montagem final via FFmpeg |
@@ -203,6 +203,9 @@ GROQ_API_KEY=sua_chave_groq
 # Mídia stock (Pexels)
 PEXELS_API_KEY=sua_chave_pexels
 
+# Pixabay (fallback de mídia stock, gratuito)
+PIXABAY_API_KEY=
+
 # Modo de mídia: stock (padrão) | persona
 CONTENT_MODE=stock
 
@@ -218,17 +221,24 @@ YOUTUBE_REFRESH_TOKEN=
 YOUTUBE_AUTO_UPLOAD=false
 YOUTUBE_DRY_RUN=false
 YOUTUBE_PUBLISH_ENABLED=true
+
+# Azure Speech (TTS com SSML — motor principal de narração)
+AZURE_SPEECH_KEY=
+AZURE_SPEECH_REGION=
 ```
 
 | Variável | Descrição |
 |---|---|
 | `GEMINI_API_KEY` | API Google Gemini (provider principal) |
 | `GROQ_API_KEY` | API Groq (fallback automático) |
-| `PEXELS_API_KEY` | Busca de vídeos/imagens stock |
+| `PEXELS_API_KEY` | Busca de vídeos/imagens stock (Pexels) |
+| `PIXABAY_API_KEY` | Fallback de mídia stock gratuito (YouTube Dark) |
 | `CONTENT_MODE` | `stock` usa Pexels; `persona` gera imagens com IA |
 | `YOUTUBE_AUTO_UPLOAD` | Publica automaticamente após produção |
 | `YOUTUBE_DRY_RUN` | Simula upload sem publicar |
 | `YOUTUBE_PUBLISH_ENABLED` | Habilita/desabilita publicação globalmente |
+| `AZURE_SPEECH_KEY` | Chave Azure Cognitive Services Speech (TTS com SSML) |
+| `AZURE_SPEECH_REGION` | Região Azure (ex.: `eastus`, `brazilsouth`) |
 
 ---
 
@@ -304,11 +314,14 @@ python -m unittest scripts.youtube.test_youtube_pipeline_e2e -v
 | `--platform` | `tiktok_shop`, `youtube_dark` ou `all` |
 | `--research` | Pesquisa automática de temas (YouTube) |
 | `--upload` | Publica no YouTube após produção |
-| `--privacy` | `private`, `unlisted` ou `public` |
+| `--privacy` | `private`, `unlisted` ou `public` (sobrescreve `UPLOAD_VISIBILITY`) |
+| `UPLOAD_VISIBILITY` | Variável `.env`: `private` \| `unlisted` \| `public` — controla visibilidade em produção |
 | `--max-videos` | Limite de vídeos por execução |
 | `--youtube-auth` | Configura OAuth interativamente |
 | `--youtube-validate` | Valida credenciais OAuth |
 | `--youtube-analytics` | Exibe métricas do canal |
+| `--youtube-branding` | Gera assets de identidade visual do canal |
+| `--apply` | Aplica branding no canal via API (com `--youtube-branding`) |
 
 ---
 
@@ -327,7 +340,7 @@ python -m unittest scripts.youtube.test_youtube_pipeline_e2e -v
 
 ### Produção de Vídeo
 - Geração de cenas, queries de mídia e download automático (Pexels)
-- Narração Edge-TTS com preparação de texto para português
+- Narração Azure Speech SDK (SSML por seção) com fallback Edge-TTS e gTTS
 - Sincronização cena-a-cena via scene timeline
 - Legendas SRT e renderização FFmpeg
 - Thumbnail e capítulos (YouTube)
@@ -347,7 +360,8 @@ python -m unittest scripts.youtube.test_youtube_pipeline_e2e -v
 | **Python 3.10+** | Linguagem principal |
 | **Google Gemini** | Provider principal de IA |
 | **Groq (Llama 3.3)** | Fallback de IA |
-| **Edge-TTS** | Narração automática |
+| **Azure Speech SDK** | Narração neural com SSML (motor principal) |
+| **Edge-TTS** | Narração automática (fallback gratuito) |
 | **FFmpeg** | Renderização de vídeo |
 | **Pexels API** | Mídia stock |
 | **Pillow** | Geração de thumbnails |

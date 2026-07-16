@@ -16,12 +16,10 @@ Módulos:
 
 from scripts.core.production.logger import ProductionLogger, get_logger
 from scripts.core.production.pipeline_state import PipelineState, PIPELINE_VERSION
-from scripts.core.production.resumable_pipeline import run_resumable_youtube_pipeline
 
 __all__ = [
     "ProductionLogger",
     "get_logger",
     "PipelineState",
     "PIPELINE_VERSION",
-    "run_resumable_youtube_pipeline",
 ]

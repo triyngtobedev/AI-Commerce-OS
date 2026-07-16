@@ -13,6 +13,7 @@ from scripts.video.media_quality import MIN_IMAGE_WIDTH_FALLBACK
 
 COMMONS_API_URL = "https://commons.wikimedia.org/w/api.php"
 REQUEST_TIMEOUT = 10
+USER_AGENT = "AI-Commerce-OS/1.0 (documentary pipeline; contact: projeto-atlas)"
 
 
 def _build_credit(extmetadata: dict) -> str:
@@ -87,13 +88,14 @@ def search_wikimedia(query: str, limit: int = 6) -> dict:
                 params={
                     "action": "query",
                     "generator": "search",
-                    "gsrsearch": query.strip(),
+                    "gsrsearch": query.strip()[:120],
                     "gsrnamespace": 6,
                     "gsrlimit": limit * 3,
                     "prop": "imageinfo",
                     "iiprop": "url|size|extmetadata",
                     "format": "json",
                 },
+                headers={"User-Agent": USER_AGENT},
                 timeout=REQUEST_TIMEOUT,
             )
             response.raise_for_status()

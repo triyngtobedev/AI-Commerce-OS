@@ -37,6 +37,14 @@ _FALLBACK_BY_ANGLE = {
 
 _FALLBACK_DEFAULT = "historical documentary cinematic footage"
 
+_IMAGE_PREFERRED_SCENE_TYPES = {
+    "contexto",
+    "desenvolvimento_1",
+    "desenvolvimento_2",
+    "revelacao",
+    "consequencias",
+}
+
 
 def _build_fallback(angulo, produto, tipo):
     """
@@ -73,7 +81,7 @@ def _build_fallback(angulo, produto, tipo):
     return " ".join(parts)
 
 
-def generate_asset_queries(scenes):
+def generate_asset_queries(scenes, platform: str = "", timeline=None):
     """
     Gera queries de mídia para cada cena.
 
@@ -81,20 +89,32 @@ def generate_asset_queries(scenes):
         scenes["cenas"]       — lista de cenas com campo visual
         scenes["angulo"]      — ângulo estratégico (novo no schema 1.1)
         scenes["estilo_video"] — estilo visual (novo no schema 1.1)
+        timeline              — EmotionalTimeline opcional para visual_intent
 
     Retorna lista de dicts com:
-        tempo, tipo, busca, busca_fallback
+        tempo, tipo, busca, busca_fallback, visual_intent, emotion
+        preferir_imagem (youtube_dark + cenas documentais)
     """
+
+    from scripts.core.visual_intent_engine import build_visual_search_query
 
     queries = []
 
     angulo = scenes.get("angulo", "")
     produto = scenes.get("produto", "product")
+    prefer_image = platform == "youtube_dark"
+    timeline_sections = timeline.sections if timeline else []
 
-    for scene in scenes.get("cenas", []):
+    for index, scene in enumerate(scenes.get("cenas", [])):
 
         tipo = scene.get("tipo", "")
         visual = scene.get("visual", "")
+
+        section = timeline_sections[index] if index < len(timeline_sections) else None
+        if section:
+            visual = build_visual_search_query(visual or section.text[:80], section)
+            scene.setdefault("visual_intent", section.visual_intent)
+            scene.setdefault("emotion", section.emotion)
 
         query = {
             "tempo": scene.get("tempo", ""),
@@ -105,7 +125,12 @@ def generate_asset_queries(scenes):
                 produto,
                 tipo
             ),
+            "visual_intent": scene.get("visual_intent", "general_narrative"),
+            "emotion": scene.get("emotion", "calm"),
         }
+
+        if prefer_image and tipo in _IMAGE_PREFERRED_SCENE_TYPES:
+            query["preferir_imagem"] = True
 
         queries.append(query)
 

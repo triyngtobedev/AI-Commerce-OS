@@ -1,12 +1,16 @@
 """
 Visual Media Engine — busca e geração de mídia por cena.
 
-Cadeia de fallback por cena:
-  1. Pexels/Pixabay — vídeo HD relevante (validado)
-  2. Pexels/Pixabay — foto stock HD
-  3. Pollinations IA — imagem gratuita
-  4. Pollinations IA — vídeo (se POLLINATIONS_API_KEY configurada)
-  5. Pollinations IA — segunda tentativa de imagem com prompt alternativo
+Cadeia de fallback por cena (youtube_dark):
+  1. Wikimedia Commons — imagens de arquivo/domínio público
+  2. Pixabay — vídeo/foto stock HD
+  3. Pexels — vídeo/foto stock (fallback legado)
+  4. Pollinations IA — imagem gratuita
+  5. Pollinations IA — vídeo (se POLLINATIONS_API_KEY configurada)
+  6. Pollinations IA — segunda tentativa de imagem com prompt alternativo
+
+Cenas documentais (contexto, desenvolvimento, revelacao, consequencias)
+com preferir_imagem=True pulam busca de vídeo e usam foto + Ken Burns.
 """
 
 from __future__ import annotations
@@ -15,21 +19,22 @@ import json
 from pathlib import Path
 
 from scripts.video.pexels_provider import search_pexels
-from scripts.video.media_providers.pixabay_provider import search_pixabay
+from scripts.video.pixabay_provider import search_pixabay
+from scripts.video.wikimedia_provider import search_wikimedia
 from scripts.video.media_providers.pollinations_provider import (
     generate_pollinations_image,
     generate_pollinations_video,
 )
+from scripts.video.asset_ranking import pick_ranked_assets
 from scripts.video.media_providers.relevance import (
     MIN_ACCEPTABLE_QUALITY_SCORE,
     MIN_PHOTO_RELEVANCE_SCORE,
     MIN_RELEVANCE_SCORE,
     best_video_score,
-    pick_ranked_photos,
-    pick_ranked_videos,
     score_photo,
     score_video,
 )
+from scripts.core.visual_intent_engine import resolve_visual_intent
 from scripts.video.media_downloader import (
     download_file,
     select_photo_url,
@@ -121,23 +126,27 @@ def _merge_media(target: dict, source: dict) -> None:
         target.setdefault("photos", []).append(photo)
 
 
-def _search_all_providers(query: str) -> tuple[dict, str]:
-    """Busca e combina resultados de Pexels + Pixabay."""
-
-    merged = {"videos": [], "photos": []}
-    providers = []
+def _search_providers_chain(query: str, *, photos_only: bool = False) -> tuple[dict, str]:
+    """Busca Wikimedia → Pixabay → Pexels até encontrar mídia."""
 
     for provider_name, search_fn in (
-        ("pexels", search_pexels),
+        ("wikimedia", search_wikimedia),
         ("pixabay", search_pixabay),
+        ("pexels", search_pexels),
     ):
         media = search_fn(query)
+        if photos_only:
+            media = {"videos": [], "photos": media.get("photos", [])}
         if _has_media(media):
-            providers.append(provider_name)
-            _merge_media(merged, media)
+            return media, provider_name
 
-    source = "+".join(providers) if providers else "none"
-    return merged, source
+    return {"videos": [], "photos": []}, "none"
+
+
+def _search_all_providers(query: str, *, photos_only: bool = False) -> tuple[dict, str]:
+    """Alias legado — cadeia ordenada de provedores."""
+
+    return _search_providers_chain(query, photos_only=photos_only)
 
 
 def _download_scene_video(video: dict, path: Path) -> bool:
@@ -215,10 +224,31 @@ def _try_stock_videos(
     media: dict,
     scene_video: Path,
     used_ids: set,
+    query_item: dict | None = None,
+    provider: str = "",
 ) -> tuple[bool, dict | None, float]:
-    """Tenta baixar vídeos stock em ordem de relevância e qualidade."""
+    """Tenta baixar vídeos stock ranqueados por Asset Quality Score."""
 
-    candidates = pick_ranked_videos(query, media.get("videos", []), used_ids, limit=8)
+    visual_intent = None
+    emotion = "calm"
+    if query_item:
+        visual_intent = resolve_visual_intent({
+            "visual_intent": query_item.get("visual_intent", "general_narrative"),
+            "emotion": query_item.get("emotion", "calm"),
+            "camera_motion": "slow_push",
+        })
+        emotion = query_item.get("emotion", "calm")
+
+    candidates = pick_ranked_assets(
+        query,
+        media.get("videos", []),
+        media_type="video",
+        visual_intent=visual_intent,
+        emotion=emotion,
+        provider=provider,
+        used_ids=used_ids,
+        limit=8,
+    )
 
     for video in candidates:
         quality_score = score_video(query, video)
@@ -236,10 +266,31 @@ def _try_stock_photos(
     media: dict,
     scene_image: Path,
     used_ids: set,
+    query_item: dict | None = None,
+    provider: str = "",
 ) -> tuple[bool, dict | None]:
-    """Tenta baixar fotos stock em ordem de relevância."""
+    """Tenta baixar fotos stock ranqueadas por Asset Quality Score."""
 
-    candidates = pick_ranked_photos(query, media.get("photos", []), used_ids, limit=5)
+    visual_intent = None
+    emotion = "calm"
+    if query_item:
+        visual_intent = resolve_visual_intent({
+            "visual_intent": query_item.get("visual_intent", "general_narrative"),
+            "emotion": query_item.get("emotion", "calm"),
+            "camera_motion": "slow_push",
+        })
+        emotion = query_item.get("emotion", "calm")
+
+    candidates = pick_ranked_assets(
+        query,
+        media.get("photos", []),
+        media_type="photo",
+        visual_intent=visual_intent,
+        emotion=emotion,
+        provider=provider,
+        used_ids=used_ids,
+        limit=5,
+    )
 
     for photo in candidates:
         photo_score = score_photo(query, photo)
@@ -293,6 +344,7 @@ def _resolve_scene_media(
     busca = query_item.get("busca", "")
     fallback = query_item.get("busca_fallback", "")
     tipo = query_item.get("tipo", "")
+    preferir_imagem = query_item.get("preferir_imagem", False)
 
     result = {
         "scene": scene_num,
@@ -300,52 +352,59 @@ def _resolve_scene_media(
         "query": busca,
         "query_enriched": busca,
         "source": "none",
+        "provedor": "none",
         "media_type": "none",
         "saved": False,
         "quality_score": 0.0,
+        "preferir_imagem": preferir_imagem,
     }
 
     search_queries = _enrich_search_query(busca, tipo, fallback)
 
     media_by_query: dict[str, tuple[dict, str]] = {}
     for query in search_queries:
-        media_by_query[query] = _search_all_providers(query)
+        media_by_query[query] = _search_all_providers(
+            query,
+            photos_only=preferir_imagem,
+        )
 
     stock_video_found = False
 
-    for query in search_queries:
-        media, source = media_by_query[query]
-        if not media.get("videos"):
-            continue
+    if not preferir_imagem:
+        for query in search_queries:
+            media, source = media_by_query[query]
+            if not media.get("videos"):
+                continue
 
-        top_score = best_video_score(query, media.get("videos", []), used_ids)
-        if top_score < MIN_RELEVANCE_SCORE:
-            print(
-                f"  ⚠️ Cena {scene_num}: relevância baixa ({top_score:.2f}) "
-                f"para '{query}' — ignorando resultados genéricos"
-            )
-            continue
+            top_score = best_video_score(query, media.get("videos", []), used_ids)
+            if top_score < MIN_RELEVANCE_SCORE:
+                print(
+                    f"  ⚠️ Cena {scene_num}: relevância baixa ({top_score:.2f}) "
+                    f"para '{query}' — ignorando resultados genéricos"
+                )
+                continue
 
-        saved, chosen, quality_score = _try_stock_videos(
-            query, media, scene_video, used_ids
-        )
-        if saved and chosen:
-            vid = chosen.get("id")
-            if vid:
-                used_ids.add(vid)
-            stock_video_found = True
-            result.update({
-                "saved": True,
-                "media_type": "video",
-                "source": f"{source}:{query}",
-                "query_enriched": query,
-                "quality_score": quality_score,
-            })
-            print(
-                f"🎬 Cena {scene_num} ({tipo}): vídeo HD "
-                f"(score {quality_score}) — {source}"
+            saved, chosen, quality_score = _try_stock_videos(
+                query, media, scene_video, used_ids, query_item, source
             )
-            return result
+            if saved and chosen:
+                vid = chosen.get("id")
+                if vid:
+                    used_ids.add(vid)
+                stock_video_found = True
+                result.update({
+                    "saved": True,
+                    "media_type": "video",
+                    "source": f"{source}:{query}",
+                    "provedor": source,
+                    "query_enriched": query,
+                    "quality_score": quality_score,
+                })
+                print(
+                    f"🎬 Cena {scene_num} ({tipo}): vídeo HD "
+                    f"(score {quality_score}) — {source}"
+                )
+                return result
 
     if not stock_video_found:
         for query in search_queries:
@@ -364,7 +423,9 @@ def _resolve_scene_media(
                 )
                 continue
 
-            saved, chosen = _try_stock_photos(query, media, scene_image, used_ids)
+            saved, chosen = _try_stock_photos(
+                query, media, scene_image, used_ids, query_item, source
+            )
             if saved and chosen:
                 pid = chosen.get("id")
                 if pid:
@@ -373,6 +434,7 @@ def _resolve_scene_media(
                     "saved": True,
                     "media_type": "image",
                     "source": f"{source}:{query}",
+                    "provedor": source,
                     "query_enriched": query,
                     "quality_score": round(score_photo(query, chosen), 3),
                 })
@@ -384,7 +446,7 @@ def _resolve_scene_media(
         print(f"🤖 Cena {scene_num} ({tipo}): imagem IA (Pollinations)")
         return result
 
-    if _try_ai_video(busca, scene_video):
+    if not preferir_imagem and _try_ai_video(busca, scene_video):
         result.update({"saved": True, "media_type": "ai_video", "source": "pollinations:video"})
         print(f"🤖 Cena {scene_num} ({tipo}): vídeo IA (Pollinations)")
         return result

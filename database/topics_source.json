@@ -25,5 +25,14 @@
         "potencial_monetizacao": "alto",
         "dificuldade_pesquisa": "media",
         "angulo_sugerido": "impacto_historico"
+    },
+    {
+        "nome": "Os Mistérios das Linhas de Nazca",
+        "categoria": "historia",
+        "subcategoria": "arqueologia",
+        "keywords": ["nazca", "peru", "geoglifos", "arqueologia", "mistério"],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "revelacao_historica"
     }
 ]

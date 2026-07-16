@@ -23,6 +23,7 @@ from scripts.video.scene_timeline import (
     resolve_scene_media,
     is_image,
 )
+from scripts.video.scene_emotion import get_scene_render_hints
 from scripts.youtube.brand_overlay import lower_third_filter
 
 
@@ -174,10 +175,11 @@ def render_scene_clip(
     platform: str = "youtube_dark",
     scene_type: str = "",
     scene_label: str = "",
+    scene: dict | None = None,
 ) -> bool:
     """
     Renderiza clip de duração exata com motion por tipo de cena.
-    Lower thirds discretos em hook e revelação.
+    Consome hints emocionais quando scene contém emotion/intensity/timeline.
     """
 
     render_style = get_render_style(platform)
@@ -186,8 +188,16 @@ def render_scene_clip(
     duration = max(2.0, duration)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    hints = get_scene_render_hints(scene or {"tipo": scene_type})
+    motion = hints.get("motion") or kit.motion_for_scene(scene_type, scene_index)
+    zoom_max = render_style.ken_burns_zoom_max * (1.0 + hints.get("zoom_intensity", 0.0))
+
+    # FUTURE: shake — emotion impact + intensity > 0.8
+    # FUTURE: flash — transition_speed == "fast"
+    # FUTURE: blur — emotion mystery + transition_speed == "slow"
+    # FUTURE: silêncio — hints["silence_before"] / hints["silence_after"]
+
     grade = _cinematic_grade(render_style)
-    motion = kit.motion_for_scene(scene_type, scene_index)
 
     lower_third = ""
     if (
@@ -199,7 +209,7 @@ def render_scene_clip(
 
     if is_image(media_path):
         vf = (
-            f"{_ken_burns_filter(width, height, duration, motion, zoom_max=render_style.ken_burns_zoom_max)},"
+            f"{_ken_burns_filter(width, height, duration, motion, zoom_max=zoom_max)},"
             f"{grade},"
             f"{_fade_filter(duration, fade)}"
         )
@@ -506,6 +516,7 @@ def render_scenes_video(
             platform=platform,
             scene_type=scene_type,
             scene_label=scene_label,
+            scene=scene,
         ):
             clip_paths.append(clip_out)
             scene_types.append(scene_type)

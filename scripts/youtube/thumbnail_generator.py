@@ -107,6 +107,7 @@ def _pick_best_hero_image(
                 candidates.append(frame_path)
 
     if not candidates:
+        print("⚠️ Thumbnail: nenhuma hero image encontrada nas cenas ou no vídeo")
         return None
 
     scored = [(score_image_contrast(path), path) for path in candidates]
@@ -121,6 +122,23 @@ def _pick_best_hero_image(
         return frame_path
 
     return best_video if is_image(best_video) else None
+
+
+def _generate_brand_background(
+    kit,
+    folder: Path,
+    topic: str,
+) -> Optional[Path]:
+    """Gera fundo de marca (gradiente radial) como fallback sem hero image."""
+
+    background_path = folder / "thumbnail_brand_bg.jpg"
+
+    if kit.render_thumbnail_background(background_path, topic=topic):
+        print(f"🖼️ Thumbnail: usando fundo de marca (BrandKit): {background_path}")
+        return background_path
+
+    print("⚠️ Thumbnail: falha ao gerar fundo de marca via BrandKit")
+    return None
 
 
 def _derive_hook_text(
@@ -165,6 +183,24 @@ def generate_thumbnail(
         if kit.compose_thumbnail(hero, hook_text, thumbnail_path, topic=topic):
             print(f"🖼️ Thumbnail CTR gerada: {thumbnail_path}")
             return str(thumbnail_path)
+        print(
+            f"⚠️ Thumbnail: falha ao compor thumbnail com hero image "
+            f"({hero}) — tentando fallback de marca"
+        )
+    else:
+        print("⚠️ Thumbnail: sem hero image — usando fallback de marca")
+
+    background = _generate_brand_background(kit, folder, topic)
+    if background and kit.compose_thumbnail(
+        background,
+        hook_text,
+        thumbnail_path,
+        topic=topic,
+    ):
+        print(f"🖼️ Thumbnail CTR gerada (fallback marca): {thumbnail_path}")
+        return str(thumbnail_path)
+
+    print("⚠️ Thumbnail: falha ao compor thumbnail mesmo com fallback de marca")
 
     try:
         from PIL import Image
@@ -176,6 +212,8 @@ def generate_thumbnail(
         if kit.compose_thumbnail(frame_path, hook_text, thumbnail_path, topic=topic):
             print(f"🖼️ Thumbnail placeholder com marca: {thumbnail_path}")
             return str(thumbnail_path)
+
+        print("⚠️ Thumbnail: falha ao compor placeholder sólido")
 
     except ImportError:
         print("⚠️ Pillow não disponível. Thumbnail não gerada.")

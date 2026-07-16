@@ -95,7 +95,6 @@ def run_youtube_pipeline(
     )
 
     if production_mode:
-        privacy_status = "public"
         from scripts.core.production.logger import get_logger
         get_logger("pipeline").info(
             "Modo produção — pipeline automático sem confirmações"

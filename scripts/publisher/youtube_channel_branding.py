@@ -56,11 +56,13 @@ logger = logging.getLogger(__name__)
 
 
 
-BANNER_MIN_WIDTH = 2048
-
-BANNER_MIN_HEIGHT = 1152
-
-BANNER_MAX_BYTES = 6 * 1024 * 1024
+from scripts.core.brand_validation import (
+    BANNER_MAX_BYTES,
+    BANNER_MIN_HEIGHT,
+    BANNER_MIN_WIDTH,
+    BrandAssetReport,
+    validate_brand_asset,
+)
 
 
 
@@ -248,166 +250,40 @@ def _validate_image_file(
 
     """
 
-    Valida arquivo de imagem com Pillow antes do upload.
-
-
-
-    Confirma existência, metadados e presença de pixels não uniformes.
+    Valida arquivo de imagem — delega a validate_brand_asset() centralizado.
 
     """
 
+    asset_type = "image"
+    if min_width >= BANNER_MIN_WIDTH and min_height >= BANNER_MIN_HEIGHT:
+        asset_type = "banner"
+    elif label and "perfil" in label.lower():
+        asset_type = "profile"
 
-
-    resolved = image_path.resolve()
-
-    report = ImageFileReport(
-
-        path=image_path,
-
-        exists=resolved.exists(),
-
-        valid=False,
-
-        absolute_path=str(resolved),
-
-        file_name=resolved.name,
-
+    report = validate_brand_asset(
+        image_path,
+        asset_type=asset_type,
+        min_width=min_width,
+        min_height=min_height,
+        max_bytes=max_bytes,
+        label=label,
     )
 
-
-
-    if not report.exists:
-
-        report.messages.append(f"{label} não encontrada: {resolved}")
-
-        return report
-
-
-
-    report.size_bytes = resolved.stat().st_size
-
-
-
-    if report.size_bytes == 0:
-
-        report.messages.append("arquivo vazio (0 bytes)")
-
-        return report
-
-
-
-    if max_bytes and report.size_bytes > max_bytes:
-
-        report.messages.append(
-
-            f"tamanho {report.size_bytes} bytes excede o limite de {max_bytes} bytes"
-
-        )
-
-        return report
-
-
-
-    try:
-
-        from PIL import Image
-
-    except ImportError as error:
-
-        report.messages.append(f"Pillow não instalado: {error}")
-
-        return report
-
-
-
-    try:
-
-        with Image.open(resolved) as img:
-
-            img.load()
-
-            report.width, report.height = img.size
-
-            report.format = img.format or resolved.suffix.lstrip(".").upper()
-
-            report.color_mode = img.mode
-
-
-
-            if report.width < min_width or report.height < min_height:
-
-                report.messages.append(
-
-                    f"dimensões {report.width}x{report.height} abaixo do mínimo "
-
-                    f"{min_width}x{min_height}"
-
-                )
-
-                return report
-
-
-
-            pixels = list(img.getdata())
-
-            sample_size = min(len(pixels), 5000)
-
-            sample = pixels[:sample_size]
-
-            report.unique_colors_sampled = len(set(sample))
-
-
-
-            if report.color_mode in ("RGB", "RGBA"):
-
-                report.is_blank = report.unique_colors_sampled <= 1
-
-                if report.is_blank:
-
-                    report.messages.append(
-
-                        "imagem contém apenas uma cor — provável arquivo corrompido ou vazio"
-
-                    )
-
-                    return report
-
-
-
-                if all(
-
-                    pixel[:3] == (255, 255, 255)
-
-                    for pixel in sample
-
-                    if isinstance(pixel, tuple)
-
-                ):
-
-                    report.messages.append(
-
-                        "amostra de pixels é inteiramente branca — upload seria inválido"
-
-                    )
-
-                    return report
-
-
-
-            report.valid = True
-
-            return report
-
-
-
-    except Exception as error:
-
-        report.messages.append(f"falha ao abrir imagem: {error}")
-
-        return report
-
-
-
+    return ImageFileReport(
+        path=report.path,
+        exists=report.exists,
+        valid=report.valid,
+        absolute_path=report.absolute_path,
+        file_name=report.file_name,
+        size_bytes=report.size_bytes,
+        width=report.width,
+        height=report.height,
+        format=report.format,
+        color_mode=report.color_mode,
+        unique_colors_sampled=report.unique_colors_sampled,
+        is_blank=report.is_blank,
+        messages=report.messages,
+    )
 
 
 def _append_image_report(

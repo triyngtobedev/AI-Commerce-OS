@@ -189,6 +189,47 @@ class BrandKit:
 
     # ── Thumbnail ───────────────────────────────────────────────────────
 
+    def render_thumbnail_background(
+        self,
+        output_path: Path,
+        topic: str = "",
+    ) -> bool:
+        """Gera fundo de thumbnail via gradiente radial (fallback sem hero image)."""
+
+        try:
+            from PIL import ImageDraw
+        except ImportError:
+            return False
+
+        style = self.thumbnail
+        img = self._radial_gradient((style.width, style.height))
+        draw = ImageDraw.Draw(img)
+
+        draw.rectangle(
+            [(0, 0), (style.width, style.accent_bar_height)],
+            fill=self.colors.accent,
+        )
+
+        self.draw_compass_badge(
+            draw,
+            (style.width - 80, style.height // 2),
+            48,
+            line_width=2,
+        )
+
+        if topic:
+            sub_font = resolve_font(self.profile.font_body, self.typography.subtitle_size)
+            draw.text(
+                (48, style.height - 100),
+                topic[:45].upper(),
+                fill=self.colors.text_muted,
+                font=sub_font,
+            )
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        img.save(output_path, "JPEG", quality=93)
+        return True
+
     def wrap_hook_text(self, text: str) -> list[str]:
         words = text.upper().strip().split()
         if not words:

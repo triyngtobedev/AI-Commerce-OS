@@ -71,6 +71,20 @@ class TestBrandKit(unittest.TestCase):
             self.assertTrue(out.exists())
             self.assertGreater(out.stat().st_size, 1000)
 
+    def test_render_thumbnail_background_creates_file(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("Pillow não instalado")
+
+        kit = get_brand_kit()
+        with tempfile.TemporaryDirectory() as tmp:
+            bg = Path(tmp) / "bg.jpg"
+            self.assertTrue(kit.render_thumbnail_background(bg, topic="Tunguska"))
+            self.assertTrue(bg.exists())
+            with Image.open(bg) as img:
+                self.assertEqual(img.size, (1280, 720))
+
     def test_intro_outro_cards(self):
         try:
             from PIL import Image

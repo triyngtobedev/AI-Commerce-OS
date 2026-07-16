@@ -45,6 +45,9 @@ def search_pixabay(query: str, per_page: int = 15) -> dict:
         _warn_missing_key()
         return empty
 
+    # Pixabay API rejeita queries longas (HTTP 400)
+    query = " ".join(query.split())[:100].strip()
+
     params = {
         "key": api_key,
         "q": query,

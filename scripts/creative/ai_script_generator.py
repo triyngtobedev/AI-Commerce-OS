@@ -1,4 +1,5 @@
 from scripts.ai.router import ask_ai
+from scripts.creative.script_parser import enrich_script_with_emotions
 from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
 from scripts.utils.ai_cache import load_cache, save_cache
@@ -56,7 +57,7 @@ def generate_ai_script(
             f"♻️ Roteiro em cache: {product_name}"
         )
 
-        return cached
+        return enrich_script_with_emotions(cached)
 
 
 
@@ -164,6 +165,8 @@ Estratégia criativa:
     # ===============================
     # CACHE
     # ===============================
+
+    script = enrich_script_with_emotions(script)
 
     save_cache(
         "scripts",

@@ -48,7 +48,10 @@ from scripts.audio.tts_generator import create_audio
 
 from scripts.publisher.youtube_exporter import export_youtube_video
 from scripts.publisher.youtube_auth import is_upload_configured, validate_credentials
-from scripts.publisher.youtube_publish_config import resolve_upload_settings
+from scripts.publisher.youtube_publish_config import (
+    resolve_upload_settings,
+    resolve_upload_visibility,
+)
 from scripts.publisher.youtube_uploader import UPLOAD_STATUS, upload_from_folder
 from scripts.metrics.metrics_tracker import record_production
 
@@ -469,7 +472,7 @@ STAGE_RUNNERS = {
     "upload": lambda ctx, **kw: _stage_upload(
         ctx,
         should_upload=kw.get("should_upload", False),
-        privacy_status=kw.get("privacy_status", "public"),
+        privacy_status=kw.get("privacy_status", "private"),
         upload_context=kw.get("upload_context", {}),
     ),
     "manifest": lambda ctx, **kw: _stage_manifest(ctx, kw["upload_result"], kw["perf_report"]),
@@ -508,8 +511,11 @@ def run_resumable_youtube_pipeline(
 
     if production_mode:
         should_upload = True
-        privacy_status = "public"
-        main_logger.info("Modo produção ativo — upload público automático")
+        privacy_status, vis_ctx = resolve_upload_visibility()
+        main_logger.info(
+            f"Modo produção ativo — visibilidade: {privacy_status} "
+            f"({vis_ctx['reason']})"
+        )
 
     resume_from = ctx.state.get_resume_stage()
     if resume_from:

@@ -8,7 +8,50 @@ from unittest.mock import patch
 
 from scripts.publisher.youtube_publish_config import (
     resolve_upload_settings,
+    resolve_upload_visibility,
 )
+
+
+class TestResolveUploadVisibility(unittest.TestCase):
+
+    def test_defaults_to_private(self):
+        with patch.dict(os.environ, {}, clear=True):
+            visibility, ctx = resolve_upload_visibility()
+
+        self.assertEqual(visibility, "private")
+        self.assertIn("private", ctx["reason"])
+
+    def test_env_visibility(self):
+        with patch.dict(
+            os.environ,
+            {"UPLOAD_VISIBILITY": "unlisted"},
+            clear=True,
+        ):
+            visibility, ctx = resolve_upload_visibility()
+
+        self.assertEqual(visibility, "unlisted")
+        self.assertIn("UPLOAD_VISIBILITY", ctx["reason"])
+
+    def test_cli_overrides_env(self):
+        with patch.dict(
+            os.environ,
+            {"UPLOAD_VISIBILITY": "public"},
+            clear=True,
+        ):
+            visibility, _ = resolve_upload_visibility(cli_privacy="unlisted")
+
+        self.assertEqual(visibility, "unlisted")
+
+    def test_invalid_env_falls_back_to_private(self):
+        with patch.dict(
+            os.environ,
+            {"UPLOAD_VISIBILITY": "invalid"},
+            clear=True,
+        ):
+            visibility, ctx = resolve_upload_visibility()
+
+        self.assertEqual(visibility, "private")
+        self.assertIn("inválido", ctx["reason"])
 
 
 class TestResolveUploadSettings(unittest.TestCase):

@@ -181,6 +181,8 @@ def export_youtube_video(result):
             "categoria_youtube",
             "Education"
         ),
+        "idioma": conteudo.get("idioma", "pt-BR"),
+        "default_language": conteudo.get("idioma", "pt-BR"),
         "status": "READY_TO_UPLOAD",
     }
 

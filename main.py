@@ -20,6 +20,7 @@ load_dotenv()
 
 from scripts.pipeline.product_pipeline import run_pipeline
 from scripts.pipeline.youtube_pipeline import run_youtube_pipeline
+from scripts.publisher.youtube_publish_config import resolve_upload_visibility
 
 
 def run_youtube_auth():
@@ -255,8 +256,8 @@ def run():
     parser.add_argument(
         "--privacy",
         choices=["private", "unlisted", "public"],
-        default="private",
-        help="Status de privacidade do upload YouTube",
+        default=None,
+        help="Status de privacidade do upload YouTube (sobrescreve UPLOAD_VISIBILITY)",
     )
 
     parser.add_argument(
@@ -331,10 +332,13 @@ def run():
 
         production = args.production
         auto_upload = args.upload or production
-        privacy = "public" if production else args.privacy
+        privacy, visibility_ctx = resolve_upload_visibility(
+            cli_privacy=args.privacy,
+        )
 
         if production:
             print("🏭 Modo PRODUÇÃO ativo\n")
+            print(f"   Visibilidade: {privacy} ({visibility_ctx['reason']})\n")
 
         youtube_results = run_youtube_pipeline(
             auto_research=args.research or production,

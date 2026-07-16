@@ -18,10 +18,10 @@ from scripts.core.brand_profile import (
 
 
 PROFILE_SIZE = 800
-BANNER_WIDTH = 2560
-BANNER_HEIGHT = 1440
-BANNER_SAFE_WIDTH = 1546
-BANNER_SAFE_HEIGHT = 423
+BANNER_WIDTH = 2048
+BANNER_HEIGHT = 1152
+BANNER_SAFE_WIDTH = 1237
+BANNER_SAFE_HEIGHT = 338
 
 
 def _rgb_to_hex(color: Tuple[int, int, int]) -> str:
@@ -209,15 +209,15 @@ def generate_banner(
     right_cx = safe_x + BANNER_SAFE_WIDTH + 200
     center_y = BANNER_HEIGHT // 2
 
-    if left_cx > 120:
-        _draw_compass_symbol(draw, (left_cx, center_y), 90, brand, line_width=2)
+    if left_cx > 100:
+        _draw_compass_symbol(draw, (left_cx, center_y), 70, brand, line_width=2)
 
-    if right_cx < BANNER_WIDTH - 120:
-        _draw_compass_symbol(draw, (right_cx, center_y), 90, brand, line_width=2)
+    if right_cx < BANNER_WIDTH - 100:
+        _draw_compass_symbol(draw, (right_cx, center_y), 70, brand, line_width=2)
 
-    title_font = resolve_font(brand.font_bold, 96)
-    tagline_font = resolve_font(brand.font_body, 36)
-    value_font = resolve_font(brand.font_body, 28)
+    title_font = resolve_font(brand.font_bold, 72)
+    tagline_font = resolve_font(brand.font_body, 28)
+    value_font = resolve_font(brand.font_body, 22)
 
     title = brand.channel_name.upper()
     tagline = brand.tagline
@@ -226,7 +226,7 @@ def generate_banner(
     title_bbox = draw.textbbox((0, 0), title, font=title_font)
     title_w = title_bbox[2] - title_bbox[0]
     title_x = (BANNER_WIDTH - title_w) // 2
-    title_y = safe_y + 60
+    title_y = safe_y + 40
 
     draw.text(
         (title_x + 3, title_y + 3),
@@ -244,7 +244,7 @@ def generate_banner(
     tagline_bbox = draw.textbbox((0, 0), tagline, font=tagline_font)
     tagline_w = tagline_bbox[2] - tagline_bbox[0]
     tagline_x = (BANNER_WIDTH - tagline_w) // 2
-    tagline_y = title_y + 110
+    tagline_y = title_y + 80
 
     draw.text(
         (tagline_x, tagline_y),
@@ -256,7 +256,7 @@ def generate_banner(
     value_bbox = draw.textbbox((0, 0), value_prop, font=value_font)
     value_w = value_bbox[2] - value_bbox[0]
     value_x = (BANNER_WIDTH - value_w) // 2
-    value_y = tagline_y + 65
+    value_y = tagline_y + 50
 
     draw.text(
         (value_x, value_y),
@@ -266,11 +266,11 @@ def generate_banner(
     )
 
     cta = "Novos documentários toda semana  ·  Inscreva-se"
-    cta_font = resolve_font(brand.font_body, 22)
+    cta_font = resolve_font(brand.font_body, 18)
     cta_bbox = draw.textbbox((0, 0), cta, font=cta_font)
     cta_w = cta_bbox[2] - cta_bbox[0]
     cta_x = (BANNER_WIDTH - cta_w) // 2
-    cta_y = value_y + 55
+    cta_y = value_y + 40
 
     draw.text(
         (cta_x, cta_y),

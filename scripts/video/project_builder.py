@@ -9,6 +9,13 @@ def _resolve_folder(result):
 
     product = result.get("produto", {})
     platform_id = result.get("platform")
+
+    if isinstance(product, str):
+        product = {
+            "nome": product,
+            "_output_platform": platform_id,
+        }
+
     platform = product.get("_output_platform") or platform_id
 
     return content_output_dir(

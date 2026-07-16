@@ -30,6 +30,8 @@ ROOT = Path(__file__).resolve().parents[2]
 BRAND_ASSETS = ROOT / "assets" / "brand"
 
 
+FONTS_DIR = BRAND_ASSETS / "fonts"
+
 YOUTUBE_DARK_BRAND = BrandProfile(
     channel_name="Projeto Atlas",
     tagline="História · Mistério · Ciência",
@@ -37,8 +39,8 @@ YOUTUBE_DARK_BRAND = BrandProfile(
     accent_color=(255, 183, 3),
     text_color=(255, 255, 255),
     background_color=(8, 12, 24),
-    font_bold="arialbd.ttf",
-    font_body="arial.ttf",
+    font_bold="Roboto-Bold.ttf",
+    font_body="Roboto-Regular.ttf",
     watermark_opacity=0.4,
 )
 
@@ -73,11 +75,12 @@ def get_brand(platform_id: str = "youtube_dark") -> BrandProfile:
 
 
 def resolve_font(font_name: str, size: int):
-    """Carrega fonte com fallbacks para Windows."""
+    """Carrega fonte com fallbacks — prioriza assets/brand/fonts/ (independente de SO)."""
 
     from PIL import ImageFont
 
     candidates = [
+        FONTS_DIR / font_name,
         BRAND_ASSETS / font_name,
         Path("C:/Windows/Fonts") / font_name,
         Path("C:/Windows/Fonts/arialbd.ttf"),

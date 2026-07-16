@@ -35,6 +35,7 @@ from scripts.publisher.exporter import export_product
 from scripts.dashboard.generator import generate_dashboard
 
 from scripts.core.pipeline_result import PipelineResult
+from scripts.core.emotional_timeline import build_emotional_timeline
 from scripts.utils.slug import slugify, product_output_dir
 
 
@@ -215,10 +216,17 @@ def run_pipeline():
             )
 
 
+            emotional_timeline = build_emotional_timeline(script)
+
+
             audio = create_audio(
                 {
                     "text":
                         content["texto_narracao"],
+
+                    "script_sections": script,
+
+                    "emotional_timeline": emotional_timeline,
 
                     "output_path":
                     str(
@@ -229,6 +237,9 @@ def run_pipeline():
                     )
                 }
             )
+
+            from scripts.video.scene_emotion import apply_timeline_to_scenes
+            scenes = apply_timeline_to_scenes(scenes, emotional_timeline)
 
 
 

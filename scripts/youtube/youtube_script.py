@@ -5,7 +5,11 @@ Gera roteiro documentário longo via IA.
 """
 
 from scripts.ai.router import ask_ai
+from scripts.core.director_engine import direct_script
+from scripts.core.emotional_timeline import build_emotional_timeline
 from scripts.core.platform_config import YOUTUBE_DARK
+from scripts.core.visual_intent_engine import apply_visual_intents
+from scripts.creative.script_parser import enrich_script_with_emotions
 from scripts.youtube.narration_utils import (
     count_words,
     validate_narration,
@@ -53,7 +57,7 @@ def generate_youtube_script(
             f"♻️ Cache de roteiro: {topic_name}"
         )
 
-        return cached
+        return enrich_script_with_emotions(cached)
 
 
     prompt = load_prompt(
@@ -133,22 +137,32 @@ Estratégia completa:
         narration = stitch_script_to_narration(script)
         word_count = count_words(narration)
 
-    script["_meta"] = {
+    script = enrich_script_with_emotions(script)
+
+    directed_script, director_decision = direct_script(script, strategy)
+    timeline = build_emotional_timeline(
+        directed_script,
+        director_meta=director_decision.to_dict(),
+    )
+    timeline = apply_visual_intents(timeline)
+
+    directed_script["_meta"] = {
         "palavras": word_count,
         "gancho_usado": gancho,
         "tom_narracao": tom,
+        "director": director_decision.to_dict(),
+        "emotional_timeline": timeline.to_dict(),
     }
-
 
     save_cache(
         "scripts",
         cache_key,
-        script,
+        directed_script,
         prefix=CACHE_PREFIX,
     )
 
 
-    return script
+    return directed_script
 
 
 def _rewrite_banned_script(script, topic, strategy, original_prompt, banned):

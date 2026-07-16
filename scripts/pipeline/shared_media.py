@@ -26,6 +26,7 @@ def run_media_pipeline(subject, scenes, queries):
     platform = subject.get("_output_platform", "")
 
     if platform == "youtube_dark" and not should_use_persona():
+        # TODO: hook para geração de vídeo IA (Veo/Kling) em cenas hero
         print("📸 Visual Media Engine ativado (scene-aware + fallback IA).")
         clear_media_assets(subject)
         return run_visual_media_pipeline(subject, scenes, queries)

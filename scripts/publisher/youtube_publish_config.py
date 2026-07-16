@@ -1,11 +1,13 @@
 """
 Configuração de publicação YouTube.
 
-Centraliza flags que controlam upload automático.
+Centraliza flags que controlam upload automático e visibilidade.
 """
 
 import os
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
+
+VALID_VISIBILITY = ("private", "unlisted", "public")
 
 
 def _env_flag(name: str, default: str = "false") -> bool:
@@ -88,3 +90,44 @@ def resolve_upload_settings(
     )
 
     return False, context
+
+
+def resolve_upload_visibility(
+    cli_privacy: Optional[str] = None,
+) -> Tuple[str, Dict[str, str]]:
+    """
+    Resolve visibilidade do upload YouTube.
+
+    Prioridade:
+        1. --privacy (CLI), quando informado
+        2. UPLOAD_VISIBILITY no .env
+        3. private (padrão seguro)
+
+    O pipeline nunca deve hardcodar visibilidade — sempre usar esta função.
+    """
+
+    env_value = os.getenv("UPLOAD_VISIBILITY", "private").strip().lower()
+    context = {
+        "upload_visibility_env": os.getenv("UPLOAD_VISIBILITY", ""),
+        "cli_privacy": cli_privacy or "",
+    }
+
+    if cli_privacy:
+        value = cli_privacy.strip().lower()
+        if value not in VALID_VISIBILITY:
+            value = "private"
+        context["decision"] = value
+        context["reason"] = "Flag --privacy informada"
+        return value, context
+
+    if env_value in VALID_VISIBILITY:
+        context["decision"] = env_value
+        context["reason"] = f"UPLOAD_VISIBILITY={env_value} no .env"
+        return env_value, context
+
+    context["decision"] = "private"
+    context["reason"] = (
+        f"UPLOAD_VISIBILITY inválido ({env_value!r}) — "
+        "usando private como padrão seguro"
+    )
+    return "private", context

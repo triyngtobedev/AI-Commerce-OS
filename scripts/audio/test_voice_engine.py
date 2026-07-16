@@ -2,7 +2,8 @@
 
 import unittest
 
-from scripts.audio.voice_engine import VoiceEngine, VOICE_PRESETS
+from scripts.audio.narration_engine import NarrationEngine, VOICE_PRESETS
+from scripts.audio.voice_engine import VoiceEngine, get_voice_engine
 from scripts.youtube.narration_utils import (
     clean_script_phrases,
     detect_banned_phrases,
@@ -19,13 +20,17 @@ class TestVoiceEngine(unittest.TestCase):
         self.assertIn("rate", preset)
 
     def test_misterio_preset_slower(self):
-        engine = VoiceEngine(providers=[])
+        engine = NarrationEngine(providers=[])
         mystery = engine.resolve_preset("misterio_nao_resolvido")
         self.assertEqual(
             mystery["voice"],
             VOICE_PRESETS["misterio_nao_resolvido"]["voice"],
         )
         self.assertTrue(mystery["rate"].startswith("-"))
+
+    def test_voice_engine_is_narration_engine_alias(self):
+        engine = get_voice_engine()
+        self.assertIsInstance(engine, NarrationEngine)
 
 
 class TestScriptCleaning(unittest.TestCase):

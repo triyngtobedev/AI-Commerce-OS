@@ -183,7 +183,12 @@ def upload_video(
     if thumbnail_path and Path(thumbnail_path).exists():
         _log("ARQUIVO", f"Thumbnail: {thumbnail_path}")
     else:
-        _log("ARQUIVO", "Thumbnail não encontrada (opcional)")
+        _log(
+            "ARQUIVO",
+            f"❌ ERRO: thumbnail ausente ou inválida "
+            f"(package.thumbnail={thumbnail_path!r}) — "
+            f"upload continuará sem capa customizada",
+        )
 
     try:
         from googleapiclient.discovery import build
@@ -220,6 +225,10 @@ def upload_video(
                 "tags": package.get("tags", []),
                 "categoryId": _resolve_category_id(
                     package.get("categoria", "Education")
+                ),
+                "defaultLanguage": package.get(
+                    "default_language",
+                    package.get("idioma", "pt-BR"),
                 ),
             },
             "status": {
@@ -261,8 +270,13 @@ def upload_video(
                 f"{response['snippet'].get('title', title)}",
             )
 
-        if video_id and thumbnail_path:
+        if video_id and thumbnail_path and Path(thumbnail_path).exists():
             _upload_thumbnail(youtube, video_id, thumbnail_path)
+        elif video_id:
+            _log(
+                "THUMBNAIL",
+                "❌ Pulando upload de thumbnail — arquivo não disponível no pacote",
+            )
 
         video_url = f"https://youtube.com/watch?v={video_id}"
 

@@ -11,12 +11,20 @@ from scripts.video.scene_renderer import (
     mux_video_audio_subtitles,
 )
 from scripts.video.subtitle_generator import get_subtitle_ffmpeg_filter
+from scripts.core.emotional_timeline import EmotionalTimeline
 
 
 def _resolve_folder(result):
 
     product = result.get("produto", {})
     platform_id = result.get("platform")
+
+    if isinstance(product, str):
+        product = {
+            "nome": product,
+            "_output_platform": platform_id,
+        }
+
     platform = product.get("_output_platform") or platform_id
 
     return content_output_dir(
@@ -253,6 +261,79 @@ def _render_scene_aware(result, folder, width, height, output):
     return output
 
 
+def render_video(
+    timeline,
+    scenes,
+    audio,
+    output_path=None,
+    width=1920,
+    height=1080,
+    subtitles=None,
+    platform="youtube_dark",
+    produto=None,
+):
+    """
+    Ponto de integração futuro para efeitos emocionais no render.
+
+    Args:
+        timeline: EmotionalTimeline ou dict — fonte única de emoções
+        scenes: estrutura de cenas enriquecida
+        audio: caminho do áudio de narração
+        output_path: destino do vídeo final
+
+    Pontos de integração futuros (por seção emocional):
+        - zoom: hints["zoom_intensity"] por cena
+        - shake: emotion == "impact" && intensity > 0.8
+        - flash: transição rápida em "impact"
+        - blur: emotion == "mystery" com transição lenta
+        - silêncio: timeline.pause_before / pause_after
+        - trilha sonora: mapear emotion → stem de áudio ambiente
+    """
+
+    if isinstance(timeline, dict):
+        timeline = EmotionalTimeline.from_dict(timeline)
+
+    result = {
+        "produto": produto if isinstance(produto, dict) else {},
+        "cenas": scenes if isinstance(scenes, dict) else {"cenas": scenes},
+        "audio": str(audio) if audio else None,
+        "platform": platform,
+        "emotional_timeline": timeline.to_dict() if timeline else None,
+    }
+
+    if subtitles:
+        result["subtitle_file"] = str(subtitles)
+
+    folder = Path(output_path).parent if output_path else Path(".")
+    folder.mkdir(parents=True, exist_ok=True)
+    output = Path(output_path) if output_path else folder / "video_final.mp4"
+
+    # FUTURE: aplicar zoom emocional por cena via timeline.sections
+    # FUTURE: aplicar shake/flash em seções de alto impacto
+    # FUTURE: inserir silêncio estratégico via pause_before/after
+    # FUTURE: mixar trilha sonora conforme emotion de cada seção
+
+    video_track = render_scenes_video(result, width, height, output)
+
+    if not video_track:
+        return None
+
+    audio_path = Path(audio) if audio else None
+    subtitle_path = Path(subtitles) if subtitles else None
+
+    success = mux_video_audio_subtitles(
+        video_track,
+        audio_path,
+        subtitle_path,
+        output,
+        width,
+        height,
+        platform=platform,
+    )
+
+    return output if success else None
+
+
 def render_video_project(result):
 
     product = (
@@ -271,9 +352,27 @@ def render_video_project(result):
 
     try:
         if _should_use_scene_renderer(result):
-            result_path = _render_scene_aware(
-                result, folder, width, height, output
+            timeline_data = (
+                result.get("emotional_timeline")
+                or result.get("cenas", {}).get("emotional_timeline")
+                or (result.get("roteiro", {}).get("_meta", {}) or {}).get("emotional_timeline")
             )
+            if timeline_data:
+                result_path = render_video(
+                    timeline=timeline_data,
+                    scenes=result.get("cenas", {}),
+                    audio=result.get("audio"),
+                    output_path=str(output),
+                    width=width,
+                    height=height,
+                    subtitles=result.get("subtitle_file"),
+                    platform=result.get("platform", "youtube_dark"),
+                    produto=result.get("produto"),
+                )
+            else:
+                result_path = _render_scene_aware(
+                    result, folder, width, height, output
+                )
         else:
             result_path = _render_legacy_concat(
                 result, folder, width, height, output

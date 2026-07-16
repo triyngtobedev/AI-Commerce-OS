@@ -1,10 +1,13 @@
 """
-Timeline de cenas sincronizada com áudio.
+Timeline de cenas sincronizada com áudio e Emotional Timeline.
 """
 
 from pathlib import Path
+from typing import Optional
 
+from scripts.core.emotional_timeline import EmotionalTimeline, build_emotional_timeline
 from scripts.video.media_probe import probe_duration
+from scripts.video.scene_emotion import apply_timeline_to_scenes
 from scripts.youtube.narration_utils import estimate_duration_seconds
 
 SCENE_WEIGHTS = {
@@ -101,10 +104,12 @@ def sync_scenes_to_audio(
     cenas_data,
     narracao: str,
     audio_path: str,
+    emotional_timeline: Optional[EmotionalTimeline | dict] = None,
+    script: Optional[dict] = None,
 ) -> dict:
     """
     Sincroniza timings das cenas com duração real do áudio.
-    Retorna estrutura de cenas atualizada.
+    Enriquece cenas com Emotional Timeline quando disponível.
     """
 
     if isinstance(cenas_data, dict):
@@ -156,7 +161,32 @@ def sync_scenes_to_audio(
     result["audio_duration"] = round(audio_duration, 2)
     result["synced"] = True
 
+    timeline = _resolve_timeline(emotional_timeline, script, audio_duration)
+    if timeline:
+        result = apply_timeline_to_scenes(result, timeline)
+        result["emotional_timeline"] = timeline.to_dict()
+
     return result
+
+
+def _resolve_timeline(
+    emotional_timeline: Optional[EmotionalTimeline | dict],
+    script: Optional[dict],
+    audio_duration: float,
+) -> Optional[EmotionalTimeline]:
+    if emotional_timeline:
+        if isinstance(emotional_timeline, dict):
+            timeline = EmotionalTimeline.from_dict(emotional_timeline)
+            timeline._compute_timings(audio_duration)
+            return timeline
+        if isinstance(emotional_timeline, EmotionalTimeline):
+            emotional_timeline._compute_timings(audio_duration)
+            return emotional_timeline
+
+    if script:
+        return build_emotional_timeline(script, audio_duration=audio_duration)
+
+    return None
 
 
 def resolve_scene_media(
