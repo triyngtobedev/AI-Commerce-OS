@@ -2,6 +2,7 @@ from pathlib import Path
 import requests
 
 from scripts.utils.slug import content_output_dir
+from scripts.core.production.retry import retry_with_backoff
 
 QUALITY_PRIORITY = {
     "uhd": 200,
@@ -21,19 +22,22 @@ def _output_folder(subject):
 
 
 def download_file(url, path, timeout=60):
-    response = requests.get(
-        url,
-        timeout=timeout,
-        stream=True,
-    )
+    @retry_with_backoff(max_attempts=3, operation=f"Download {url[:50]}")
+    def _download():
+        response = requests.get(
+            url,
+            timeout=timeout,
+            stream=True,
+        )
+        response.raise_for_status()
 
-    response.raise_for_status()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb") as handle:
+            for chunk in response.iter_content(chunk_size=65536):
+                if chunk:
+                    handle.write(chunk)
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "wb") as handle:
-        for chunk in response.iter_content(chunk_size=65536):
-            if chunk:
-                handle.write(chunk)
+    _download()
 
 
 def select_video_file(video, min_width=1920, min_height=1080):

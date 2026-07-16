@@ -56,6 +56,10 @@ from scripts.publisher.youtube_uploader import (
 )
 from scripts.metrics.metrics_tracker import record_production
 
+from scripts.core.emotional_timeline import build_emotional_timeline
+from scripts.core.timeline_sync import sync_timeline_to_audio
+from scripts.core.visual_intent_engine import apply_visual_intents
+from scripts.core.emotional_effects import apply_effect_hints_to_scenes
 from scripts.utils.slug import content_output_dir
 
 
@@ -66,6 +70,7 @@ def run_youtube_pipeline(
     auto_upload: bool = False,
     privacy_status: str = "private",
     force_topic_name: str = None,
+    production_mode: bool = False,
 ):
     """
     Executa pipeline completo para YouTube Dark.
@@ -86,8 +91,15 @@ def run_youtube_pipeline(
     )
 
     should_upload, upload_context = resolve_upload_settings(
-        cli_upload=auto_upload,
+        cli_upload=auto_upload or production_mode,
     )
+
+    if production_mode:
+        privacy_status = "public"
+        from scripts.core.production.logger import get_logger
+        get_logger("pipeline").info(
+            "Modo produção — pipeline automático sem confirmações"
+        )
 
     print(
         f"📡 Publicação: {upload_context['decision'].upper()}"
@@ -168,6 +180,27 @@ def run_youtube_pipeline(
 
                 continue
 
+            if production_mode:
+                from scripts.core.production.resumable_pipeline import (
+                    run_resumable_youtube_pipeline,
+                )
+
+                topic["_output_platform"] = YOUTUBE_DARK.id
+                result = run_resumable_youtube_pipeline(
+                    topic,
+                    production_mode=True,
+                    auto_upload=should_upload,
+                    privacy_status=privacy_status,
+                )
+
+                if result:
+                    processed_names.add(topic["nome"].strip().casefold())
+                    processed_names.add(
+                        content_output_dir(topic, platform=YOUTUBE_DARK.id).name
+                    )
+                    results.append(result)
+
+                continue
 
             print(
                 "\n============================"
@@ -245,6 +278,13 @@ def run_youtube_pipeline(
             caption = generate_caption(content)
 
 
+            emotional_timeline = build_emotional_timeline(
+                script,
+                director_meta=script.get("_director"),
+            )
+            emotional_timeline = apply_visual_intents(emotional_timeline)
+
+
             scenes = generate_youtube_scenes(
                 topic,
                 content,
@@ -252,7 +292,11 @@ def run_youtube_pipeline(
             )
 
 
-            queries = generate_asset_queries(scenes)
+            queries = generate_asset_queries(
+                scenes,
+                platform=YOUTUBE_DARK.id,
+                timeline=emotional_timeline,
+            )
 
 
             run_media_pipeline(
@@ -270,6 +314,8 @@ def run_youtube_pipeline(
 
             audio = create_audio({
                 "text": content["texto_narracao"],
+                "script_sections": script,
+                "emotional_timeline": emotional_timeline,
                 "output_path": str(
                     output_dir
                     / "assets"
@@ -283,11 +329,21 @@ def run_youtube_pipeline(
             })
 
 
+            emotional_timeline = sync_timeline_to_audio(
+                emotional_timeline,
+                audio,
+            )
+
+
             scenes = sync_scenes_to_audio(
                 scenes,
                 content["texto_narracao"],
                 audio,
+                emotional_timeline=emotional_timeline,
+                script=script,
             )
+
+            scenes = apply_effect_hints_to_scenes(scenes, emotional_timeline)
 
 
             subtitles = generate_subtitles({
@@ -382,6 +438,13 @@ def run_youtube_pipeline(
                 pipeline_result.youtube_metadata[
                     "thumbnail"
                 ] = thumbnail
+
+            else:
+
+                print(
+                    "⚠️ Thumbnail não gerada — "
+                    "post_package será exportado sem capa customizada"
+                )
 
 
             result = pipeline_result.to_dict()

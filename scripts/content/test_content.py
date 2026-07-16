@@ -1,33 +1,31 @@
+"""Testes do content generator."""
+
+import sys
+import unittest
+from unittest.mock import patch
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
 from scripts.content.content_generator import generate_content
 
-produto = {
-    "nome": "Mini Aspirador Portátil",
-    "categoria": "Casa"
-}
 
-analise = {
-    "score": 95,
-    "potencial": "alto"
-}
+class TestContentGenerator(unittest.TestCase):
+    @patch("scripts.content.content_generator.ask_ai")
+    @patch("scripts.content.content_generator.load_cache", return_value=None)
+    @patch("scripts.content.content_generator.save_cache")
+    def test_generate_content_returns_dict(self, _save, _load, mock_ai):
+        mock_ai.return_value = '{"texto_narracao": "Texto", "titulo": "T"}'
 
-oportunidade = {
-    "score_venda": 90,
-    "decisao": "CRIAR_VIDEO"
-}
+        produto = {"nome": "Mini Aspirador Portátil", "categoria": "Casa"}
+        analise = {"score": 95, "potencial": "alto"}
+        oportunidade = {"score_venda": 90, "decisao": "CRIAR_VIDEO"}
+        roteiro = {"hook": "Hook", "problema": "Problema"}
 
-roteiro = {
-    "hook": "Eu não sabia que precisava disso...",
-    "problema": "Sujeira em lugares difíceis.",
-    "demonstracao": "Mostra o aspirador funcionando.",
-    "beneficio": "Mais praticidade.",
-    "cta": "Clique no link."
-}
+        resultado = generate_content(produto, analise, oportunidade, roteiro)
+        self.assertIsInstance(resultado, dict)
 
-resultado = generate_content(
-    produto,
-    analise,
-    oportunidade,
-    roteiro
-)
 
-print(resultado)
+if __name__ == "__main__":
+    unittest.main()

@@ -156,7 +156,12 @@ def run_youtube_branding(apply: bool = False):
             "\n💡 Assets gerados. Para aplicar no canal via API, execute:\n"
             "   python main.py --youtube-branding --apply\n"
         )
-        return 0
+
+        print("\nValidando assets gerados (dry-run)...\n")
+        result = apply_channel_branding(dry_run=True)
+        print(result.summary())
+
+        return 0 if result.success else 1
 
     print("\nAplicando branding no canal via API...\n")
     result = apply_channel_branding(dry_run=False)
@@ -230,6 +235,12 @@ def run():
     )
 
     parser.add_argument(
+        "--production",
+        action="store_true",
+        help="Modo produção: pipeline automático completo com validação e upload público",
+    )
+
+    parser.add_argument(
         "--research",
         action="store_true",
         help="Pesquisar temas automaticamente (YouTube)",
@@ -287,6 +298,9 @@ def run():
 
     args = parser.parse_args()
 
+    if args.production and args.platform == "tiktok_shop":
+        args.platform = "youtube_dark"
+
     if args.youtube_auth:
         sys.exit(run_youtube_auth())
 
@@ -304,19 +318,30 @@ def run():
 
     all_results = []
 
-    if args.platform in ("tiktok_shop", "all"):
+    if args.platform in ("tiktok_shop", "all") and not args.production:
         print("▶️ Pipeline TikTok Shop")
         tiktok_results = run_pipeline()
         all_results.extend(tiktok_results)
+    elif args.production and args.platform == "tiktok_shop":
+        print("⚠️ Modo produção disponível apenas para YouTube Dark. Use --platform youtube_dark")
 
     if args.platform in ("youtube_dark", "all"):
         print("▶️ Pipeline YouTube Dark")
         max_videos = args.max_videos or 1
+
+        production = args.production
+        auto_upload = args.upload or production
+        privacy = "public" if production else args.privacy
+
+        if production:
+            print("🏭 Modo PRODUÇÃO ativo\n")
+
         youtube_results = run_youtube_pipeline(
-            auto_research=args.research,
+            auto_research=args.research or production,
             max_videos=max_videos,
-            auto_upload=args.upload,
-            privacy_status=args.privacy,
+            auto_upload=auto_upload,
+            privacy_status=privacy,
+            production_mode=production,
         )
         all_results.extend(youtube_results)
 

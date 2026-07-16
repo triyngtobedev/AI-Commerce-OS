@@ -2,6 +2,8 @@ import os
 import requests
 from dotenv import load_dotenv
 
+from scripts.core.production.retry import retry_with_backoff
+
 load_dotenv()
 
 
@@ -60,23 +62,18 @@ def search_pexels(query):
 
     try:
 
-        video_response = requests.get(
-            PEXELS_VIDEO_URL,
-            headers=headers,
-            params={
-                "query": query,
-                "per_page": 15
-            },
-            timeout=15
-        )
+        @retry_with_backoff(max_attempts=3, operation=f"Pexels video search: {query[:40]}")
+        def _fetch_videos():
+            response = requests.get(
+                PEXELS_VIDEO_URL,
+                headers=headers,
+                params={"query": query, "per_page": 15},
+                timeout=15,
+            )
+            response.raise_for_status()
+            return response.json()
 
-
-        video_data = (
-            video_response.json()
-            if video_response.ok
-            else {}
-        )
-
+        video_data = _fetch_videos()
 
     except Exception:
 
@@ -112,27 +109,18 @@ def search_pexels(query):
 
     try:
 
-        photo_response = requests.get(
+        @retry_with_backoff(max_attempts=3, operation=f"Pexels photo search: {query[:40]}")
+        def _fetch_photos():
+            response = requests.get(
+                PEXELS_PHOTO_URL,
+                headers=headers,
+                params={"query": query, "per_page": 15},
+                timeout=15,
+            )
+            response.raise_for_status()
+            return response.json()
 
-            PEXELS_PHOTO_URL,
-
-            headers=headers,
-
-            params={
-                "query": query,
-                "per_page": 15
-            },
-
-            timeout=15
-        )
-
-
-        photo_data = (
-            photo_response.json()
-            if photo_response.ok
-            else {}
-        )
-
+        photo_data = _fetch_photos()
 
     except Exception:
 
