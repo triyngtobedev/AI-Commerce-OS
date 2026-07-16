@@ -195,6 +195,11 @@ class TestYouTubePipelineE2E(unittest.TestCase):
                 ".content_output_dir",
                 return_value=Path(self.temp_dir) / "output",
             ),
+            "processed": patch(
+                "scripts.pipeline.youtube_pipeline"
+                ".collect_processed_topic_names",
+                return_value=set(),
+            ),
         }
 
     def test_full_pipeline_produces_result(self):
@@ -210,7 +215,7 @@ class TestYouTubePipelineE2E(unittest.TestCase):
              patches["prepare"], patches["caption"], \
              patches["queries"], patches["subtitles"], \
              patches["build_project"], patches["record"], \
-             patches["output_dir"]:
+             patches["output_dir"], patches["processed"]:
 
             from scripts.pipeline.youtube_pipeline import (
                 run_youtube_pipeline,
@@ -278,7 +283,7 @@ class TestYouTubePipelineE2E(unittest.TestCase):
              patches["prepare"], patches["caption"], \
              patches["queries"], patches["subtitles"], \
              patches["build_project"], patches["record"], \
-             patches["output_dir"], \
+             patches["output_dir"], patches["processed"], \
              patch(
                  "scripts.pipeline.youtube_pipeline"
                  ".is_upload_configured",
@@ -315,7 +320,7 @@ class TestYouTubePipelineE2E(unittest.TestCase):
              patches["prepare"], patches["caption"], \
              patches["queries"], patches["subtitles"], \
              patches["build_project"], patches["record"], \
-             patches["output_dir"], \
+             patches["output_dir"], patches["processed"], \
              patch(
                  "scripts.pipeline.youtube_pipeline"
                  ".upload_from_folder",

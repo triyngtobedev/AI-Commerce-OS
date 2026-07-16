@@ -1,39 +1,20 @@
 """
 Text To Speech Generator
 
-Responsável por gerar áudio real usando Edge-TTS.
+Delega ao Voice Engine modular (Edge-TTS → gTTS fallback).
 """
 
 from pathlib import Path
-import asyncio
 
-import edge_tts
+from scripts.audio.voice_engine import get_voice_engine
 
-from scripts.audio.tts_text_prep import prepare_text_for_tts
-
-
-DEFAULT_VOICE = "pt-BR-FranciscaNeural"
-
-
-async def _generate(
-    text,
-    output_path,
-    voice=DEFAULT_VOICE
-):
-
-    communicate = edge_tts.Communicate(
-        text=text,
-        voice=voice
-    )
-
-    await communicate.save(
-        output_path
-    )
+DEFAULT_VOICE = "pt-BR-AntonioNeural"
 
 
 def generate_audio(
     text,
-    output_path=None
+    output_path=None,
+    narration_style="documentario_narrado",
 ):
     """
     Gera áudio real utilizando Edge-TTS.
@@ -100,6 +81,11 @@ def generate_audio(
             or output_path
         )
 
+        narration_style = (
+            data.get("narration_style")
+            or narration_style
+        )
+
 
     if not text:
 
@@ -107,56 +93,16 @@ def generate_audio(
             "Texto para gerar áudio não informado."
         )
 
-    text = prepare_text_for_tts(text)
-
-
     if output_path is None:
+        output_path = "output/audio/audio.mp3"
 
-        output_path = (
-            "output/audio/audio.mp3"
-        )
+    engine = get_voice_engine()
 
-
-    output = Path(output_path)
-
-
-    output.parent.mkdir(
-        parents=True,
-        exist_ok=True
+    return engine.generate(
+        text,
+        output_path,
+        narration_style=narration_style,
     )
-
-
-    try:
-
-        asyncio.run(
-            _generate(
-                text,
-                str(output)
-            )
-        )
-
-
-    except RuntimeError:
-
-        loop = asyncio.new_event_loop()
-
-        loop.run_until_complete(
-            _generate(
-                text,
-                str(output)
-            )
-        )
-
-        loop.close()
-
-
-
-    print(
-        f"🎙️ Áudio criado: {output}"
-    )
-
-
-    return str(output)
 
 
 

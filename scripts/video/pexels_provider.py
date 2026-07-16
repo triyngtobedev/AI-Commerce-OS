@@ -65,7 +65,7 @@ def search_pexels(query):
             headers=headers,
             params={
                 "query": query,
-                "per_page": 5
+                "per_page": 15
             },
             timeout=15
         )
@@ -120,7 +120,7 @@ def search_pexels(query):
 
             params={
                 "query": query,
-                "per_page": 5
+                "per_page": 15
             },
 
             timeout=15

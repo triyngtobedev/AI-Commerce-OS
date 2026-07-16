@@ -64,6 +64,39 @@ def _split_text_by_weights(text: str, weights: list) -> list:
     return chunks
 
 
+def _scene_narration_text(scene: dict, fallback: str) -> str:
+    """Retorna texto de narração da cena, com fallback global."""
+
+    text = scene.get("narracao", "").strip()
+    return text or fallback
+
+
+def _estimate_scene_durations(scenes: list, narracao: str, audio_duration: float) -> list[float]:
+    """Estima duração por cena usando narração local e escala para o áudio real."""
+
+    texts = [_scene_narration_text(scene, "") for scene in scenes]
+    if not any(texts):
+        weights = [_scene_weight(scene) for scene in scenes]
+        texts = _split_text_by_weights(narracao, weights)
+
+    estimates = [
+        float(estimate_duration_seconds(text)) if text else _scene_weight(scenes[i])
+        for i, text in enumerate(texts)
+    ]
+    total_estimate = sum(estimates) or 1.0
+
+    durations = []
+    for estimate in estimates:
+        raw = (estimate / total_estimate) * audio_duration
+        durations.append(max(3.0, round(raw, 2)))
+
+    if durations:
+        delta = round(audio_duration - sum(durations), 2)
+        durations[-1] = max(3.0, round(durations[-1] + delta, 2))
+
+    return durations
+
+
 def sync_scenes_to_audio(
     cenas_data,
     narracao: str,
@@ -90,17 +123,19 @@ def sync_scenes_to_audio(
         return cenas_data if isinstance(cenas_data, dict) else {"cenas": scenes}
 
     weights = [_scene_weight(s) for s in scenes]
-    total_weight = sum(weights) or 1
-
-    narration_parts = _split_text_by_weights(narracao, weights)
+    durations = _estimate_scene_durations(scenes, narracao, audio_duration)
+    narration_parts = [
+        _scene_narration_text(scene, "")
+        for scene in scenes
+    ]
+    if not any(narration_parts):
+        narration_parts = _split_text_by_weights(narracao, weights)
 
     current = 0.0
     updated = []
 
     for i, scene in enumerate(scenes):
-        weight = weights[i]
-        raw_duration = (weight / total_weight) * audio_duration
-        duration = max(3.0, round(raw_duration, 2))
+        duration = durations[i] if i < len(durations) else max(3.0, weights[i])
 
         if i == len(scenes) - 1:
             duration = max(3.0, round(audio_duration - current, 2))
@@ -131,15 +166,27 @@ def resolve_scene_media(
 ):
     """
     Resolve arquivo de mídia para uma cena.
-    Prioriza vídeos; fallback para imagens com rotação se faltarem.
+    Prioriza scene-{N} (Visual Media Engine), depois video-{N}, com rotação.
     """
 
     root = Path(assets_root)
+    scene_num = scene_index + 1
+
+    scene_video = root / "videos" / f"scene-{scene_num:02d}.mp4"
+    scene_image = root / "images" / f"scene-{scene_num:02d}.jpg"
+
+    if scene_video.exists():
+        return scene_video
+
+    if scene_image.exists():
+        return scene_image
+
     videos = sorted((root / "videos").glob("video-*.mp4"))
     images = sorted(
         list((root / "images").glob("imagem-*.jpg"))
         + list((root / "images").glob("imagem-*.jpeg"))
         + list((root / "images").glob("imagem-*.png"))
+        + list((root / "images").glob("scene-*.jpg"))
     )
 
     if scene_index < len(videos):

@@ -40,6 +40,52 @@ def probe_duration(path) -> float:
         return 0.0
 
 
+def probe_dimensions(path) -> tuple[int, int]:
+    """Retorna (width, height) do primeiro stream de vídeo ou imagem."""
+
+    media = Path(path)
+
+    if not media.exists():
+        return 0, 0
+
+    suffix = media.suffix.lower()
+
+    if suffix in {".jpg", ".jpeg", ".png", ".webp", ".bmp"}:
+        try:
+            from PIL import Image
+
+            with Image.open(media) as img:
+                return img.size
+        except Exception:
+            return 0, 0
+
+    cmd = [
+        "ffprobe",
+        "-v", "quiet",
+        "-select_streams", "v:0",
+        "-show_entries", "stream=width,height",
+        "-of", "json",
+        str(media.resolve()),
+    ]
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        data = json.loads(result.stdout)
+        streams = data.get("streams", [])
+        if streams:
+            return int(streams[0].get("width", 0)), int(streams[0].get("height", 0))
+
+    except (subprocess.CalledProcessError, json.JSONDecodeError, ValueError, IndexError):
+        pass
+
+    return 0, 0
+
+
 def probe_has_video_stream(path) -> bool:
     """Verifica se o arquivo possui stream de vídeo."""
 

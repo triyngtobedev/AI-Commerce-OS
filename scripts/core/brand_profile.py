@@ -42,6 +42,26 @@ YOUTUBE_DARK_BRAND = BrandProfile(
     watermark_opacity=0.4,
 )
 
+YOUTUBE_DARK_CHANNEL_DESCRIPTION = """\
+Bem-vindo ao Projeto Atlas — o canal onde história, mistério e ciência se encontram em documentários narrados com profundidade e rigor.
+
+Aqui você encontra histórias reais que mudaram o curso da humanidade: explosões inexplicáveis na Sibéria, civilizações perdidas, epidemias que redefiniram continentes, personalidades que desafiaram seu tempo e descobertas científicas que ainda intrigam pesquisadores.
+
+Cada vídeo é produzido com pesquisa documental, narrativa envolvente e edição cinematográfica — pensado para quem busca respostas, não especulação. Fatos verificados, contexto histórico e a curiosidade que move a ciência.
+
+📌 O que você encontra aqui:
+• Documentários sobre eventos históricos e mistérios não resolvidos
+• Análises de civilizações antigas, guerras e descobertas científicas
+• Narrativas em português com qualidade de produção profissional
+• Novos episódios toda semana
+
+🔔 Inscreva-se e ative o sininho para não perder nenhum episódio.
+
+—
+
+Palavras-chave: documentário, história, mistério, ciência, curiosidades, fatos históricos, mistérios não resolvidos, civilizações antigas, descobertas científicas, educação, documentário brasileiro.
+"""
+
 
 def get_brand(platform_id: str = "youtube_dark") -> BrandProfile:
     """Retorna perfil de marca da plataforma."""

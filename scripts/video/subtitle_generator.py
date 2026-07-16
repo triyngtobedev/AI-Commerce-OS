@@ -1,6 +1,11 @@
 from pathlib import Path
 
 from scripts.utils.slug import content_output_dir
+from scripts.core.brand_engine import (
+    get_render_style,
+    should_show_intro,
+)
+from scripts.video.subtitle_engine import write_subtitles, ffmpeg_subtitle_filter
 
 
 def _output_folder(subject):
@@ -8,69 +13,30 @@ def _output_folder(subject):
     return content_output_dir(subject, platform=platform)
 
 
-def _format_srt_time(seconds) -> str:
-    """Converte segundos (int ou float) para formato SRT HH:MM:SS,mmm."""
+def _resolve_timing_offset(cenas_data, platform: str = "youtube_dark") -> float:
+    """Desloca legendas para coincidir com intro visual no render."""
 
-    try:
-        total = float(seconds)
-    except (TypeError, ValueError):
-        total = 0.0
+    if not should_show_intro(platform):
+        return 0.0
 
-    if total < 0:
-        total = 0.0
-
-    hours = int(total // 3600)
-    minutes = int((total % 3600) // 60)
-    secs = int(total % 60)
-    millis = int(round((total % 1) * 1000))
-
-    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+    return get_render_style(platform).intro_seconds
 
 
-def _chunk_subtitle_text(text: str, max_chars: int = 80) -> list:
-    """
-    Divide texto longo em blocos legíveis para legenda.
-    Prioriza quebras em pontuação.
-    """
-
-    text = text.strip()
-
-    if not text or len(text) <= max_chars:
-        return [text] if text else []
-
-    sentences = []
-    current = ""
-
-    for part in text.replace("...", ".|").split(". "):
-        part = part.replace(".|", "...").strip()
-
-        if not part:
-            continue
-
-        candidate = f"{current} {part}".strip() if current else part
-
-        if len(candidate) <= max_chars:
-            current = candidate
-        else:
-            if current:
-                sentences.append(current)
-            current = part
-
-    if current:
-        sentences.append(current)
-
-    return sentences or [text[:max_chars]]
+def _resolve_audio_duration(cenas_data) -> float | None:
+    if isinstance(cenas_data, dict):
+        duration = cenas_data.get("audio_duration")
+        if duration:
+            return float(duration)
+    return None
 
 
 def generate_subtitles(result):
+    """Gera legendas documentais via Subtitle Engine."""
 
     product = result["produto"]
-
+    platform = product.get("_output_platform", result.get("platform", "youtube_dark"))
     folder = _output_folder(product)
-
     folder.mkdir(parents=True, exist_ok=True)
-
-    subtitle_file = folder / "captions.srt"
 
     cenas_data = result.get("cenas", {})
 
@@ -81,49 +47,31 @@ def generate_subtitles(result):
 
     if not scenes:
         texto = result.get("conteudo", {}).get("texto_narracao", "")
-
         if texto:
             scenes = [{"tempo": "0-30", "narracao": texto}]
 
-    with open(subtitle_file, "w", encoding="utf-8") as file:
-        index = 1
+    timing_offset = _resolve_timing_offset(cenas_data, platform)
+    audio_duration = _resolve_audio_duration(cenas_data)
 
-        for scene in scenes:
-            inicio = scene.get("tempo_inicio")
-            fim = scene.get("tempo_fim")
-
-            if inicio is None or fim is None:
-                tempo = scene.get("tempo", "0-5")
-                try:
-                    start, end = tempo.split("-")
-                    inicio = float(start)
-                    fim = float(end)
-                except ValueError:
-                    inicio, fim = 0.0, 5.0
-
-            texto = scene.get("narracao", scene.get("texto", ""))
-
-            if not texto:
-                continue
-
-            chunks = _chunk_subtitle_text(texto)
-            duration = max(0.5, fim - inicio)
-            chunk_duration = duration / len(chunks)
-            current = float(inicio)
-
-            for chunk in chunks:
-                chunk_end = min(current + chunk_duration, fim)
-
-                file.write(f"{index}\n")
-                file.write(
-                    f"{_format_srt_time(current)} --> "
-                    f"{_format_srt_time(chunk_end)}\n"
-                )
-                file.write(f"{chunk}\n\n")
-
-                index += 1
-                current = chunk_end
+    subtitle_file = write_subtitles(
+        scenes,
+        folder,
+        basename="captions",
+        platform=platform,
+        timing_offset=timing_offset,
+        audio_duration=audio_duration,
+    )
 
     print(f"📝 Legenda criada: {subtitle_file.resolve()}")
 
     return subtitle_file.resolve()
+
+
+def get_subtitle_ffmpeg_filter(subtitle_path: Path, platform: str = "youtube_dark") -> str:
+    """Retorna filtro FFmpeg para legendas (prefere ASS se disponível)."""
+
+    ass_path = subtitle_path.with_suffix(".ass")
+    if ass_path.exists():
+        return ffmpeg_subtitle_filter(ass_path, platform)
+
+    return ffmpeg_subtitle_filter(subtitle_path, platform)

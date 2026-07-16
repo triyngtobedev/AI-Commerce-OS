@@ -15,7 +15,12 @@ from scripts.data_sources.youtube.topic_collector import collect_topics
 from scripts.research.topic_research_engine import research_topics
 
 from scripts.youtube.topic_analyst import analyze_topic
-from scripts.youtube.topic_scorer import calculate_topic_score, rank_topics
+from scripts.youtube.topic_scorer import calculate_topic_score
+from scripts.youtube.topic_selector import (
+    collect_processed_topic_names,
+    resolve_topic_for_production,
+    select_next_topics,
+)
 from scripts.youtube.topic_opportunity import analyze_topic_opportunity
 from scripts.decision.decision_engine import decide_action
 
@@ -60,6 +65,7 @@ def run_youtube_pipeline(
     max_videos: int = 1,
     auto_upload: bool = False,
     privacy_status: str = "private",
+    force_topic_name: str = None,
 ):
     """
     Executa pipeline completo para YouTube Dark.
@@ -122,26 +128,26 @@ def run_youtube_pipeline(
         return []
 
 
-    scored = []
-
-    for topic in topics:
-
-        topic["_output_platform"] = YOUTUBE_DARK.id
-
-        score = calculate_topic_score(topic)
-
-        scored.append({
-            "produto": topic,
-            "score": score,
-        })
+    processed_names = collect_processed_topic_names(
+        platform=YOUTUBE_DARK.id,
+    )
 
 
-    ranked = rank_topics(scored)
+    selected = select_next_topics(
+        topics,
+        max_videos=max_videos,
+        platform=YOUTUBE_DARK.id,
+        force_topic_name=force_topic_name,
+        processed_names=processed_names,
+    )
 
-    selected = [
-        item["produto"]
-        for item in ranked[:max_videos]
-    ]
+    if not selected:
+
+        print(
+            "❌ Nenhum tema novo para produzir"
+        )
+
+        return []
 
 
     results = []
@@ -150,6 +156,18 @@ def run_youtube_pipeline(
     for topic in selected:
 
         try:
+
+            topic = resolve_topic_for_production(
+                topic,
+                topics,
+                processed_names=processed_names,
+                platform=YOUTUBE_DARK.id,
+            )
+
+            if not topic:
+
+                continue
+
 
             print(
                 "\n============================"
@@ -257,6 +275,10 @@ def run_youtube_pipeline(
                     / "assets"
                     / "audio"
                     / "narracao.mp3"
+                ),
+                "narration_style": strategy.get(
+                    "estilo_video",
+                    YOUTUBE_DARK.narration_style,
                 ),
             })
 
@@ -437,6 +459,16 @@ def run_youtube_pipeline(
             record_production(
                 result,
                 upload_result=upload_result,
+            )
+
+            processed_names.add(
+                topic["nome"].strip().casefold()
+            )
+            processed_names.add(
+                content_output_dir(
+                    topic,
+                    platform=YOUTUBE_DARK.id,
+                ).name
             )
 
 

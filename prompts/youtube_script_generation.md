@@ -67,6 +67,13 @@ NÃO use estas construções:
 ❌ "Imagine uma explosão tão poderosa que devastou uma região remota."
 ✅ "Em 1908, algo explodiu na Sibéria com a força de mil bombas atômicas — e até hoje, ninguém sabe o que foi."
 
-## Fluxo entre seções
+## Encerramento (CTA natural)
 
-Cada seção deve fluir naturalmente para a próxima, mantendo tensão crescente até a revelação.
+❌ "Junte-se a nós na exploração do desconhecido..."
+❌ "Inscreva-se e ative o sininho para mais histórias incríveis..."
+✅ "A resposta ainda não existe — e talvez nunca exista. Se esse mistério te pegou, o próximo episódio já está no canal."
+
+O encerramento deve:
+- Fazer callback ao hook (fechar o loop narrativo)
+- Deixar uma pergunta ou tensão final
+- CTA curto e direto (máx. 1 frase)

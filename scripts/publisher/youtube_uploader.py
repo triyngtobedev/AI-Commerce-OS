@@ -14,6 +14,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
+from scripts.metrics.metrics_tracker import _load_metrics
 from scripts.publisher.youtube_auth import (
     build_google_credentials,
     validate_credentials,
@@ -31,6 +32,53 @@ def _log(step: str, message: str):
     """Log padronizado das etapas de upload."""
 
     print(f"[YouTube Upload] {step}: {message}")
+
+
+
+def _published_titles() -> set:
+    """Títulos já publicados no canal (via metrics)."""
+
+    titles = set()
+
+    for record in _load_metrics():
+        if record.get("status") != "published":
+            continue
+
+        title = record.get("titulo")
+
+        if title:
+            titles.add(title.strip().lower())
+
+    return titles
+
+
+
+def _resolve_publish_title(package: Dict[str, Any]) -> str:
+    """
+    Garante título dinâmico do pipeline e evita duplicata no canal.
+    """
+
+    candidates = [package.get("titulo", "")]
+    candidates.extend(package.get("titulo_alternativos", []))
+
+    published = _published_titles()
+
+    for candidate in candidates:
+        title = str(candidate or "").strip()
+
+        if not title:
+            continue
+
+        if title.lower() not in published:
+            return title
+
+    base = str(package.get("titulo") or package.get("produto") or "Vídeo").strip()
+    suffix = 2
+
+    while f"{base} ({suffix})".lower() in published:
+        suffix += 1
+
+    return f"{base} ({suffix})"
 
 
 def _upload_error_message(status) -> str:
@@ -71,7 +119,8 @@ def upload_video(
 
     _log("INÍCIO", "Iniciando upload para o YouTube")
 
-    title = package.get("titulo", "Vídeo")
+    title = _resolve_publish_title(package)
+    package["titulo"] = title
     _log("METADADOS", f"Título: {title}")
     _log("METADADOS", f"Privacidade: {privacy_status}")
 

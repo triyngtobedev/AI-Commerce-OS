@@ -203,6 +203,46 @@ def _try_attach_analytics(record: Dict[str, Any]):
 
 
 
+def get_processed_subject_names(
+    platform: Optional[str] = None,
+    statuses: Optional[set] = None,
+) -> List[str]:
+    """
+    Retorna nomes de sujeitos já produzidos ou publicados.
+
+    Args:
+        platform: Filtra por plataforma (ex: youtube_dark)
+        statuses: Conjunto de status aceitos; padrão inclui
+                  produced, published e produced_not_uploaded
+    """
+
+    if statuses is None:
+        statuses = {
+            "produced",
+            "published",
+            "produced_not_uploaded",
+        }
+
+    records = _load_metrics()
+
+    names = []
+
+    for record in records:
+        if platform and record.get("platform") != platform:
+            continue
+
+        if record.get("status") not in statuses:
+            continue
+
+        name = str(record.get("subject_name", "")).strip()
+
+        if name:
+            names.append(name)
+
+    return names
+
+
+
 def get_metrics_summary(
     platform: Optional[str] = None,
 ) -> Dict[str, Any]:

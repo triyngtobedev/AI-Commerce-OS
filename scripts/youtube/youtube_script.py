@@ -10,6 +10,8 @@ from scripts.youtube.narration_utils import (
     count_words,
     validate_narration,
     stitch_script_to_narration,
+    clean_script_phrases,
+    detect_banned_phrases,
     MIN_NARRATION_WORDS,
 )
 from scripts.utils.prompt_loader import load_prompt
@@ -109,6 +111,15 @@ Estratégia completa:
 
         script = _fallback_script(topic, strategy)
 
+    script = clean_script_phrases(script)
+
+    banned = detect_banned_phrases(script)
+    if banned:
+        print(f"⚠️ Roteiro contém frases genéricas — reescrevendo: {len(banned)}")
+        script = _rewrite_banned_script(
+            script, topic, strategy, full_prompt, banned
+        )
+
     narration = stitch_script_to_narration(script)
     word_count = count_words(narration)
 
@@ -139,6 +150,36 @@ Estratégia completa:
 
     return script
 
+
+def _rewrite_banned_script(script, topic, strategy, original_prompt, banned):
+    """Reescreve seções com frases genéricas via IA."""
+
+    rewrite_prompt = f"""
+{original_prompt}
+
+O roteiro abaixo contém frases GENÉRICAS PROIBIDAS que prejudicam retenção:
+{banned}
+
+REESCREVA o JSON completo eliminando:
+- "Imagine uma/que..."
+- "Junte-se a nós..."
+- "Neste vídeo iremos..."
+- CTAs robóticos
+- Encerramentos artificiais
+
+Mantenha fatos, datas e tensão narrativa. Hook deve prender em 5 segundos.
+
+Roteiro atual:
+{script}
+"""
+
+    response = ask_ai(rewrite_prompt, "script")
+    rewritten = parse_json(response)
+
+    if isinstance(rewritten, dict):
+        return clean_script_phrases(rewritten)
+
+    return script
 
 
 def _expand_script_if_short(script, topic, strategy, original_prompt, narration):

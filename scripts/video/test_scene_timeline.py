@@ -5,6 +5,7 @@ import unittest
 from scripts.video.scene_timeline import (
     sync_scenes_to_audio,
     _split_text_by_weights,
+    _estimate_scene_durations,
     SCENE_WEIGHTS,
 )
 

@@ -136,7 +136,30 @@ pip install google-api-python-client google-auth-oauthlib
 
 - `youtube.upload` — publicação de vídeos e thumbnails
 - `youtube.readonly` — leitura de dados do canal
+- `youtube.force-ssl` — atualização de banner e descrição do canal
 - `yt-analytics.readonly` — métricas do YouTube Analytics
+
+## Branding do canal
+
+Gera e aplica identidade visual (banner, descrição):
+
+```bash
+# Gerar assets (perfil, banner, descrição)
+python main.py --youtube-branding
+
+# Aplicar banner e descrição via API
+python main.py --youtube-branding --apply
+```
+
+**Importante:** a aplicação via API requer o escopo `youtube.force-ssl`. Se o token foi gerado antes dessa atualização, reautorize:
+
+```bash
+python main.py --youtube-auth
+```
+
+A **foto de perfil** não pode ser alterada via API (é vinculada à conta Google). Aplique manualmente em YouTube Studio → Personalização.
+
+Assets gerados em `assets/brand/`.
 
 ## Arquitetura
 
@@ -144,4 +167,6 @@ pip install google-api-python-client google-auth-oauthlib
 |--------|------------------|
 | `scripts/publisher/youtube_auth.py` | OAuth, validação, fluxo interativo |
 | `scripts/publisher/youtube_uploader.py` | Upload de vídeos |
+| `scripts/publisher/youtube_channel_branding.py` | Banner e descrição do canal |
+| `scripts/youtube/channel_assets.py` | Geração de assets visuais |
 | `scripts/youtube/youtube_analytics.py` | Métricas e insights de otimização |

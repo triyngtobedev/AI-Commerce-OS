@@ -24,12 +24,24 @@ SECTION_TRANSITIONS = {
     "encerramento": None,
 }
 
+BANNED_PHRASES = [
+    r"Imagine uma\b",
+    r"Imagine que\b",
+    r"Junte-se a nós",
+    r"Neste vídeo iremos",
+    r"grandes perguntas da humanidade",
+    r"histórias incríveis sobre",
+    r"Descubra a história fascinante",
+    r"E assim, o mistério\b",
+    r"inscreva-se e ative o sininho para mais",
+]
+
 MIN_NARRATION_WORDS = 750
 TARGET_NARRATION_WORDS = 1000
 WORDS_PER_MINUTE = 150
 
 
-def stitch_script_to_narration(script: dict) -> str:
+def stitch_script_to_narration(script: dict, use_transitions: bool = False) -> str:
     """
     Monta texto_narracao a partir das seções do roteiro.
     Preserva todo o conteúdo — nunca resume.
@@ -43,9 +55,70 @@ def stitch_script_to_narration(script: dict) -> str:
         if not text:
             continue
 
+        if use_transitions and parts:
+            transition = SECTION_TRANSITIONS.get(key)
+            if transition:
+                parts.append(transition)
+
         parts.append(text)
 
     return " ".join(parts)
+
+
+def clean_script_phrases(script: dict) -> dict:
+    """Remove ou substitui frases genéricas/robóticas do roteiro."""
+
+    import re
+
+    cleaned = {}
+
+    replacements = {
+        r"^Imagine uma\b": "Em",
+        r"^Imagine que\b": "",
+        r"Junte-se a nós na exploração do desconhecido[^.]*\.?": (
+            "O próximo episódio já está a caminho."
+        ),
+        r"inscreva-se e ative o sininho para mais histórias incríveis[^.]*\.?": (
+            "Se essa história te pegou, inscreva-se no canal."
+        ),
+        r"E assim, o mistério[^.]*permanece[^.]*\.?": "",
+    }
+
+    for key, text in script.items():
+        if key.startswith("_") or not isinstance(text, str):
+            cleaned[key] = text
+            continue
+
+        result = text
+        for pattern, replacement in replacements.items():
+            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+
+        for banned in BANNED_PHRASES:
+            if re.search(banned, result, re.IGNORECASE):
+                result = re.sub(banned, "", result, flags=re.IGNORECASE)
+
+        result = re.sub(r"\s+", " ", result).strip()
+        cleaned[key] = result
+
+    return cleaned
+
+
+def detect_banned_phrases(script: dict) -> list[str]:
+    """Retorna lista de frases proibidas encontradas no roteiro."""
+
+    import re
+
+    found = []
+
+    for key, text in script.items():
+        if not isinstance(text, str):
+            continue
+
+        for banned in BANNED_PHRASES:
+            if re.search(banned, text, re.IGNORECASE):
+                found.append(f"{key}: {banned}")
+
+    return found
 
 
 def count_words(text: str) -> int:

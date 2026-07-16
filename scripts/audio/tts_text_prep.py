@@ -130,12 +130,19 @@ def _normalize_dates(text: str) -> str:
 
 
 def _add_breathing_pauses(text: str) -> str:
-    """Insere pausas naturais entre blocos longos."""
+    """Insere pausas naturais para ritmo documental e suspense."""
 
     text = re.sub(r"\.\s+Mas\s+", ". ... Mas ", text)
     text = re.sub(r"\.\s+E\s+é\s+aqui", ". ... E é aqui", text)
     text = re.sub(r"\.\s+No entanto,", ". ... No entanto,", text)
     text = re.sub(r"\.\s+Além disso,", ". ... Além disso,", text)
+    text = re.sub(r"\?\s+", "? ... ", text)
+    text = re.sub(r"!\s+", "! ... ", text)
+    text = re.sub(r"\.\s+O que\s+", ". ... O que ", text)
+    text = re.sub(r"\.\s+Ninguém\s+", ". ... Ninguém ", text)
+    text = re.sub(r"\.\s+Até hoje", ". ... Até hoje", text)
+    text = re.sub(r"\.\s+Mas o que", ". ... Mas o que", text)
+    text = re.sub(r",\s+que\s+", ", ... que ", text, count=2)
 
     return text
 
