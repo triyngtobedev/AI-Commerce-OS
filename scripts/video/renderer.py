@@ -9,6 +9,7 @@ from scripts.core.platform_config import get_platform, TIKTOK_SHOP
 from scripts.video.scene_renderer import (
     render_scenes_video,
     mux_video_audio_subtitles,
+    RenderSyncError,
 )
 from scripts.video.subtitle_generator import get_subtitle_ffmpeg_filter
 from scripts.core.emotional_timeline import EmotionalTimeline
@@ -231,7 +232,7 @@ def _render_scene_aware(result, folder, width, height, output):
 
     print("🎬 Modo scene-aware (duração sincronizada + transições)")
 
-    video_track = render_scenes_video(result, width, height, output)
+    video_track = render_scenes_video(result, width, height, output, assets_root=folder / "assets")
 
     if not video_track:
         print("⚠️ Scene renderer falhou — fallback para concat legado")
@@ -293,8 +294,12 @@ def render_video(
     if isinstance(timeline, dict):
         timeline = EmotionalTimeline.from_dict(timeline)
 
+    produto_dict = dict(produto) if isinstance(produto, dict) else {}
+    if platform and not produto_dict.get("_output_platform"):
+        produto_dict["_output_platform"] = platform
+
     result = {
-        "produto": produto if isinstance(produto, dict) else {},
+        "produto": produto_dict,
         "cenas": scenes if isinstance(scenes, dict) else {"cenas": scenes},
         "audio": str(audio) if audio else None,
         "platform": platform,
@@ -304,16 +309,14 @@ def render_video(
     if subtitles:
         result["subtitle_file"] = str(subtitles)
 
-    folder = Path(output_path).parent if output_path else Path(".")
+    folder = _resolve_folder(result)
     folder.mkdir(parents=True, exist_ok=True)
     output = Path(output_path) if output_path else folder / "video_final.mp4"
+    assets_root = folder / "assets"
 
-    # FUTURE: aplicar zoom emocional por cena via timeline.sections
-    # FUTURE: aplicar shake/flash em seções de alto impacto
-    # FUTURE: inserir silêncio estratégico via pause_before/after
-    # FUTURE: mixar trilha sonora conforme emotion de cada seção
-
-    video_track = render_scenes_video(result, width, height, output)
+    video_track = render_scenes_video(
+        result, width, height, output, assets_root=assets_root
+    )
 
     if not video_track:
         return None
@@ -378,8 +381,8 @@ def render_video_project(result):
                 result, folder, width, height, output
             )
 
-    except subprocess.CalledProcessError as error:
-        print("❌ Erro no FFmpeg:")
+    except (subprocess.CalledProcessError, RenderSyncError) as error:
+        print("❌ Erro no render:")
         print(error)
         return None
 

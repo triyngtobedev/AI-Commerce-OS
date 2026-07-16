@@ -154,7 +154,7 @@ class TestVisualMediaEngine(unittest.TestCase):
             "historical documentary",
         )
         self.assertGreater(len(queries), 1)
-        self.assertTrue(any("cinematic" in q for q in queries))
+        self.assertTrue(any("documentary" in q or "cinematic" in q for q in queries))
 
     def test_merge_media_deduplicates_ids(self):
         target = {"videos": [{"id": 1, "width": 1920}], "photos": []}

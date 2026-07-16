@@ -14,6 +14,11 @@ from typing import Any, Dict, List, Optional
 
 from scripts.core.brand_validation import validate_brand_asset
 from scripts.core.production.logger import get_logger
+from scripts.video.scene_timeline import resolve_scene_media, extract_scenes
+from scripts.video.media_probe import probe_duration
+
+
+MAX_AV_SYNC_DELTA = 1.0
 
 
 @dataclass
@@ -184,15 +189,21 @@ def run_health_check(
 
     # Legendas
     subtitle = result.get("subtitle_file")
+    srt_candidate = export_folder / "captions.srt"
+    ass_candidate = export_folder / "captions.ass"
+    resolved_subtitle = None
+
     if subtitle and Path(subtitle).exists():
-        report.add("subtitles_exist", True, str(subtitle))
+        resolved_subtitle = Path(subtitle)
+    elif srt_candidate.exists():
+        resolved_subtitle = srt_candidate
+    elif ass_candidate.exists():
+        resolved_subtitle = ass_candidate
+
+    if resolved_subtitle:
+        report.add("subtitles_exist", True, str(resolved_subtitle))
     else:
-        report.add(
-            "subtitles_exist",
-            False,
-            "Legendas não encontradas",
-            severity="warning",
-        )
+        report.add("subtitles_exist", False, "Legendas não encontradas")
 
     # Metadados
     titulo = str(conteudo.get("titulo", "")).strip()
@@ -233,14 +244,81 @@ def run_health_check(
         f"Categoria: {categoria or 'ausente'}",
     )
 
-    # Timeline consistente
+    # Timeline e cobertura de mídia
     cenas = result.get("cenas", {})
     scene_list = cenas.get("cenas", []) if isinstance(cenas, dict) else cenas
+    if not isinstance(scene_list, list):
+        scene_list = []
+
     report.add(
-        "timeline_consistent",
-        len(scene_list) >= 3,
+        "timeline_not_empty",
+        len(scene_list) > 0,
         f"Cenas na timeline: {len(scene_list)}",
     )
+
+    audio_duration = float(cenas.get("audio_duration", 0)) if isinstance(cenas, dict) else 0.0
+    resolved_audio = None
+    audio_ref = result.get("audio")
+    if audio_ref and Path(audio_ref).exists():
+        resolved_audio = Path(audio_ref)
+    else:
+        audio_candidate = export_folder / "assets" / "audio" / "narracao.mp3"
+        if audio_candidate.exists():
+            resolved_audio = audio_candidate
+
+    if resolved_audio and audio_duration <= 0:
+        audio_duration = probe_duration(resolved_audio)
+
+    scene_durations = [
+        float(scene.get("duration_seconds", 0))
+        for scene in scene_list
+        if isinstance(scene, dict)
+    ]
+    timeline_total = round(sum(scene_durations), 2)
+    timeline_synced = bool(cenas.get("synced")) if isinstance(cenas, dict) else False
+
+    timeline_consistent = (
+        len(scene_list) >= 3
+        and all(duration > 0 for duration in scene_durations)
+        and timeline_synced
+    )
+    if audio_duration > 0 and scene_durations:
+        timeline_consistent = timeline_consistent and abs(timeline_total - audio_duration) <= MAX_AV_SYNC_DELTA
+
+    report.add(
+        "timeline_consistent",
+        timeline_consistent,
+        (
+            f"Timeline: {len(scene_list)} cenas, total={timeline_total:.1f}s, "
+            f"áudio={audio_duration:.1f}s, synced={timeline_synced}"
+        ),
+    )
+
+    assets_root = export_folder / "assets"
+    scenes_with_media = 0
+    for index in range(len(scene_list)):
+        if resolve_scene_media(assets_root, index, len(scene_list)):
+            scenes_with_media += 1
+
+    coverage_ratio = scenes_with_media / len(scene_list) if scene_list else 0.0
+    report.add(
+        "media_coverage",
+        len(scene_list) > 0 and coverage_ratio >= 1.0,
+        f"Cobertura de mídia: {scenes_with_media}/{len(scene_list)}",
+    )
+
+    if resolved_video and resolved_audio:
+        video_duration = float(probe.get("format", {}).get("duration", 0)) if probe else probe_duration(resolved_video)
+        audio_probe_duration = probe_duration(resolved_audio)
+        av_delta = abs(video_duration - audio_probe_duration)
+        report.add(
+            "audio_video_sync",
+            av_delta <= MAX_AV_SYNC_DELTA,
+            (
+                f"Áudio/vídeo: vídeo={video_duration:.1f}s, "
+                f"áudio={audio_probe_duration:.1f}s, delta={av_delta:.2f}s"
+            ),
+        )
 
     # Branding — post_package
     post_package_path = export_folder / "post_package.json"

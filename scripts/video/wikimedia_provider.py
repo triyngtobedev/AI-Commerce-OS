@@ -12,8 +12,18 @@ from scripts.core.production.retry import retry_with_backoff
 from scripts.video.media_quality import MIN_IMAGE_WIDTH_FALLBACK
 
 COMMONS_API_URL = "https://commons.wikimedia.org/w/api.php"
-REQUEST_TIMEOUT = 10
-USER_AGENT = "AI-Commerce-OS/1.0 (documentary pipeline; contact: projeto-atlas)"
+REQUEST_TIMEOUT = 15
+USER_AGENT = (
+    "AI-Commerce-OS/1.0 "
+    "(https://github.com/ai-commerce-os; contact: projeto-atlas@example.com)"
+)
+
+_SESSION = requests.Session()
+_SESSION.headers.update({
+    "User-Agent": USER_AGENT,
+    "Accept": "application/json",
+    "Accept-Language": "en",
+})
 
 
 def _build_credit(extmetadata: dict) -> str:
@@ -80,22 +90,25 @@ def search_wikimedia(query: str, limit: int = 6) -> dict:
     if not query or not query.strip():
         return empty
 
+    search_query = " ".join(query.split())[:100].strip()
+
     try:
-        @retry_with_backoff(max_attempts=3, operation=f"Wikimedia search: {query[:40]}")
+        @retry_with_backoff(max_attempts=3, operation=f"Wikimedia search: {search_query[:40]}")
         def _fetch():
-            response = requests.get(
+            response = _SESSION.get(
                 COMMONS_API_URL,
                 params={
                     "action": "query",
                     "generator": "search",
-                    "gsrsearch": query.strip()[:120],
+                    "gsrsearch": search_query,
                     "gsrnamespace": 6,
                     "gsrlimit": limit * 3,
                     "prop": "imageinfo",
                     "iiprop": "url|size|extmetadata",
                     "format": "json",
+                    "formatversion": 2,
+                    "origin": "*",
                 },
-                headers={"User-Agent": USER_AGENT},
                 timeout=REQUEST_TIMEOUT,
             )
             response.raise_for_status()
@@ -107,6 +120,9 @@ def search_wikimedia(query: str, limit: int = 6) -> dict:
         return empty
 
     pages = data.get("query", {}).get("pages", {})
+    if isinstance(pages, list):
+        pages = {str(page.get("pageid", idx)): page for idx, page in enumerate(pages)}
+
     photos = _parse_pages(pages, limit)
 
     if not photos:

@@ -16,7 +16,6 @@ from scripts.core.brand_engine import (
     watermark_filter_for_platform,
 )
 from scripts.core.brand_kit import get_brand_kit
-from scripts.video.subtitle_generator import get_subtitle_ffmpeg_filter
 from scripts.video.media_probe import probe_duration
 from scripts.video.scene_timeline import (
     extract_scenes,
@@ -24,7 +23,67 @@ from scripts.video.scene_timeline import (
     is_image,
 )
 from scripts.video.scene_emotion import get_scene_render_hints
+from scripts.video.subtitle_generator import get_subtitle_ffmpeg_filter
 from scripts.youtube.brand_overlay import lower_third_filter
+
+
+MAX_AV_SYNC_DELTA = 1.0
+
+
+class RenderSyncError(RuntimeError):
+    """Diferença áudio/vídeo acima do limite permitido."""
+
+
+def _scene_duration(scene: dict, synced: bool) -> float:
+    """Obtém duração da cena — timeline sincronizada é obrigatória."""
+
+    duration = scene.get("duration_seconds")
+    if duration and float(duration) > 0:
+        return float(duration)
+
+    if synced:
+        raise RenderSyncError(
+            f"Cena '{scene.get('tipo', '?')}' sem duration_seconds na timeline sincronizada"
+        )
+
+    tempo = scene.get("tempo", "0-5")
+    try:
+        start, end = tempo.split("-")
+        return max(2.0, float(end) - float(start))
+    except ValueError:
+        return 5.0
+
+
+def _validate_scene_coverage(scenes: list, clip_count: int) -> None:
+    if clip_count < len(scenes):
+        raise RenderSyncError(
+            f"Render incompleto: {clip_count}/{len(scenes)} cenas renderizadas"
+        )
+
+
+def validate_av_sync(
+    video_path: Path,
+    audio_path: Path | None,
+    *,
+    max_delta: float = MAX_AV_SYNC_DELTA,
+) -> float:
+    """Valida diferença entre duração do vídeo e do áudio. Retorna delta."""
+
+    video_duration = probe_duration(video_path)
+    audio_duration = probe_duration(audio_path) if audio_path and audio_path.exists() else 0.0
+
+    if audio_duration <= 0:
+        return 0.0
+
+    delta = abs(video_duration - audio_duration)
+    if delta > max_delta:
+        raise RenderSyncError(
+            f"Sincronização áudio/vídeo fora do limite: "
+            f"vídeo={video_duration:.2f}s, áudio={audio_duration:.2f}s, "
+            f"delta={delta:.2f}s (máx {max_delta}s)"
+        )
+
+    return delta
 
 
 def _fade_filter(duration: float, fade: float) -> str:
@@ -451,6 +510,7 @@ def render_scenes_video(
     width: int,
     height: int,
     output_path: Path,
+    assets_root: Path | None = None,
 ) -> Path | None:
     """Pipeline scene-aware com intro/outro de marca e motion por tipo de cena."""
 
@@ -461,11 +521,17 @@ def render_scenes_video(
     config = get_brand_config(platform)
     kit = config.kit
     scenes = extract_scenes(result.get("cenas", {}))
+    cenas_meta = result.get("cenas", {}) if isinstance(result.get("cenas"), dict) else {}
+    synced = bool(cenas_meta.get("synced"))
 
     if not scenes:
         return None
 
-    assets_root = folder / "assets"
+    if assets_root is None:
+        assets_root = folder / "assets"
+    else:
+        assets_root = Path(assets_root)
+
     temp_dir = folder / "assets" / "scene_clips"
     temp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -489,24 +555,19 @@ def render_scenes_video(
                 clip_paths.append(intro_clip)
                 scene_types.append("intro")
 
-    for i, scene in enumerate(scenes):
-        duration = scene.get("duration_seconds")
+    rendered_scenes = 0
 
-        if not duration:
-            tempo = scene.get("tempo", "0-5")
-            try:
-                start, end = tempo.split("-")
-                duration = float(end) - float(start)
-            except ValueError:
-                duration = 5.0
+    for i, scene in enumerate(scenes):
+        duration = _scene_duration(scene, synced)
 
         media = resolve_scene_media(assets_root, i, scene_count)
         scene_type = scene.get("tipo", "")
         scene_label = scene.get("visual", "")[:50]
 
         if not media:
-            print(f"⚠️ Sem mídia para cena {i + 1}")
-            continue
+            raise RenderSyncError(
+                f"Sem mídia para cena {i + 1} ({scene_type}) — cobertura 100% obrigatória"
+            )
 
         clip_out = temp_dir / f"scene_{i + 1:02d}.mp4"
 
@@ -520,9 +581,12 @@ def render_scenes_video(
         ):
             clip_paths.append(clip_out)
             scene_types.append(scene_type)
+            rendered_scenes += 1
             print(f"🎬 Cena {i + 1}/{scene_count} [{scene_type}]: {duration:.1f}s ({media.name})")
         else:
-            print(f"⚠️ Falha na cena {i + 1}")
+            raise RenderSyncError(f"Falha ao renderizar cena {i + 1} ({scene_type})")
+
+    _validate_scene_coverage(scenes, rendered_scenes)
 
     if should_show_outro(platform):
         outro_card = temp_dir / "outro_card.jpg"
@@ -569,6 +633,7 @@ def mux_video_audio_subtitles(
     """Combina vídeo, áudio e legendas com fade de abertura/encerramento."""
 
     render_style = get_render_style(platform)
+    opening = render_style.opening_fade_seconds
     video_filter = _scale_pad_filter(width, height)
 
     if subtitle_path and subtitle_path.exists():
@@ -578,10 +643,11 @@ def mux_video_audio_subtitles(
     if watermark:
         video_filter += f",{watermark}"
 
-    opening = render_style.opening_fade_seconds
     video_filter += f",fade=t=in:st=0:d={opening}"
 
     audio_duration = 0.0
+    video_duration = probe_duration(video_path)
+
     if audio_path and audio_path.exists():
         audio_duration = probe_duration(audio_path)
 
@@ -590,8 +656,14 @@ def mux_video_audio_subtitles(
     closing = render_style.closing_fade_seconds
     fade_start = 0.0
 
-    if audio_duration > closing + 1:
-        fade_start = max(0.0, audio_delay + audio_duration - closing)
+    target_duration = audio_duration if has_audio and audio_duration > 0 else video_duration
+
+    if has_audio and video_duration > 0 and target_duration > video_duration + 0.05:
+        pad_seconds = target_duration - video_duration
+        video_filter += f",tpad=stop_mode=clone:stop_duration={pad_seconds:.3f}"
+
+    if target_duration > closing + 1:
+        fade_start = max(0.0, audio_delay + target_duration - closing)
         video_filter += f",fade=t=out:st={fade_start:.2f}:d={closing}"
 
     cmd = [
@@ -622,8 +694,9 @@ def mux_video_audio_subtitles(
             "-b:a", "192k",
             "-map", "0:v:0",
             "-map", "1:a:0",
-            "-shortest",
         ])
+        if target_duration > 0:
+            cmd.extend(["-t", f"{target_duration:.3f}"])
     else:
         cmd.append("-an")
 
@@ -634,8 +707,16 @@ def mux_video_audio_subtitles(
 
     try:
         subprocess.run(cmd, check=True, capture_output=True)
-        return output_path.exists()
+        if not output_path.exists():
+            return False
 
+        if has_audio:
+            validate_av_sync(output_path, audio_path)
+
+        return True
+
+    except RenderSyncError:
+        raise
     except subprocess.CalledProcessError as error:
         stderr = error.stderr.decode("utf-8", errors="replace") if error.stderr else ""
         print(f"❌ Erro no mux final: {stderr[:300]}")

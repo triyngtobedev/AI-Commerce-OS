@@ -12,6 +12,13 @@ from scripts.audio.emotion_mapper import get_emotion_mapper
 from scripts.core.emotional_timeline import EmotionalTimeline, TimelineSection
 from scripts.core.visual_intent_engine import resolve_visual_intent
 
+# Mapeia tipos de cena (8) para chaves da timeline (6)
+SCENE_SECTION_ALIASES: dict[str, str] = {
+    "desenvolvimento_1": "desenvolvimento",
+    "desenvolvimento_2": "desenvolvimento",
+    "impacto": "consequencias",
+}
+
 
 def apply_timeline_to_scenes(
     scenes_data: dict | list,
@@ -19,7 +26,7 @@ def apply_timeline_to_scenes(
 ) -> dict:
     """
     Enriquece cenas com dados emocionais e visuais da timeline compartilhada.
-    Nunca recalcula emoções — consome apenas a timeline.
+    Distribui durações reais da timeline entre cenas que compartilham seção.
     """
 
     if isinstance(scenes_data, dict):
@@ -29,13 +36,51 @@ def apply_timeline_to_scenes(
         result = {"cenas": list(scenes_data or [])}
         scenes = result["cenas"]
 
-    timeline_sections = timeline.sections
+    if not scenes:
+        result["cenas"] = scenes
+        result["emotional_timeline"] = timeline.to_dict()
+        return result
+
+    sections_by_key = {
+        section.section_key: section
+        for section in timeline.sections
+        if section.section_key
+    }
+
+    section_scene_groups: dict[str, list[int]] = {}
+    for index, scene in enumerate(scenes):
+        key = _section_key_for_scene(scene)
+        section_scene_groups.setdefault(key, []).append(index)
+
     mapper = get_emotion_mapper()
+    current_time = 0.0
+    audio_duration = float(timeline.total_duration or 0.0)
 
     for index, scene in enumerate(scenes):
-        section = _match_timeline_section(index, timeline_sections, scene)
+        section_key = _section_key_for_scene(scene)
+        section = sections_by_key.get(section_key)
         if not section:
             continue
+
+        group_indices = section_scene_groups.get(section_key, [index])
+        group_position = group_indices.index(index)
+        group_size = len(group_indices)
+
+        section_duration = section.real_duration or section.duration
+        if section_duration <= 0:
+            section_duration = section.estimated_duration or 0.0
+
+        if group_size > 1 and section_duration > 0:
+            share = section_duration / group_size
+            if group_position == group_size - 1:
+                assigned = max(0.5, round(section_duration - share * (group_size - 1), 2))
+            else:
+                assigned = max(0.5, round(share, 2))
+        else:
+            assigned = max(0.5, round(section_duration, 2))
+
+        if index == len(scenes) - 1 and audio_duration > 0:
+            assigned = max(0.5, round(audio_duration - current_time, 2))
 
         visual_spec = resolve_visual_intent(section)
 
@@ -53,19 +98,33 @@ def apply_timeline_to_scenes(
         )
         scene["contrast_boost"] = mapper.contrast_boost(section.emotion)
 
-        duration = section.real_duration or section.duration
-        if duration > 0:
-            scene["duration_hint"] = duration
-            scene["duration_seconds"] = duration
-            scene["tempo_inicio"] = section.start_time
-            scene["tempo_fim"] = round(section.start_time + duration, 2)
+        scene["duration_seconds"] = assigned
+        scene["duration_hint"] = assigned
+        scene["tempo_inicio"] = round(current_time, 2)
+        scene["tempo_fim"] = round(current_time + assigned, 2)
+        scene["tempo"] = f"{int(current_time)}-{int(current_time + assigned)}"
 
-        if section.start_time >= 0 and duration > 0:
-            scene["tempo"] = f"{int(section.start_time)}-{int(section.start_time + duration)}"
+        current_time = round(current_time + assigned, 2)
+
+    if audio_duration > 0 and scenes:
+        delta = round(audio_duration - current_time, 2)
+        if abs(delta) >= 0.01 and scenes[-1].get("duration_seconds"):
+            last = scenes[-1]
+            last["duration_seconds"] = max(0.5, round(last["duration_seconds"] + delta, 2))
+            last["duration_hint"] = last["duration_seconds"]
+            last["tempo_fim"] = round(last["tempo_inicio"] + last["duration_seconds"], 2)
+            last["tempo"] = f"{int(last['tempo_inicio'])}-{int(last['tempo_fim'])}"
 
     result["cenas"] = scenes
+    result["audio_duration"] = round(audio_duration, 2) if audio_duration else round(current_time, 2)
+    result["synced"] = bool(timeline.director_meta.get("synced_to_audio"))
     result["emotional_timeline"] = timeline.to_dict()
     return result
+
+
+def _section_key_for_scene(scene: dict) -> str:
+    scene_type = scene.get("tipo", "")
+    return SCENE_SECTION_ALIASES.get(scene_type, scene_type)
 
 
 def _match_timeline_section(
@@ -73,10 +132,10 @@ def _match_timeline_section(
     sections: list[TimelineSection],
     scene: dict,
 ) -> Optional[TimelineSection]:
-    scene_type = scene.get("tipo", "")
+    scene_key = _section_key_for_scene(scene)
 
     for section in sections:
-        if section.section_key and section.section_key == scene_type:
+        if section.section_key and section.section_key == scene_key:
             return section
 
     if scene_index < len(sections):
@@ -88,7 +147,6 @@ def _match_timeline_section(
 def get_scene_render_hints(scene: dict) -> dict[str, Any]:
     """
     Retorna hints de renderização baseados na emoção e visual intent da cena.
-    Arquitetura preparada para efeitos futuros (zoom, shake, flash, etc.).
     """
 
     emotion = scene.get("emotion", "calm")

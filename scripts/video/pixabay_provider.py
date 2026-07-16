@@ -31,6 +31,24 @@ def _warn_missing_key() -> None:
     print("AVISO: PIXABAY_API_KEY nao configurada - provedor Pixabay ignorado.")
 
 
+def _shorten_pixabay_query(query: str, max_len: int = 60) -> str:
+    cleaned = " ".join(query.split()).strip()
+    if len(cleaned) <= max_len:
+        return cleaned
+
+    words = cleaned.split()
+    result = []
+    length = 0
+    for word in words[:8]:
+        next_len = length + len(word) + (1 if result else 0)
+        if next_len > max_len:
+            break
+        result.append(word)
+        length = next_len
+
+    return " ".join(result).strip() or cleaned[:max_len].strip()
+
+
 def search_pixabay(query: str, per_page: int = 15) -> dict:
     """
     Busca vídeos e imagens na Pixabay API.
@@ -45,8 +63,7 @@ def search_pixabay(query: str, per_page: int = 15) -> dict:
         _warn_missing_key()
         return empty
 
-    # Pixabay API rejeita queries longas (HTTP 400)
-    query = " ".join(query.split())[:100].strip()
+    query = _shorten_pixabay_query(query)
 
     params = {
         "key": api_key,
@@ -59,6 +76,13 @@ def search_pixabay(query: str, per_page: int = 15) -> dict:
         @retry_with_backoff(max_attempts=3, operation=f"Pixabay video search: {query[:40]}")
         def _fetch_videos():
             response = requests.get(PIXABAY_VIDEO_URL, params=params, timeout=15)
+            if response.status_code == 400 and len(query.split()) > 2:
+                shorter = _shorten_pixabay_query(query, max_len=40)
+                response = requests.get(
+                    PIXABAY_VIDEO_URL,
+                    params={**params, "q": shorter},
+                    timeout=15,
+                )
             response.raise_for_status()
             return response.json()
 
@@ -104,6 +128,13 @@ def search_pixabay(query: str, per_page: int = 15) -> dict:
                 params={**params, "image_type": "photo"},
                 timeout=15,
             )
+            if response.status_code == 400 and len(query.split()) > 2:
+                shorter = _shorten_pixabay_query(query, max_len=40)
+                response = requests.get(
+                    PIXABAY_PHOTO_URL,
+                    params={**params, "q": shorter, "image_type": "photo"},
+                    timeout=15,
+                )
             response.raise_for_status()
             return response.json()
 

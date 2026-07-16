@@ -127,6 +127,27 @@ def sync_scenes_to_audio(
     if not scenes or audio_duration <= 0:
         return cenas_data if isinstance(cenas_data, dict) else {"cenas": scenes}
 
+    timeline = _resolve_timeline(emotional_timeline, script, audio_duration)
+
+    if timeline and timeline.director_meta.get("synced_to_audio"):
+        weights = [_scene_weight(s) for s in scenes]
+        narration_parts = [
+            _scene_narration_text(scene, "")
+            for scene in scenes
+        ]
+        if not any(narration_parts):
+            narration_parts = _split_text_by_weights(narracao, weights)
+
+        base_scenes = []
+        for i, scene in enumerate(scenes):
+            new_scene = dict(scene)
+            new_scene["narracao"] = narration_parts[i]
+            base_scenes.append(new_scene)
+
+        result["cenas"] = base_scenes
+        result = apply_timeline_to_scenes(result, timeline)
+        return result
+
     weights = [_scene_weight(s) for s in scenes]
     durations = _estimate_scene_durations(scenes, narracao, audio_duration)
     narration_parts = [
@@ -161,10 +182,8 @@ def sync_scenes_to_audio(
     result["audio_duration"] = round(audio_duration, 2)
     result["synced"] = True
 
-    timeline = _resolve_timeline(emotional_timeline, script, audio_duration)
     if timeline:
         result = apply_timeline_to_scenes(result, timeline)
-        result["emotional_timeline"] = timeline.to_dict()
 
     return result
 
@@ -177,10 +196,12 @@ def _resolve_timeline(
     if emotional_timeline:
         if isinstance(emotional_timeline, dict):
             timeline = EmotionalTimeline.from_dict(emotional_timeline)
-            timeline._compute_timings(audio_duration)
+            if not timeline.director_meta.get("synced_to_audio"):
+                timeline._compute_timings(audio_duration)
             return timeline
         if isinstance(emotional_timeline, EmotionalTimeline):
-            emotional_timeline._compute_timings(audio_duration)
+            if not emotional_timeline.director_meta.get("synced_to_audio"):
+                emotional_timeline._compute_timings(audio_duration)
             return emotional_timeline
 
     if script:

@@ -16,6 +16,8 @@ com preferir_imagem=True pulam busca de vídeo e usam foto + Ken Burns.
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 from scripts.video.pexels_provider import search_pexels
@@ -66,15 +68,55 @@ def _has_media(media: dict) -> bool:
 
 
 _CINEMATIC_SUFFIX = {
-    "hook": "dramatic cinematic establishing shot documentary 4k",
-    "contexto": "historical documentary aerial cinematic atmosphere",
-    "desenvolvimento_1": "documentary investigation cinematic footage",
-    "desenvolvimento_2": "historical event dramatic cinematic b-roll",
-    "revelacao": "dramatic reveal cinematic documentary close",
-    "consequencias": "impact consequences documentary cinematic",
-    "impacto": "legacy modern impact cinematic documentary",
-    "encerramento": "cinematic closing atmospheric documentary",
+    "hook": "dramatic cinematic establishing shot",
+    "contexto": "historical documentary aerial",
+    "desenvolvimento_1": "documentary investigation footage",
+    "desenvolvimento_2": "historical event dramatic b-roll",
+    "revelacao": "dramatic reveal documentary",
+    "consequencias": "impact consequences documentary",
+    "impacto": "legacy modern impact documentary",
+    "encerramento": "cinematic closing atmospheric",
 }
+
+MAX_SEARCH_QUERY_LEN = 72
+
+
+def _truncate_query(query: str, max_len: int = MAX_SEARCH_QUERY_LEN) -> str:
+    cleaned = " ".join(query.split()).strip()
+    if len(cleaned) <= max_len:
+        return cleaned
+
+    words = cleaned.split()
+    result = []
+    length = 0
+    for word in words:
+        next_len = length + len(word) + (1 if result else 0)
+        if next_len > max_len:
+            break
+        result.append(word)
+        length = next_len
+
+    return " ".join(result).strip() or cleaned[:max_len].strip()
+
+
+def _upscale_image(path: Path, width: int = 1920, height: int = 1080) -> bool:
+    temp_path = path.with_suffix(".upscaled.jpg")
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(path.resolve()),
+        "-vf", f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}",
+        "-q:v", "2",
+        str(temp_path),
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        if temp_path.exists():
+            temp_path.replace(path)
+            return True
+    except subprocess.CalledProcessError:
+        if temp_path.exists():
+            temp_path.unlink()
+    return False
 
 
 def _enrich_search_query(busca: str, tipo: str, fallback: str = "") -> list[str]:
@@ -84,23 +126,20 @@ def _enrich_search_query(busca: str, tipo: str, fallback: str = "") -> list[str]
     """
 
     queries = []
-    base = busca.strip()
+    base = _truncate_query(busca.strip())
     if base:
         queries.append(base)
 
-    suffix = _CINEMATIC_SUFFIX.get(tipo, "documentary cinematic footage 4k")
+    suffix = _CINEMATIC_SUFFIX.get(tipo, "documentary cinematic")
     if base:
-        enriched = f"{base} {suffix}"
+        enriched = _truncate_query(f"{base} {suffix}")
         if enriched not in queries:
             queries.append(enriched)
 
-    if fallback and fallback not in queries:
-        queries.append(fallback.strip())
-
-    if tipo and tipo not in queries:
-        tipo_query = f"{tipo.replace('_', ' ')} {suffix}"
-        if tipo_query not in queries:
-            queries.append(tipo_query)
+    if fallback:
+        fallback_query = _truncate_query(fallback.strip())
+        if fallback_query and fallback_query not in queries:
+            queries.append(fallback_query)
 
     return [q for q in queries if q]
 
@@ -128,6 +167,8 @@ def _merge_media(target: dict, source: dict) -> None:
 
 def _search_providers_chain(query: str, *, photos_only: bool = False) -> tuple[dict, str]:
     """Busca Wikimedia → Pixabay → Pexels até encontrar mídia."""
+
+    query = _truncate_query(query)
 
     for provider_name, search_fn in (
         ("wikimedia", search_wikimedia),
@@ -302,19 +343,101 @@ def _try_stock_photos(
     return False, None
 
 
-def _try_ai_image(prompt: str, scene_image: Path, suffix: str = "") -> bool:
-    ai_prompt = f"{prompt}, documentary cinematic scene{suffix}"
+def _try_ai_image(
+    prompt: str,
+    scene_image: Path,
+    suffix: str = "",
+    *,
+    allow_upscale: bool = True,
+) -> bool:
+    ai_prompt = _truncate_query(f"{prompt}, documentary cinematic scene{suffix}", max_len=120)
     if not generate_pollinations_image(ai_prompt, scene_image):
         return False
 
-    valid, reason = validate_image_file(scene_image)
-    if not valid:
-        print(f"  ⚠️ Imagem IA rejeitada ({reason})")
-        if scene_image.exists():
-            scene_image.unlink()
-        return False
+    thresholds = [
+        (MIN_IMAGE_WIDTH, MIN_IMAGE_HEIGHT),
+        (MIN_IMAGE_WIDTH_FALLBACK, MIN_IMAGE_HEIGHT_FALLBACK),
+        (1024, 576),
+    ]
 
-    return True
+    for min_w, min_h in thresholds:
+        valid, reason = validate_image_file(
+            scene_image,
+            min_width=min_w,
+            min_height=min_h,
+        )
+        if valid:
+            if allow_upscale and (min_w < MIN_IMAGE_WIDTH or min_h < MIN_IMAGE_HEIGHT):
+                _upscale_image(scene_image)
+            return True
+        print(f"  ⚠️ Imagem IA rejeitada ({reason})")
+
+    if allow_upscale and _upscale_image(scene_image):
+        valid, _ = validate_image_file(
+            scene_image,
+            min_width=MIN_IMAGE_WIDTH_FALLBACK,
+            min_height=MIN_IMAGE_HEIGHT_FALLBACK,
+        )
+        if valid:
+            return True
+
+    if scene_image.exists():
+        scene_image.unlink()
+    return False
+
+
+def _try_local_reuse(
+    scene_video: Path,
+    scene_image: Path,
+    saved_assets: list[Path],
+    *,
+    prefer_image: bool,
+) -> bool:
+    """Reutiliza asset local já baixado em cena anterior."""
+
+    for source in reversed(saved_assets):
+        if not source.exists():
+            continue
+
+        target = scene_image if source.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"} else scene_video
+        if prefer_image and target.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
+            target = scene_image
+
+        try:
+            shutil.copy2(source, target)
+            return target.exists()
+        except OSError:
+            continue
+
+    return False
+
+
+def _generate_placeholder_image(prompt: str, scene_image: Path, scene_num: int) -> bool:
+    """Gera imagem ilustrativa mínima quando todos os provedores falham."""
+
+    label = _truncate_query(prompt or f"scene {scene_num}", max_len=40)
+    safe_label = label.replace(":", "\\:").replace("'", "\\'")
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "lavfi",
+        "-i", f"color=c=0x1a1a2e:s=1920x1080:d=1",
+        "-vf",
+        (
+            f"drawtext=text='{safe_label}':fontcolor=white:fontsize=42:"
+            "x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.45"
+        ),
+        "-frames:v", "1",
+        str(scene_image),
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        return scene_image.exists()
+    except subprocess.CalledProcessError:
+        return _try_ai_image(
+            f"{prompt}, atmospheric documentary illustration",
+            scene_image,
+            allow_upscale=True,
+        )
 
 
 def _try_ai_video(prompt: str, scene_video: Path) -> bool:
@@ -338,6 +461,7 @@ def _resolve_scene_media(
     scene_video: Path,
     scene_image: Path,
     used_ids: set,
+    saved_assets: list[Path] | None = None,
 ) -> dict:
     """Resolve mídia para uma cena com fallback completo."""
 
@@ -441,23 +565,43 @@ def _resolve_scene_media(
                 print(f"🖼️ Cena {scene_num} ({tipo}): imagem stock — {source}")
                 return result
 
-    if _try_ai_image(busca, scene_image):
-        result.update({"saved": True, "media_type": "ai_image", "source": "pollinations:image"})
-        print(f"🤖 Cena {scene_num} ({tipo}): imagem IA (Pollinations)")
+    if _try_ai_image(busca, scene_image, allow_upscale=True):
+        result.update({"saved": True, "media_type": "ai_image", "source": "pollinations:image", "provedor": "pollinations"})
+        print(f"🤖 Cena {scene_num} ({tipo}): imagem Pollinations")
         return result
 
     if not preferir_imagem and _try_ai_video(busca, scene_video):
-        result.update({"saved": True, "media_type": "ai_video", "source": "pollinations:video"})
-        print(f"🤖 Cena {scene_num} ({tipo}): vídeo IA (Pollinations)")
+        result.update({"saved": True, "media_type": "ai_video", "source": "pollinations:video", "provedor": "pollinations"})
+        print(f"🤖 Cena {scene_num} ({tipo}): vídeo Pollinations")
         return result
 
-    if _try_ai_image(f"{busca}, {tipo}", scene_image, ", atmospheric wide shot"):
-        result.update({"saved": True, "media_type": "ai_image_retry", "source": "pollinations:image:retry"})
+    if saved_assets and _try_local_reuse(scene_video, scene_image, saved_assets, prefer_image=preferir_imagem):
+        media_path = scene_image if scene_image.exists() else scene_video
+        result.update({
+            "saved": True,
+            "media_type": "image" if media_path == scene_image else "video",
+            "source": "local:reuse",
+            "provedor": "local",
+        })
+        print(f"♻️ Cena {scene_num} ({tipo}): asset local reutilizado")
+        return result
+
+    if _try_ai_image(f"{busca}, {tipo}", scene_image, ", atmospheric wide shot", allow_upscale=True):
+        result.update({"saved": True, "media_type": "ai_image_retry", "source": "pollinations:image:retry", "provedor": "pollinations"})
         print(f"🤖 Cena {scene_num} ({tipo}): imagem IA (retry)")
         return result
 
-    print(f"❌ Cena {scene_num}: nenhuma mídia disponível")
-    return result
+    if _generate_placeholder_image(busca, scene_image, scene_num):
+        result.update({
+            "saved": True,
+            "media_type": "placeholder",
+            "source": "generated:placeholder",
+            "provedor": "generated",
+        })
+        print(f"🖼️ Cena {scene_num} ({tipo}): imagem ilustrativa gerada")
+        return result
+
+    raise RuntimeError(f"Cena {scene_num}: nenhuma mídia disponível após cadeia completa")
 
 
 def run_visual_media_pipeline(subject, scenes, queries) -> str:
@@ -473,6 +617,7 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
     images_folder.mkdir(parents=True, exist_ok=True)
 
     used_ids: set = set()
+    saved_assets: list[Path] = []
     results = []
 
     for i, query_item in enumerate(queries):
@@ -486,8 +631,15 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
             scene_video,
             scene_image,
             used_ids,
+            saved_assets=saved_assets,
         )
         results.append(result)
+
+        if result.get("saved"):
+            if scene_video.exists():
+                saved_assets.append(scene_video)
+            elif scene_image.exists():
+                saved_assets.append(scene_image)
 
     output = {
         "produto": subject.get("nome", ""),
@@ -501,5 +653,10 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
 
     saved_count = sum(1 for r in results if r["saved"])
     print(f"📸 Visual Media Engine: {saved_count}/{len(results)} cenas com mídia")
+
+    if saved_count < len(results):
+        raise RuntimeError(
+            f"Cobertura de mídia insuficiente: {saved_count}/{len(results)} — mínimo 100%"
+        )
 
     return "visual_engine"

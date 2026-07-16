@@ -56,6 +56,7 @@ from scripts.publisher.youtube_uploader import UPLOAD_STATUS, upload_from_folder
 from scripts.metrics.metrics_tracker import record_production
 
 from scripts.core.emotional_timeline import build_emotional_timeline
+from scripts.core.emotional_timeline import EmotionalTimeline
 from scripts.core.timeline_sync import sync_timeline_to_audio
 from scripts.core.visual_intent_engine import apply_visual_intents
 from scripts.core.emotional_effects import apply_effect_hints_to_scenes
@@ -71,6 +72,24 @@ class StageContext:
         self.cache = StageCache(output_dir)
         self.data: Dict[str, Any] = {"topic": topic}
         self.providers_used: List[str] = []
+
+
+def _serialize_timeline(timeline: EmotionalTimeline | dict | None) -> dict:
+    if timeline is None:
+        return {}
+    if isinstance(timeline, EmotionalTimeline):
+        return timeline.to_dict()
+    return timeline
+
+
+def _deserialize_timeline(timeline: EmotionalTimeline | dict | None) -> EmotionalTimeline | None:
+    if timeline is None:
+        return None
+    if isinstance(timeline, EmotionalTimeline):
+        return timeline
+    if isinstance(timeline, dict):
+        return EmotionalTimeline.from_dict(timeline)
+    return None
 
 
 def _timed_stage(ctx: StageContext, stage: str, fn: Callable[[], Any]) -> Any:
@@ -193,7 +212,7 @@ def _stage_timeline(ctx: StageContext) -> dict:
             ctx.data["scenes"] = loaded
             emotional = ctx.state.load_artifact("emotional_timeline.json")
             if emotional:
-                ctx.data["emotional_timeline"] = emotional
+                ctx.data["emotional_timeline"] = _deserialize_timeline(emotional)
             content = ctx.state.load_artifact("content.json")
             if content:
                 ctx.data["content"] = content
@@ -232,7 +251,7 @@ def _stage_timeline(ctx: StageContext) -> dict:
 
     ctx.state.save_artifact("content.json", content)
     ctx.state.save_artifact("caption.json", caption)
-    ctx.state.save_artifact("emotional_timeline.json", emotional_timeline)
+    ctx.state.save_artifact("emotional_timeline.json", _serialize_timeline(emotional_timeline))
     ctx.state.save_artifact("scenes.json", scenes)
     ctx.state.save_artifact("asset_queries.json", queries)
 
@@ -286,11 +305,11 @@ def _stage_audio(ctx: StageContext) -> str:
     })
 
     emotional_timeline = sync_timeline_to_audio(
-        ctx.data["emotional_timeline"],
+        _deserialize_timeline(ctx.data["emotional_timeline"]),
         audio,
     )
     ctx.data["emotional_timeline"] = emotional_timeline
-    ctx.state.save_artifact("emotional_timeline.json", emotional_timeline)
+    ctx.state.save_artifact("emotional_timeline.json", _serialize_timeline(emotional_timeline))
 
     scenes = sync_scenes_to_audio(
         ctx.data["scenes"],
@@ -351,6 +370,9 @@ def _stage_render(ctx: StageContext) -> Optional[str]:
         raise RuntimeError(f"Resultado inválido: {errors}")
 
     result = pipeline_result.to_dict()
+    result["emotional_timeline"] = _serialize_timeline(ctx.data.get("emotional_timeline"))
+    if isinstance(result.get("cenas"), dict):
+        result["cenas"]["emotional_timeline"] = _serialize_timeline(ctx.data.get("emotional_timeline"))
     build_video_project(result)
     video = render_video_project(result)
 
@@ -511,7 +533,7 @@ def run_resumable_youtube_pipeline(
 
     if production_mode:
         should_upload = True
-        privacy_status, vis_ctx = resolve_upload_visibility()
+        privacy_status, vis_ctx = resolve_upload_visibility(cli_privacy=privacy_status)
         main_logger.info(
             f"Modo produção ativo — visibilidade: {privacy_status} "
             f"({vis_ctx['reason']})"

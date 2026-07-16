@@ -3,6 +3,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+import requests
+
 from scripts.video.wikimedia_provider import search_wikimedia
 
 
@@ -39,10 +41,10 @@ class TestWikimediaProvider(unittest.TestCase):
             },
         }
 
-    @patch("scripts.video.wikimedia_provider.requests.get")
+    @patch("scripts.video.wikimedia_provider._SESSION.get")
     def test_parses_valid_response(self, mock_get):
         response = MagicMock()
-        response.ok = True
+        response.raise_for_status = MagicMock()
         response.json.return_value = self._sample_api_response()
         mock_get.return_value = response
 
@@ -58,10 +60,10 @@ class TestWikimediaProvider(unittest.TestCase):
         )
         self.assertIn("Public Domain", photo["credit"])
 
-    @patch("scripts.video.wikimedia_provider.requests.get")
+    @patch("scripts.video.wikimedia_provider._SESSION.get")
     def test_filters_low_resolution(self, mock_get):
         response = MagicMock()
-        response.ok = True
+        response.raise_for_status = MagicMock()
         response.json.return_value = {
             "query": {
                 "pages": {
@@ -75,7 +77,7 @@ class TestWikimediaProvider(unittest.TestCase):
 
         self.assertEqual(result["photos"], [])
 
-    @patch("scripts.video.wikimedia_provider.requests.get")
+    @patch("scripts.video.wikimedia_provider._SESSION.get")
     def test_network_error_returns_empty(self, mock_get):
         mock_get.side_effect = TimeoutError("timeout")
 
@@ -83,10 +85,10 @@ class TestWikimediaProvider(unittest.TestCase):
 
         self.assertEqual(result, {"videos": [], "photos": []})
 
-    @patch("scripts.video.wikimedia_provider.requests.get")
+    @patch("scripts.video.wikimedia_provider._SESSION.get")
     def test_http_error_returns_empty(self, mock_get):
         response = MagicMock()
-        response.ok = False
+        response.raise_for_status.side_effect = requests.HTTPError("403")
         mock_get.return_value = response
 
         result = search_wikimedia("Tunguska")
