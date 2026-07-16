@@ -61,6 +61,7 @@ def _save_metrics(records: List[Dict[str, Any]]):
 def record_production(
     result: Dict[str, Any],
     upload_result: Optional[Dict[str, Any]] = None,
+    update_existing: bool = False,
 ):
     """
     Registra métricas de uma produção de conteúdo.
@@ -68,22 +69,23 @@ def record_production(
     Args:
         result: PipelineResult serializado
         upload_result: Resultado do upload (opcional)
+        update_existing: Se True, atualiza registro existente do mesmo tema
+                         em vez de criar duplicata
     """
 
     records = _load_metrics()
 
 
     subject = result.get("produto", {})
+    subject_name = subject.get("nome", "")
+    platform = result.get("platform", "unknown")
 
     record = {
         "timestamp": datetime.now(
             timezone.utc
         ).isoformat(),
-        "platform": result.get(
-            "platform",
-            "unknown"
-        ),
-        "subject_name": subject.get("nome", ""),
+        "platform": platform,
+        "subject_name": subject_name,
         "subject_category": subject.get(
             "categoria",
             ""
@@ -136,6 +138,38 @@ def record_production(
             record["status"] = "produced_not_uploaded"
 
 
+    if update_existing:
+        for index in range(len(records) - 1, -1, -1):
+            existing = records[index]
+
+            if (
+                existing.get("subject_name") == subject_name
+                and existing.get("platform") == platform
+            ):
+                if upload_result and upload_result.get("status") != "UPLOADED":
+                    for key in (
+                        "video_id",
+                        "video_url",
+                        "upload_status",
+                        "upload_message",
+                        "status",
+                        "analytics",
+                    ):
+                        if existing.get(key) is not None:
+                            record[key] = existing[key]
+
+                records[index] = record
+                _save_metrics(records)
+
+                print(
+                    f"📊 Métrica atualizada: {record['subject_name']}"
+                )
+
+                _log_upload_details(upload_result, record)
+                _try_attach_analytics(record)
+
+                return record
+
     records.append(record)
 
     _save_metrics(records)
@@ -145,26 +179,37 @@ def record_production(
         f"📊 Métrica registrada: {record['subject_name']}"
     )
 
-    if upload_result:
-        upload_status = upload_result.get("status", "N/A")
-        print(f"   Upload: {upload_status}")
-
-        if upload_result.get("video_id"):
-            print(
-                f"   Video ID: {upload_result['video_id']}"
-            )
-
-        if upload_result.get("url"):
-            print(f"   URL: {upload_result['url']}")
-
-        if upload_result.get("message"):
-            print(
-                f"   Detalhe: {upload_result['message']}"
-            )
+    _log_upload_details(upload_result, record)
 
     _try_attach_analytics(record)
 
     return record
+
+
+def _log_upload_details(
+    upload_result: Optional[Dict[str, Any]],
+    record: Dict[str, Any],
+):
+    """Exibe detalhes de upload no console."""
+
+    if not upload_result:
+        return
+
+    upload_status = upload_result.get("status", "N/A")
+    print(f"   Upload: {upload_status}")
+
+    if upload_result.get("video_id"):
+        print(
+            f"   Video ID: {upload_result['video_id']}"
+        )
+
+    if upload_result.get("url"):
+        print(f"   URL: {upload_result['url']}")
+
+    if upload_result.get("message"):
+        print(
+            f"   Detalhe: {upload_result['message']}"
+        )
 
 
 def _try_attach_analytics(record: Dict[str, Any]):

@@ -2,12 +2,14 @@
 Timeline de cenas sincronizada com áudio e Emotional Timeline.
 """
 
+import math
+import re
 from pathlib import Path
 from typing import Optional
 
 from scripts.core.emotional_timeline import EmotionalTimeline, build_emotional_timeline
 from scripts.video.media_probe import probe_duration
-from scripts.video.scene_emotion import apply_timeline_to_scenes
+from scripts.video.scene_emotion import MAX_SCENE_DURATION, apply_timeline_to_scenes
 from scripts.youtube.narration_utils import estimate_duration_seconds
 
 SCENE_WEIGHTS = {
@@ -23,6 +25,8 @@ SCENE_WEIGHTS = {
 
 DEFAULT_WEIGHT = 10
 TRANSITION_SECONDS = 0.4
+
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?…])\s+")
 
 
 def extract_scenes(cenas_data) -> list:
@@ -100,6 +104,116 @@ def _estimate_scene_durations(scenes: list, narracao: str, audio_duration: float
     return durations
 
 
+def _split_narration_at_sentences(text: str, parts: int) -> list[str]:
+    """Divide narração em N partes coerentes, preferindo limites de frase."""
+
+    text = text.strip()
+    if not text or parts <= 1:
+        return [text] if text else [""]
+
+    sentences = [s.strip() for s in _SENTENCE_SPLIT.split(text) if s.strip()]
+    if not sentences:
+        return _split_text_by_weights(text, [1] * parts)
+
+    if len(sentences) >= parts:
+        chunks = []
+        per_part = len(sentences) // parts
+        remainder = len(sentences) % parts
+        cursor = 0
+        for i in range(parts):
+            count = per_part + (1 if i < remainder else 0)
+            group = sentences[cursor : cursor + count]
+            chunks.append(" ".join(group) if group else "")
+            cursor += count
+        return [c for c in chunks if c.strip()] or [text]
+
+    return _split_text_by_weights(text, [1] * parts)
+
+
+def split_long_scenes(
+    scenes_data: dict,
+    max_duration: float = MAX_SCENE_DURATION,
+) -> dict:
+    """
+    Divide cenas acima do limite de ritmo em sub-cenas narrativas.
+    Preserva metadados emocionais/visuais e referência de mídia original.
+    """
+
+    result = dict(scenes_data)
+    scenes = list(result.get("cenas", []))
+    if not scenes:
+        return result
+
+    original_count = result.get("media_scene_count") or len(scenes)
+    expanded = []
+    current_time = 0.0
+
+    for index, scene in enumerate(scenes):
+        duration = float(scene.get("duration_seconds") or 0)
+        narration = _scene_narration_text(scene, "")
+
+        if duration <= max_duration or not narration:
+            new_scene = dict(scene)
+            new_scene["media_index"] = scene.get("media_index", index)
+            new_scene["tempo_inicio"] = round(current_time, 2)
+            new_scene["tempo_fim"] = round(current_time + duration, 2)
+            new_scene["tempo"] = f"{int(current_time)}-{int(current_time + duration)}"
+            current_time = new_scene["tempo_fim"]
+            expanded.append(new_scene)
+            continue
+
+        parts = max(2, math.ceil(duration / max_duration))
+        text_parts = _split_narration_at_sentences(narration, parts)
+        while len(text_parts) < parts:
+            text_parts.append("")
+        text_parts = text_parts[:parts]
+
+        word_counts = [max(1, len(t.split())) for t in text_parts]
+        total_words = sum(word_counts) or 1
+        part_start = current_time
+
+        for part_idx, (text_part, word_count) in enumerate(zip(text_parts, word_counts)):
+            if part_idx == parts - 1:
+                part_duration = round(duration - (current_time - part_start), 2)
+            else:
+                part_duration = round((word_count / total_words) * duration, 2)
+            part_duration = max(0.5, part_duration)
+
+            new_scene = dict(scene)
+            new_scene["narracao"] = text_part
+            new_scene["duration_seconds"] = part_duration
+            new_scene["duration_hint"] = part_duration
+            new_scene["media_index"] = scene.get("media_index", index)
+            new_scene["split_part"] = part_idx + 1
+            new_scene["split_total"] = parts
+            if parts > 1:
+                base_tipo = scene.get("tipo", "")
+                new_scene["tipo"] = f"{base_tipo}_p{part_idx + 1}" if part_idx else base_tipo
+
+            new_scene["tempo_inicio"] = round(current_time, 2)
+            new_scene["tempo_fim"] = round(current_time + part_duration, 2)
+            new_scene["tempo"] = (
+                f"{int(new_scene['tempo_inicio'])}-{int(new_scene['tempo_fim'])}"
+            )
+            current_time = new_scene["tempo_fim"]
+            expanded.append(new_scene)
+
+    audio_duration = float(result.get("audio_duration") or 0)
+    if audio_duration > 0 and expanded:
+        delta = round(audio_duration - current_time, 2)
+        if abs(delta) >= 0.01:
+            last = expanded[-1]
+            last["duration_seconds"] = max(0.5, round(last["duration_seconds"] + delta, 2))
+            last["duration_hint"] = last["duration_seconds"]
+            last["tempo_fim"] = round(last["tempo_inicio"] + last["duration_seconds"], 2)
+            last["tempo"] = f"{int(last['tempo_inicio'])}-{int(last['tempo_fim'])}"
+
+    result["cenas"] = expanded
+    result["media_scene_count"] = original_count
+    result["scene_split"] = len(expanded) != len(scenes)
+    return result
+
+
 def sync_scenes_to_audio(
     cenas_data,
     narracao: str,
@@ -146,6 +260,7 @@ def sync_scenes_to_audio(
 
         result["cenas"] = base_scenes
         result = apply_timeline_to_scenes(result, timeline)
+        result = split_long_scenes(result)
         return result
 
     weights = [_scene_weight(s) for s in scenes]
@@ -185,6 +300,7 @@ def sync_scenes_to_audio(
     if timeline:
         result = apply_timeline_to_scenes(result, timeline)
 
+    result = split_long_scenes(result)
     return result
 
 

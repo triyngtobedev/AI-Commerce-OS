@@ -46,6 +46,161 @@ _ASSET_TYPE_BOOST: dict[str, dict[str, float]] = {
     "stock_video": {"pexels": 0.2, "pixabay": 0.15},
 }
 
+# Momento narrativo -> tags visuais desejadas. Baseia-se na intenção de cada
+# ato da história (hook/contexto/desenvolvimento/revelação/encerramento).
+# Aplicado apenas como ajuste de peso aditivo.
+_NARRATIVE_MOMENT_TAGS: dict[str, list[str]] = {
+    "hook": ["close", "macro", "dramatic", "contrast", "impact", "intense"],
+    "context": ["aerial", "landscape", "architecture", "establishing", "map", "wide", "environment"],
+    "development": ["detail", "process", "hands", "demonstration", "closeup", "work"],
+    "reveal": ["drama", "dramatic", "motion", "movement", "tension", "reveal"],
+    "impact": ["explosion", "aftermath", "scale", "powerful", "dramatic", "destruction"],
+    "closing": ["sky", "horizon", "calm", "contemplative", "atmospheric", "sunset"],
+}
+
+# tipo da cena -> momento narrativo canônico
+_TIPO_TO_MOMENT: dict[str, str] = {
+    "hook": "hook",
+    "gancho": "hook",
+    "contexto": "context",
+    "desenvolvimento": "development",
+    "desenvolvimento_1": "development",
+    "desenvolvimento_2": "development",
+    "demonstracao": "development",
+    "teste": "development",
+    "revelacao": "reveal",
+    "consequencias": "impact",
+    "impacto": "impact",
+    "encerramento": "closing",
+    "beneficio": "closing",
+    "resultado": "closing",
+    "cta": "closing",
+}
+
+# style -> tags coerentes com o estilo do plano
+_STYLE_TAGS: dict[str, list[str]] = {
+    "cinematic": ["cinematic", "dramatic", "film", "moody"],
+    "documentary": ["documentary", "real", "footage", "authentic"],
+    "archival": ["archive", "vintage", "historical", "old"],
+    "dynamic": ["dynamic", "fast", "action", "energetic"],
+    "lifestyle": ["lifestyle", "home", "people", "daily"],
+    "product": ["product", "closeup", "macro", "studio"],
+}
+
+# câmera resolvida -> tags de enquadramento
+_CAMERA_TAGS: dict[str, list[str]] = {
+    "zoom_in_center": ["close", "macro", "detail"],
+    "zoom_out_center": ["wide", "aerial", "establishing", "landscape"],
+    "pan_right": ["pan", "sweeping", "tracking"],
+    "pan_left": ["pan", "sweeping", "tracking"],
+    "parallax_left": ["wide", "static"],
+}
+
+
+def _item_haystack(item: dict, media_type: str) -> str:
+    if media_type == "video":
+        return (" ".join(item.get("tags", [])) + " " + item.get("url", "")).lower()
+    return (item.get("alt", "") + " " + item.get("url", "")).lower()
+
+
+def _narrative_moment_score(narrative_moment: str, item: dict, media_type: str) -> float:
+    moment = _TIPO_TO_MOMENT.get(narrative_moment, narrative_moment)
+    tags = _NARRATIVE_MOMENT_TAGS.get(moment, [])
+    if not tags:
+        return 0.0
+    haystack = _item_haystack(item, media_type)
+    matches = sum(1 for tag in tags if tag in haystack)
+    return min(0.2, matches * 0.07)
+
+
+def _style_score(style: str, item: dict, media_type: str) -> float:
+    tags = _STYLE_TAGS.get(style, [])
+    if not tags:
+        return 0.0
+    haystack = _item_haystack(item, media_type)
+    matches = sum(1 for tag in tags if tag in haystack)
+    return min(0.15, matches * 0.07)
+
+
+def _camera_score(camera: str, item: dict, media_type: str) -> float:
+    tags = _CAMERA_TAGS.get(camera, [])
+    if not tags:
+        return 0.0
+    haystack = _item_haystack(item, media_type)
+    matches = sum(1 for tag in tags if tag in haystack)
+    return min(0.12, matches * 0.06)
+
+
+def _avoid_penalty(avoid: Optional[list], item: dict, media_type: str) -> float:
+    if not avoid:
+        return 0.0
+    haystack = _item_haystack(item, media_type)
+    words = {w for term in avoid for w in str(term).lower().split()}
+    matches = sum(1 for w in words if w and w in haystack)
+    return min(0.3, matches * 0.1)
+
+
+def _diversity_penalty(
+    item: dict,
+    media_type: str,
+    provider: str,
+    recent_selections: Optional[list],
+) -> float:
+    """Penaliza semelhança com as cenas anteriores (nunca filtra).
+
+    Compara origem (provider), tipo de mídia, categoria (tags) e enquadramento.
+    """
+
+    if not recent_selections:
+        return 0.0
+
+    haystack_words = set(_item_haystack(item, media_type).split())
+    penalty = 0.0
+
+    for recent in recent_selections:
+        if not recent:
+            continue
+        if provider and recent.get("provider") == provider:
+            penalty += 0.05
+        if media_type and recent.get("media_type") == media_type:
+            penalty += 0.03
+
+        recent_words = set(recent.get("category", []))
+        if recent_words and haystack_words:
+            overlap = len(recent_words & haystack_words)
+            union = len(recent_words | haystack_words)
+            if union and (overlap / union) >= 0.4:
+                penalty += 0.08
+
+        if recent.get("framing") and recent.get("framing") == _framing_of(item, media_type):
+            penalty += 0.05
+
+    return min(0.25, penalty)
+
+
+def _framing_of(item: dict, media_type: str) -> str:
+    """Deriva um rótulo de enquadramento simples a partir das tags do asset."""
+
+    haystack = _item_haystack(item, media_type)
+    if any(w in haystack for w in ("close", "macro", "detail")):
+        return "close"
+    if any(w in haystack for w in ("aerial", "wide", "establishing", "landscape")):
+        return "wide"
+    if any(w in haystack for w in ("pan", "tracking", "sweeping")):
+        return "motion"
+    return "medium"
+
+
+def selection_signature(item: dict, media_type: str, provider: str) -> dict:
+    """Assinatura leve de um asset selecionado, para comparação de diversidade."""
+
+    return {
+        "provider": provider,
+        "media_type": media_type,
+        "framing": _framing_of(item, media_type),
+        "category": list(set(_item_haystack(item, media_type).split()))[:12],
+    }
+
 
 def _has_text_overlay(item: dict, media_type: str) -> bool:
     if media_type == "video":
@@ -106,10 +261,19 @@ def score_asset(
     emotion: str = "calm",
     provider: str = "",
     diversity_penalty: float = 0.0,
+    narrative_moment: str = "",
+    style: str = "",
+    camera: str = "",
+    avoid: Optional[list] = None,
+    recent_selections: Optional[list] = None,
 ) -> float:
     """
     Pontuação final de um asset considerando múltiplos critérios.
     Maior = melhor.
+
+    Os fatores story-aware (narrative_moment, style, camera, avoid) e a
+    diversidade (recent_selections) são apenas ajustes de peso aditivos e
+    nunca eliminam candidatos.
     """
 
     base = score_video(query, item) if media_type == "video" else score_photo(query, item)
@@ -128,8 +292,22 @@ def score_asset(
     if spec:
         score += _palette_score(item, media_type, spec.color_palette)
         score += _asset_type_boost(item, spec, provider)
+        # herda sinais da spec quando não fornecidos explicitamente
+        style = style or spec.style
+        camera = camera or spec.camera
+        if avoid is None:
+            avoid = spec.avoid
 
     score += _emotion_compatibility(emotion, item, media_type)
+
+    # --- Ajustes story-aware (aditivos) ---
+    score += _narrative_moment_score(narrative_moment, item, media_type)
+    score += _style_score(style, item, media_type)
+    score += _camera_score(camera, item, media_type)
+
+    # --- Penalizações complementares (score apenas, sem filtro) ---
+    score -= _avoid_penalty(avoid, item, media_type)
+    score -= _diversity_penalty(item, media_type, provider, recent_selections)
     score -= diversity_penalty
 
     width = item.get("width", 0)
@@ -140,7 +318,7 @@ def score_asset(
         score += 0.1
 
     if media_type == "video":
-        score += 0.12
+        score += 0.20
 
     return max(0.0, round(score, 4))
 
@@ -154,6 +332,11 @@ def rank_assets(
     provider: str = "",
     used_ids: Optional[set] = None,
     min_score: Optional[float] = None,
+    narrative_moment: str = "",
+    style: str = "",
+    camera: str = "",
+    avoid: Optional[list] = None,
+    recent_selections: Optional[list] = None,
 ) -> list[tuple[dict, float]]:
     """Ranqueia candidatos por Asset Quality Score."""
 
@@ -168,7 +351,6 @@ def rank_assets(
         if item_id and item_id in used:
             continue
 
-        penalty = 0.15 if item_id and item_id in used else 0.0
         item_score = score_asset(
             query,
             item,
@@ -176,7 +358,11 @@ def rank_assets(
             visual_intent=visual_intent,
             emotion=emotion,
             provider=provider,
-            diversity_penalty=penalty,
+            narrative_moment=narrative_moment,
+            style=style,
+            camera=camera,
+            avoid=avoid,
+            recent_selections=recent_selections,
         )
 
         if item_score >= threshold:
@@ -194,6 +380,11 @@ def pick_best_asset(
     emotion: str = "calm",
     provider: str = "",
     used_ids: Optional[set] = None,
+    narrative_moment: str = "",
+    style: str = "",
+    camera: str = "",
+    avoid: Optional[list] = None,
+    recent_selections: Optional[list] = None,
 ) -> tuple[dict | None, float]:
     """Seleciona o melhor asset disponível."""
 
@@ -205,6 +396,11 @@ def pick_best_asset(
         emotion=emotion,
         provider=provider,
         used_ids=used_ids,
+        narrative_moment=narrative_moment,
+        style=style,
+        camera=camera,
+        avoid=avoid,
+        recent_selections=recent_selections,
     )
 
     if not ranked:
@@ -232,6 +428,11 @@ def pick_ranked_assets(
     provider: str = "",
     used_ids: Optional[set] = None,
     limit: int = 8,
+    narrative_moment: str = "",
+    style: str = "",
+    camera: str = "",
+    avoid: Optional[list] = None,
+    recent_selections: Optional[list] = None,
 ) -> list[dict]:
     """Retorna top N assets ranqueados."""
 
@@ -243,5 +444,10 @@ def pick_ranked_assets(
         emotion=emotion,
         provider=provider,
         used_ids=used_ids,
+        narrative_moment=narrative_moment,
+        style=style,
+        camera=camera,
+        avoid=avoid,
+        recent_selections=recent_selections,
     )
     return [item for item, _ in ranked[:limit]]

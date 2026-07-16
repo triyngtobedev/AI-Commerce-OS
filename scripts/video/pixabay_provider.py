@@ -49,10 +49,24 @@ def _shorten_pixabay_query(query: str, max_len: int = 60) -> str:
     return " ".join(result).strip() or cleaned[:max_len].strip()
 
 
-def search_pixabay(query: str, per_page: int = 15) -> dict:
+def search_pixabay(
+    query: str,
+    per_page: int = 15,
+    *,
+    orientation: str = "all",
+    min_width: int = 1920,
+    min_height: int = 1080,
+) -> dict:
     """
     Busca vídeos e imagens na Pixabay API.
     Retorna no mesmo formato de search_pexels.
+
+    Filtros de qualidade/orientação:
+        min_width/min_height — piso de resolução (default Full HD, inclui 4K).
+            Para vertical (TikTok) use min_width=1080, min_height=1920 — a API
+            de vídeos da Pixabay não expõe `orientation`, então a orientação é
+            forçada via dimensões mínimas.
+        orientation — "all" | "horizontal" | "vertical" (aplicado às imagens).
     """
 
     empty = {"videos": [], "photos": []}
@@ -70,6 +84,8 @@ def search_pixabay(query: str, per_page: int = 15) -> dict:
         "q": query,
         "per_page": per_page,
         "safesearch": "true",
+        "min_width": min_width,
+        "min_height": min_height,
     }
 
     try:
@@ -121,18 +137,21 @@ def search_pixabay(query: str, per_page: int = 15) -> dict:
         return {"tipo": "videos", "videos": videos, "photos": []}
 
     try:
+        # A API de imagens da Pixabay aceita `orientation` (all/horizontal/vertical).
+        photo_params = {**params, "image_type": "photo", "orientation": orientation}
+
         @retry_with_backoff(max_attempts=3, operation=f"Pixabay photo search: {query[:40]}")
         def _fetch_photos():
             response = requests.get(
                 PIXABAY_PHOTO_URL,
-                params={**params, "image_type": "photo"},
+                params=photo_params,
                 timeout=15,
             )
             if response.status_code == 400 and len(query.split()) > 2:
                 shorter = _shorten_pixabay_query(query, max_len=40)
                 response = requests.get(
                     PIXABAY_PHOTO_URL,
-                    params={**params, "q": shorter, "image_type": "photo"},
+                    params={**photo_params, "q": shorter},
                     timeout=15,
                 )
             response.raise_for_status()

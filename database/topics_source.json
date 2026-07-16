@@ -3,7 +3,13 @@
         "nome": "O Mistério da Explosão de Tunguska",
         "categoria": "historia",
         "subcategoria": "eventos_misteriosos",
-        "keywords": ["tunguska", "explosão", "sibéria", "1908", "meteoro"],
+        "keywords": [
+            "tunguska",
+            "explosão",
+            "sibéria",
+            "1908",
+            "meteoro"
+        ],
         "potencial_monetizacao": "alto",
         "dificuldade_pesquisa": "baixa",
         "angulo_sugerido": "revelacao_historica"
@@ -12,7 +18,13 @@
         "nome": "A Verdade Sobre a Biblioteca de Alexandria",
         "categoria": "historia",
         "subcategoria": "civilizacoes_antigas",
-        "keywords": ["alexandria", "biblioteca", "egito", "conhecimento", "fogo"],
+        "keywords": [
+            "alexandria",
+            "biblioteca",
+            "egito",
+            "conhecimento",
+            "fogo"
+        ],
         "potencial_monetizacao": "alto",
         "dificuldade_pesquisa": "baixa",
         "angulo_sugerido": "fato_surpreendente"
@@ -21,7 +33,12 @@
         "nome": "Como a Peste Negra Mudou a Europa Para Sempre",
         "categoria": "historia",
         "subcategoria": "epidemias",
-        "keywords": ["peste negra", "medieval", "europa", "século XIV"],
+        "keywords": [
+            "peste negra",
+            "medieval",
+            "europa",
+            "século XIV"
+        ],
         "potencial_monetizacao": "alto",
         "dificuldade_pesquisa": "media",
         "angulo_sugerido": "impacto_historico"
@@ -30,9 +47,60 @@
         "nome": "Os Mistérios das Linhas de Nazca",
         "categoria": "historia",
         "subcategoria": "arqueologia",
-        "keywords": ["nazca", "peru", "geoglifos", "arqueologia", "mistério"],
+        "keywords": [
+            "nazca",
+            "peru",
+            "geoglifos",
+            "arqueologia",
+            "mistério"
+        ],
         "potencial_monetizacao": "alto",
         "dificuldade_pesquisa": "baixa",
         "angulo_sugerido": "revelacao_historica"
+    },
+    {
+        "nome": "A Guerra Mais Estranha da História: Quando a Austrália Enfrentou Emus e Perdeu",
+        "categoria": "historia",
+        "subcategoria": "curiosidades",
+        "keywords": [
+            "guerra inusitada",
+            "austrália história",
+            "animais selvagens"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "fato_surpreendente",
+        "gancho": "Em 1932, a Austrália declarou guerra. Não contra uma nação inimiga, mas contra um exército de... emus. E o resultado foi chocante: os militares perderam. Descubra a inacreditável história da Grande Guerra dos Emus.",
+        "porque_funciona": "A premissa absurdamente real garante alto CTR e curiosidade inicial. É um evento histórico pouco conhecido globalmente, com forte potencial visual de paisagens australianas, militares da época e, claro, os próprios emus. Fácil de pesquisar e manter a narrativa envolvente com detalhes dos 'combates'."
+    },
+    {
+        "nome": "O Templo Mais Antigo do Mundo: A Descoberta que Reescreveu a História da Civilização Humana",
+        "categoria": "historia",
+        "subcategoria": "civilizacoes_antigas",
+        "keywords": [
+            "arqueologia",
+            "ruínas antigas",
+            "civilização pré-histórica"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "media",
+        "angulo_sugerido": "revelacao_historica",
+        "gancho": "O que aconteceria se você descobrisse que tudo o que aprendeu sobre o início da civilização humana está errado? No sudeste da Turquia, um sítio arqueológico de 12.000 anos está virando a história de ponta-cabeça, e você precisa conhecer Göbekli Tepe.",
+        "porque_funciona": "Göbekli Tepe é uma descoberta revolucionária que desafia o conhecimento popular sobre a história da civilização. O mistério de sua construção e propósito, junto com sua antiguidade, gera enorme curiosidade. Abundância de imagens de escavações, ruínas e reconstruções artísticas."
+    },
+    {
+        "nome": "O Exército Secreto que Enganou Hitler: Como Artistas e Ilusionistas Venceram uma Guerra sem Lutar",
+        "categoria": "historia",
+        "subcategoria": "guerras",
+        "keywords": [
+            "segunda guerra mundial",
+            "espionagem guerra",
+            "exército camuflagem"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "fato_surpreendente",
+        "gancho": "Durante a Segunda Guerra Mundial, existiu uma unidade militar americana composta por artistas, designers e ilusionistas, cujo trabalho era... fingir. Eles usaram tanques infláveis e trilhas sonoras falsas para enganar o exército nazista. Conheça a inacreditável história do 'Ghost Army'.",
+        "porque_funciona": "A premissa da 'guerra de engano' é extremamente fascinante e pouco conhecida do grande público. Forte apelo visual com imagens históricas, documentários sobre o tema e a justaposição de arte e guerra. O fator 'surpresa' e a engenhosidade humana garantem alta retenção."
     }
 ]

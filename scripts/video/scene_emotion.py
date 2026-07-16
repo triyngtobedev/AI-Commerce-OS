@@ -81,8 +81,6 @@ def apply_timeline_to_scenes(
         else:
             assigned = max(0.5, round(section_duration, 2))
 
-        assigned = min(assigned, MAX_SCENE_DURATION)
-
         if index == len(scenes) - 1 and audio_duration > 0:
             assigned = max(0.5, round(audio_duration - current_time, 2))
 

@@ -90,7 +90,10 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
         preferir_imagem (youtube_dark + cenas documentais)
     """
 
-    from scripts.core.visual_intent_engine import build_visual_search_query
+    from scripts.core.visual_intent_engine import (
+        build_visual_search_query,
+        resolve_visual_intent,
+    )
 
     queries = []
 
@@ -106,9 +109,23 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
 
         section = timeline_sections[index] if index < len(timeline_sections) else None
         if section:
+            # Query enriquecida (cinematográfica) só quando há timeline —
+            # preserva buscas literais de produto (TikTok) sem timeline.
             visual = build_visual_search_query(visual or section.text[:80], section)
             scene.setdefault("visual_intent", section.visual_intent)
             scene.setdefault("emotion", section.emotion)
+
+        visual_intent = scene.get("visual_intent", "general_narrative")
+        emotion = scene.get("emotion", "calm")
+
+        # Spec resolvida a partir dos metadados já existentes na cena.
+        # Fornece sinais narrativos (visual_goal, camera, style, avoid) para o
+        # ranking story-aware — de forma neutra entre todos os providers.
+        spec = resolve_visual_intent({
+            "visual_intent": visual_intent,
+            "emotion": emotion,
+            "camera_motion": scene.get("camera_motion", "slow_push"),
+        })
 
         query = {
             "tempo": scene.get("tempo", ""),
@@ -119,8 +136,12 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
                 produto,
                 tipo
             ),
-            "visual_intent": scene.get("visual_intent", "general_narrative"),
-            "emotion": scene.get("emotion", "calm"),
+            "visual_intent": visual_intent,
+            "emotion": emotion,
+            "visual_goal": spec.visual_goal,
+            "camera": spec.camera,
+            "style": spec.style,
+            "avoid": spec.avoid,
         }
 
         if prefer_image and scene.get("visual_intent") in _IMAGE_ONLY_INTENTS:

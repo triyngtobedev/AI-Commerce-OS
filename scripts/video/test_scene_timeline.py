@@ -1,11 +1,13 @@
 """Testes para timeline de cenas."""
 
 import unittest
+from unittest.mock import patch
 
 from scripts.video.scene_timeline import (
     sync_scenes_to_audio,
+    split_long_scenes,
     _split_text_by_weights,
-    _estimate_scene_durations,
+    _split_narration_at_sentences,
     SCENE_WEIGHTS,
 )
 
@@ -40,13 +42,51 @@ class TestSceneTimeline(unittest.TestCase):
         self.assertGreater(result.get("audio_duration", 0), 0)
 
         cenas = result["cenas"]
-        self.assertEqual(len(cenas), 2)
-        self.assertIn("duration_seconds", cenas[0])
-        self.assertIn("tempo_inicio", cenas[0])
+        self.assertGreaterEqual(len(cenas), 2)
+        for scene in cenas:
+            self.assertIn("duration_seconds", scene)
+            self.assertIn("tempo_inicio", scene)
+            self.assertLessEqual(scene["duration_seconds"], 55.0)
 
     def test_scene_weights_defined(self):
         self.assertIn("hook", SCENE_WEIGHTS)
         self.assertIn("encerramento", SCENE_WEIGHTS)
+
+    def test_split_narration_at_sentences(self):
+        text = "Primeira frase longa aqui. Segunda frase também. Terceira frase final."
+        parts = _split_narration_at_sentences(text, 2)
+        self.assertEqual(len(parts), 2)
+        self.assertIn(".", parts[0])
+
+    def test_split_long_scenes_divides_above_55s(self):
+        scenes = {
+            "cenas": [{
+                "tipo": "revelacao",
+                "narracao": "Frase um longa. Frase dois longa. Frase três longa. Frase quatro longa.",
+                "duration_seconds": 90.0,
+                "tempo_inicio": 0.0,
+                "tempo_fim": 90.0,
+            }],
+            "audio_duration": 90.0,
+        }
+        result = split_long_scenes(scenes)
+        expanded = result["cenas"]
+        self.assertGreater(len(expanded), 1)
+        for scene in expanded:
+            self.assertLessEqual(scene["duration_seconds"], 55.0)
+        self.assertEqual(expanded[0].get("media_index"), 0)
+
+    @patch("scripts.video.scene_timeline.probe_duration", return_value=120.0)
+    def test_sync_splits_long_scenes_with_audio(self, _mock_probe):
+        scenes = {
+            "cenas": [
+                {"tipo": "hook", "narracao": "Hook curto."},
+                {"tipo": "revelacao", "narracao": " ".join(["Palavra"] * 200)},
+            ],
+        }
+        result = sync_scenes_to_audio(scenes, " ".join(["Palavra"] * 210), "/fake/audio.mp3")
+        durations = [s["duration_seconds"] for s in result["cenas"]]
+        self.assertTrue(all(d <= 55.0 for d in durations[:-1] or durations))
 
 
 if __name__ == "__main__":

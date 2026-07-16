@@ -16,21 +16,40 @@ Retorne APENAS JSON no formato:
   "objetivo": "maximizar watch time e retenção",
   "formato": "video_horizontal_youtube_documentario",
   "queries_contexto": [
-    "query pexels cena 1 - contexto histórico",
-    "query pexels cena 2 - evento principal",
-    "query pexels cena 3 - consequências",
-    "query pexels cena 4 - personagens",
-    "query pexels cena 5 - locais",
-    "query pexels cena 6 - artefatos",
-    "query pexels cena 7 - impacto moderno",
-    "query pexels cena 8 - encerramento"
+    "ancient stone temple ruins, cinematic aerial establishing shot, golden hour, dramatic god rays, atmospheric fog",
+    "archaeological excavation site, slow dolly shot, warm dust particles floating in light beams, shallow depth of field",
+    "ancient carved stone reliefs, extreme close-up, dramatic side lighting revealing texture, photorealistic",
+    "lone figure silhouette in vast desert, cinematic wide shot at dusk, epic scale, moody lighting",
+    "misty mountain ranges, sweeping drone shot, cold blue tones, sense of mystery and scale",
+    "ancient artifact on dark background, macro shot, museum rim lighting, photorealistic, shallow focus",
+    "modern city skyline over historical ruins, cinematic timelapse, warm-to-cool color grade, high contrast",
+    "starry night sky over ancient monument, long exposure closing shot, awe-inspiring atmosphere"
   ],
   "duracao_alvo": "8 minutos",
   "tom_narracao": "documentario_envolvente"
 }
 
 Regras:
-- queries_contexto devem ser strings em inglês (funcionam melhor no Pexels)
-- Gere exatamente 8 queries alinhadas às cenas do documentário
-- O gancho deve criar curiosidade imediata sem clickbait enganoso
-- Ângulo deve explorar o aspecto mais surpreendente do tema
+- queries_contexto devem ser strings em inglês (funcionam melhor nos bancos de mídia e na IA de imagem).
+- Gere exatamente 8 queries alinhadas às cenas do documentário.
+- CADA query deve ser uma DESCRIÇÃO VISUAL CINEMATOGRÁFICA rica, não um termo literal.
+  - RUIM (genérico): "dinheiro", "história", "templo", "guerra".
+  - BOM (cinematográfico): "notas de dólar caindo em câmera lenta, close-up cinematográfico, iluminação dramática de contraluz".
+- Comece cada query pelo SUJEITO concreto (objeto/local/cena principal) e só então adicione os modificadores
+  cinematográficos. Isso mantém a busca relevante mesmo quando a query é encurtada pelos bancos de mídia.
+- Inclua sempre que fizer sentido: enquadramento/câmera (aerial, drone, close-up, macro, dolly, tracking shot, wide establishing),
+  qualidade de luz (golden hour, dramatic lighting, god rays, rim light, moody), atmosfera (fog, dust particles, mist),
+  e um mood coerente com o ângulo (épico, misterioso, reflexivo).
+- Prefira substantivos concretos e específicos ao tema em vez de conceitos abstratos — descreva o que a CÂMERA VÊ.
+- Evite texto, marcas d'água, logos, colagens e pessoas reconhecíveis nas descrições.
+- O gancho deve criar curiosidade imediata sem clickbait enganoso.
+- Ângulo deve explorar o aspecto mais surpreendente do tema.
+- Alinhe as 8 queries à progressão narrativa do documentário, reforçando o objetivo visual de cada ato:
+  1. Hook — impacto, close-up dramático, alto contraste.
+  2-3. Contexto — establishing/aerial, ambiente, arquitetura, mapas.
+  4-5. Desenvolvimento — detalhes, processos, demonstrações, planos médios.
+  6. Revelação — drama, movimento, tensão.
+  7. Consequências/impacto — escala, resultado, força.
+  8. Encerramento — contemplação, atmosfera, fechamento.
+- Cada query deve embutir explicitamente enquadramento (câmera), qualidade de luz (lighting) e um estilo coerente
+  (style: cinematográfico/documental) — mantendo consistência visual entre as cenas.

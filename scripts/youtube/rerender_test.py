@@ -18,9 +18,13 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from scripts.video.subtitle_generator import generate_subtitles
 from scripts.video.renderer import render_video_project
+from scripts.video.scene_timeline import sync_scenes_to_audio
 from scripts.youtube.thumbnail_generator import generate_thumbnail
 from scripts.audio.soundtrack_engine import generate_soundtrack
 from scripts.core.production.quality_score import run_quality_score
+from scripts.core.timeline_sync import sync_timeline_to_audio
+from scripts.core.emotional_timeline import EmotionalTimeline
+from scripts.core.emotional_effects import apply_effect_hints_to_scenes
 
 
 def rerender(
@@ -93,9 +97,39 @@ def rerender(
             run_visual_media_pipeline(subject, result["cenas"], queries)
 
     emotional_file = folder / "emotional_timeline.json"
+    emotional_timeline = None
     if emotional_file.exists():
         with open(emotional_file, encoding="utf-8") as f:
             result["emotional_timeline"] = json.load(f)
+            emotional_timeline = EmotionalTimeline.from_dict(result["emotional_timeline"])
+
+    script = None
+    script_file = folder / "script.json"
+    if script_file.exists():
+        with open(script_file, encoding="utf-8") as f:
+            script = json.load(f)
+
+    if audio.exists() and content.get("texto_narracao"):
+        if emotional_timeline:
+            emotional_timeline = sync_timeline_to_audio(
+                emotional_timeline,
+                str(audio),
+            )
+            result["emotional_timeline"] = emotional_timeline.to_dict()
+
+        result["cenas"] = sync_scenes_to_audio(
+            result["cenas"],
+            content["texto_narracao"],
+            str(audio),
+            emotional_timeline=emotional_timeline,
+            script=script,
+        )
+        result["cenas"] = apply_effect_hints_to_scenes(
+            result["cenas"],
+            emotional_timeline,
+        )
+        synced_count = len(result["cenas"].get("cenas", []))
+        print(f"⏱️ Cenas re-sincronizadas: {synced_count} (split de ritmo aplicado)")
 
     cenas = result.get("cenas", {})
     audio_duration = float(cenas.get("audio_duration", 0)) if isinstance(cenas, dict) else 0

@@ -268,6 +268,20 @@ def run():
     )
 
     parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Reprocessar temas já gerados, ignorando o histórico de produção",
+    )
+
+    parser.add_argument(
+        "--rerun",
+        action="store_true",
+        default=False,
+        help="Alias de --force: reprocessar tema existente em desenvolvimento",
+    )
+
+    parser.add_argument(
         "--youtube-auth",
         action="store_true",
         help="Configurar OAuth do YouTube interativamente",
@@ -298,6 +312,8 @@ def run():
     )
 
     args = parser.parse_args()
+
+    force = args.force or args.rerun
 
     if args.production and args.platform == "tiktok_shop":
         args.platform = "youtube_dark"
@@ -346,6 +362,7 @@ def run():
             auto_upload=auto_upload,
             privacy_status=privacy,
             production_mode=production,
+            force=force,
         )
         all_results.extend(youtube_results)
 

@@ -207,6 +207,7 @@ PEXELS_API_KEY=sua_chave_pexels
 PIXABAY_API_KEY=
 
 # Modo de mídia: stock (padrão) | persona
+# persona = gera imagens IA únicas por cena via Pollinations.ai (gratuito, sem chave)
 CONTENT_MODE=stock
 
 # Plataforma padrão: tiktok_shop | youtube_dark
@@ -233,7 +234,7 @@ AZURE_SPEECH_REGION=
 | `GROQ_API_KEY` | API Groq (fallback automático) |
 | `PEXELS_API_KEY` | Busca de vídeos/imagens stock (Pexels) |
 | `PIXABAY_API_KEY` | Fallback de mídia stock gratuito (YouTube Dark) |
-| `CONTENT_MODE` | `stock` usa Pexels; `persona` gera imagens com IA |
+| `CONTENT_MODE` | `stock` usa Pexels/Pixabay; `persona` gera imagens IA por cena via Pollinations.ai (gratuito) + Ken Burns |
 | `YOUTUBE_AUTO_UPLOAD` | Publica automaticamente após produção |
 | `YOUTUBE_DRY_RUN` | Simula upload sem publicar |
 | `YOUTUBE_PUBLISH_ENABLED` | Habilita/desabilita publicação globalmente |
@@ -291,6 +292,17 @@ python main.py --platform youtube_dark --upload
 python main.py --platform youtube_dark --max-videos 3 --upload --privacy public
 ```
 
+#### Reprocessamento (`--rerun` / `--force`)
+
+`--rerun` é alias de `--force` — ambos definem a mesma variável interna (`force=True`).
+
+| Modo | Comando | Comportamento |
+|---|---|---|
+| Normal | `python main.py --platform youtube_dark` | Seleciona apenas temas **não processados**; protege contra duplicação |
+| Desenvolvimento | `python main.py --platform youtube_dark --rerun` | Reprocessa tema já gerado; reutiliza a pasta existente e atualiza artefatos |
+
+Em `--production`, o pipeline resumível também invalida o `stage_cache` para garantir reexecução completa.
+
 ### Ambas as plataformas
 
 ```bash
@@ -317,6 +329,7 @@ python -m unittest scripts.youtube.test_youtube_pipeline_e2e -v
 | `--privacy` | `private`, `unlisted` ou `public` (sobrescreve `UPLOAD_VISIBILITY`) |
 | `UPLOAD_VISIBILITY` | Variável `.env`: `private` \| `unlisted` \| `public` — controla visibilidade em produção |
 | `--max-videos` | Limite de vídeos por execução |
+| `--force` / `--rerun` | Reprocessar temas já gerados (aliases — ver seção Reprocessamento) |
 | `--youtube-auth` | Configura OAuth interativamente |
 | `--youtube-validate` | Valida credenciais OAuth |
 | `--youtube-analytics` | Exibe métricas do canal |

@@ -26,7 +26,9 @@ _REJECT_PATTERNS = re.compile(
     r"twitch|streamer|video[\s_-]?game|playstation|xbox|"
     r"green[\s_-]?screen|chroma|mockup|placeholder|"
     r"office[\s_-]?worker|business[\s_-]?meeting|handshake|"
-    r"stock[\s_-]?footage[\s_-]?loop|loopable|"
+    "stock[\s_-]?footage[\s_-]?loop|loopable|"
+    r"people[\s_-]?walking|crowd[\s_-]?walking|"
+    r"abstract[\s_-]?background|bokeh[\s_-]?background|"
     r"cartoon|animation|animated|3d[\s_-]?render|cgi|"
     r"screenshot|screen[\s_-]?record"
     r")\b",
@@ -36,8 +38,9 @@ _REJECT_PATTERNS = re.compile(
 _CINEMATIC_BOOST_PATTERNS = re.compile(
     r"\b("
     r"cinematic|documentary|aerial|drone|timelapse|"
-    r"nature|landscape|historical|archive|film|"
-    r"4k|uhd|slow[\s_-]?motion"
+    r"nature|landscape|historical|archive|film|footage|"
+    r"4k|uhd|slow[\s_-]?motion|establishing[\s_-]?shot|"
+    r"epic|atmospheric|wide[\s_-]?angle"
     r")\b",
     re.IGNORECASE,
 )
@@ -117,7 +120,7 @@ def score_video(query: str, video: dict) -> float:
         score -= 0.45
 
     if _CINEMATIC_BOOST_PATTERNS.search(haystack):
-        score += 0.12
+        score += 0.18
 
     return max(0.0, score)
 

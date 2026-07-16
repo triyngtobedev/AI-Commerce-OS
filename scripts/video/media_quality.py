@@ -17,6 +17,11 @@ MIN_IMAGE_WIDTH = 1920
 MIN_IMAGE_HEIGHT = 1080
 MIN_IMAGE_WIDTH_FALLBACK = 1280
 MIN_IMAGE_HEIGHT_FALLBACK = 720
+# Piso relaxado para imagens geradas por IA (Pollinations/persona).
+# O scene_renderer normaliza e faz upscale automático, então basta garantir
+# que a imagem tenha resolução mínima aproveitável (1024x576, 16:9).
+MIN_AI_IMAGE_WIDTH = 1024
+MIN_AI_IMAGE_HEIGHT = 576
 MIN_FILE_BYTES = 8000
 MIN_VIDEO_FILE_BYTES = 400_000
 

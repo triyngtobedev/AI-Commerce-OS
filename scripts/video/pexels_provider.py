@@ -17,18 +17,30 @@ PEXELS_PHOTO_URL = (
 
 
 
-def search_pexels(query):
+def search_pexels(
+    query,
+    *,
+    orientation="landscape",
+    min_width=1920,
+    min_height=1080,
+    size=None,
+    per_page=15,
+):
 
     """
     Busca mídia no Pexels.
 
     Ordem:
-    
+
     1 - Vídeos
     2 - Imagens como fallback
 
-    Mantém compatibilidade
-    com media_search.py
+    Filtros de qualidade/orientação:
+        orientation — "landscape" (YouTube) ou "portrait" (TikTok/vertical).
+        min_width/min_height — piso de resolução (default Full HD, inclui 4K).
+        size — tier opcional do Pexels ("large"=4K, "medium"=Full HD, "small"=HD).
+
+    Mantém compatibilidade com media_search.py (query posicional).
     """
 
 
@@ -53,6 +65,24 @@ def search_pexels(query):
         "Authorization": api_key
     }
 
+    video_params = {
+        "query": query,
+        "per_page": per_page,
+        "orientation": orientation,
+        "min_width": min_width,
+        "min_height": min_height,
+    }
+
+    photo_params = {
+        "query": query,
+        "per_page": per_page,
+        "orientation": orientation,
+    }
+
+    if size:
+        video_params["size"] = size
+        photo_params["size"] = size
+
 
 
     # ==========================
@@ -67,7 +97,7 @@ def search_pexels(query):
             response = requests.get(
                 PEXELS_VIDEO_URL,
                 headers=headers,
-                params={"query": query, "per_page": 15},
+                params=video_params,
                 timeout=15,
             )
             response.raise_for_status()
@@ -114,7 +144,7 @@ def search_pexels(query):
             response = requests.get(
                 PEXELS_PHOTO_URL,
                 headers=headers,
-                params={"query": query, "per_page": 15},
+                params=photo_params,
                 timeout=15,
             )
             response.raise_for_status()

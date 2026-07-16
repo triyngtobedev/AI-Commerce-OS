@@ -57099,5 +57099,14 @@
             "score": 90,
             "potencial": "alto"
         }
+    },
+    {
+        "produto": {
+            "nome": "Teste AI-Commerce"
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto"
+        }
     }
 ]

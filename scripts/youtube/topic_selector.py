@@ -113,6 +113,7 @@ def select_next_topics(
     output_base: str = "output",
     force_topic_name: Optional[str] = None,
     processed_names: Optional[Set[str]] = None,
+    force: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Seleciona próximos temas disponíveis por score, excluindo já processados.
@@ -123,6 +124,7 @@ def select_next_topics(
         platform: Plataforma alvo
         output_base: Diretório base de saída
         force_topic_name: Tema específico (ignora exclusão de histórico)
+        force: Se True, permite reprocessar temas já gerados
 
     Returns:
         Lista de temas selecionados para produção
@@ -154,7 +156,7 @@ def select_next_topics(
     available = []
 
     for topic in topics:
-        if is_topic_processed(
+        if not force and is_topic_processed(
             topic,
             processed_names=processed_names,
             platform=platform,
@@ -164,6 +166,16 @@ def select_next_topics(
                 f"⏭️ Tema já processado (ignorado): {topic['nome']}"
             )
             continue
+
+        if force and is_topic_processed(
+            topic,
+            processed_names=processed_names,
+            platform=platform,
+            output_base=output_base,
+        ):
+            print(
+                f"⚡ Forçando re-execução do tema: {topic['nome']}"
+            )
 
         available.append(topic)
 
@@ -204,6 +216,7 @@ def resolve_topic_for_production(
     processed_names: Optional[Set[str]] = None,
     platform: str = YOUTUBE_DARK.id,
     output_base: str = "output",
+    force: bool = False,
 ) -> Optional[Dict[str, Any]]:
     """
     Valida o tema antes da produção e troca automaticamente
@@ -216,12 +229,21 @@ def resolve_topic_for_production(
             output_base=output_base,
         )
 
-    if not is_topic_processed(
+    if force or not is_topic_processed(
         topic,
         processed_names=processed_names,
         platform=platform,
         output_base=output_base,
     ):
+        if force and is_topic_processed(
+            topic,
+            processed_names=processed_names,
+            platform=platform,
+            output_base=output_base,
+        ):
+            print(
+                f"⚡ Forçando re-execução do tema: {topic['nome']}"
+            )
         return topic
 
     print(

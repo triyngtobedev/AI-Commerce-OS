@@ -65,9 +65,19 @@ def validate_av_sync(
     video_path: Path,
     audio_path: Path | None,
     *,
+    audio_offset: float = 0.0,
     max_delta: float = MAX_AV_SYNC_DELTA,
+    max_tail: float = 12.0,
 ) -> float:
-    """Valida diferença entre duração do vídeo e do áudio. Retorna delta."""
+    """
+    Valida a sincronia entre vídeo e narração.
+
+    A narração ocupa [audio_offset, audio_offset + audio_duration] no vídeo
+    final (audio_offset = duração da intro). O vídeo pode ser mais longo por
+    conta do cartão de encerramento, mas não pode terminar antes da narração
+    (drift negativo) nem ser muito mais longo que ela (drift positivo).
+    Retorna a diferença entre o fim do vídeo e o fim da narração.
+    """
 
     video_duration = probe_duration(video_path)
     audio_duration = probe_duration(audio_path) if audio_path and audio_path.exists() else 0.0
@@ -75,15 +85,22 @@ def validate_av_sync(
     if audio_duration <= 0:
         return 0.0
 
-    delta = abs(video_duration - audio_duration)
-    if delta > max_delta:
+    narration_end = audio_offset + audio_duration
+
+    if video_duration + max_delta < narration_end:
         raise RenderSyncError(
-            f"Sincronização áudio/vídeo fora do limite: "
-            f"vídeo={video_duration:.2f}s, áudio={audio_duration:.2f}s, "
-            f"delta={delta:.2f}s (máx {max_delta}s)"
+            f"Narração ultrapassa o vídeo: vídeo={video_duration:.2f}s < "
+            f"fim da narração={narration_end:.2f}s (offset={audio_offset:.2f}s)"
         )
 
-    return delta
+    if video_duration > narration_end + max_tail:
+        raise RenderSyncError(
+            f"Vídeo muito mais longo que a narração (possível dessincronia): "
+            f"vídeo={video_duration:.2f}s vs narração_fim={narration_end:.2f}s "
+            f"(tail máx {max_tail:.1f}s)"
+        )
+
+    return abs(video_duration - narration_end)
 
 
 def _fade_filter(duration: float, fade: float) -> str:
@@ -100,6 +117,45 @@ def _scale_pad_filter(width: int, height: int) -> str:
         "force_original_aspect_ratio=decrease,"
         f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2"
     )
+
+
+def _clip_normalize_filter(width: int, height: int) -> str:
+    """Normaliza resolução, formato de cor e FPS antes do xfade."""
+
+    return (
+        f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+        f"crop={width}:{height},format=yuv420p,fps=30"
+    )
+
+
+def _normalize_input_filters(clip_count: int, width: int, height: int) -> list[str]:
+    norm = _clip_normalize_filter(width, height)
+    return [f"[{index}:v]{norm}[n{index:02d}]" for index in range(clip_count)]
+
+
+def _run_ffmpeg(
+    cmd: list,
+    *,
+    context: str = "",
+    output_path: Path | None = None,
+) -> bool:
+    """Executa FFmpeg e imprime stderr completo em caso de falha."""
+
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+    except subprocess.CalledProcessError as error:
+        stderr = error.stderr.decode("utf-8", errors="replace") if error.stderr else ""
+        label = f" ({context})" if context else ""
+        print(f"❌ FFmpeg falhou{label}:")
+        if stderr:
+            print(stderr)
+        else:
+            print(f"  código de saída: {error.returncode}")
+        return False
+
+    if output_path is not None:
+        return output_path.exists()
+    return True
 
 
 def _ken_burns_filter(
@@ -369,6 +425,8 @@ def concat_scene_clips(
     crossfade: float = 0.45,
     scene_types: list | None = None,
     platform: str = "youtube_dark",
+    width: int = 1920,
+    height: int = 1080,
 ) -> bool:
     """Concatena clips com crossfade variável por tipo de cena."""
 
@@ -389,11 +447,13 @@ def concat_scene_clips(
             for index, scene_type in enumerate(scene_types or []):
                 crossfades.append(kit.crossfade_for_scene(scene_type))
             if _concat_with_variable_crossfade(
-                clip_paths, output_path, crossfades, durations
+                clip_paths, output_path, crossfades, durations, width, height
             ):
                 return True
 
-            if _concat_with_crossfade(clip_paths, output_path, crossfade, durations):
+            if _concat_with_crossfade(
+                clip_paths, output_path, crossfade, durations, width, height
+            ):
                 return True
 
     list_file = output_path.parent / "scene_concat.txt"
@@ -415,13 +475,7 @@ def concat_scene_clips(
         str(output_path),
     ]
 
-    try:
-        subprocess.run(cmd, check=True, capture_output=True)
-        return output_path.exists()
-
-    except subprocess.CalledProcessError as error:
-        print(f"❌ Erro concatenando cenas: {error}")
-        return False
+    return _run_ffmpeg(cmd, context="concat simples", output_path=output_path)
 
 
 def _concat_with_crossfade(
@@ -429,21 +483,23 @@ def _concat_with_crossfade(
     output_path: Path,
     crossfade: float,
     durations: list,
+    width: int,
+    height: int,
 ) -> bool:
     inputs = []
     for clip in clip_paths:
         inputs.extend(["-i", str(clip.resolve())])
 
-    filter_parts = []
+    filter_parts = _normalize_input_filters(len(clip_paths), width, height)
     offset = durations[0] - crossfade
 
     if len(clip_paths) == 2:
         filter_parts.append(
-            f"[0:v][1:v]xfade=transition=fade:duration={crossfade}:offset={offset:.3f}[vout]"
+            f"[n00][n01]xfade=transition=fade:duration={crossfade}:offset={offset:.3f}[vout]"
         )
     else:
         filter_parts.append(
-            f"[0:v][1:v]xfade=transition=fade:duration={crossfade}:offset={offset:.3f}[v01]"
+            f"[n00][n01]xfade=transition=fade:duration={crossfade}:offset={offset:.3f}[v01]"
         )
 
         accumulated = durations[0] + durations[1] - crossfade
@@ -452,7 +508,7 @@ def _concat_with_crossfade(
             next_label = f"v{index:02d}" if index < len(clip_paths) - 1 else "vout"
             offset = accumulated - crossfade
             filter_parts.append(
-                f"[{prev}][{index}:v]xfade=transition=fade:duration="
+                f"[{prev}][n{index:02d}]xfade=transition=fade:duration="
                 f"{crossfade}:offset={offset:.3f}[{next_label}]"
             )
             accumulated += durations[index] - crossfade
@@ -471,14 +527,10 @@ def _concat_with_crossfade(
         str(output_path),
     ]
 
-    try:
-        subprocess.run(cmd, check=True, capture_output=True)
-        return output_path.exists()
-
-    except subprocess.CalledProcessError as error:
-        stderr = error.stderr.decode("utf-8", errors="replace") if error.stderr else ""
-        print(f"⚠️ Crossfade falhou, usando concat simples: {stderr[:120]}")
+    if not _run_ffmpeg(cmd, context="crossfade", output_path=output_path):
+        print("⚠️ Crossfade falhou, usando concat simples.")
         return False
+    return True
 
 
 def _concat_with_variable_crossfade(
@@ -486,6 +538,8 @@ def _concat_with_variable_crossfade(
     output_path: Path,
     crossfades: list,
     durations: list,
+    width: int,
+    height: int,
 ) -> bool:
     """Crossfade com duração variável entre cenas adjacentes."""
 
@@ -496,11 +550,11 @@ def _concat_with_variable_crossfade(
     for clip in clip_paths:
         inputs.extend(["-i", str(clip.resolve())])
 
-    filter_parts = []
+    filter_parts = _normalize_input_filters(len(clip_paths), width, height)
     cf = crossfades[0] if crossfades else 0.4
     offset = durations[0] - cf
     filter_parts.append(
-        f"[0:v][1:v]xfade=transition=fade:duration={cf:.3f}:offset={offset:.3f}[v01]"
+        f"[n00][n01]xfade=transition=fade:duration={cf:.3f}:offset={offset:.3f}[v01]"
     )
 
     accumulated = durations[0] + durations[1] - cf
@@ -510,7 +564,7 @@ def _concat_with_variable_crossfade(
         cf = crossfades[index - 1] if index - 1 < len(crossfades) else 0.4
         offset = accumulated - cf
         filter_parts.append(
-            f"[{prev}][{index}:v]xfade=transition=fade:duration="
+            f"[{prev}][n{index:02d}]xfade=transition=fade:duration="
             f"{cf:.3f}:offset={offset:.3f}[{next_label}]"
         )
         accumulated += durations[index] - cf
@@ -529,11 +583,7 @@ def _concat_with_variable_crossfade(
         str(output_path),
     ]
 
-    try:
-        subprocess.run(cmd, check=True, capture_output=True)
-        return output_path.exists()
-    except subprocess.CalledProcessError:
-        return False
+    return _run_ffmpeg(cmd, context="crossfade variável", output_path=output_path)
 
 
 def render_scenes_video(
@@ -569,15 +619,20 @@ def render_scenes_video(
     clip_paths = []
     scene_types = []
     scene_count = len(scenes)
+    media_scene_count = cenas_meta.get("media_scene_count") or scene_count
     topic = result.get("produto", {}).get("nome", "")
 
     if should_show_intro(platform):
         intro_card = temp_dir / "intro_card.jpg"
         intro_clip = temp_dir / "intro.mp4"
         if kit.render_intro_card(intro_card, topic=topic):
+            # Compensação de crossfade: o clip é renderizado com duração extra
+            # igual ao crossfade da transição seguinte. O xfade consome esse
+            # excedente, então a duração visível equivale à duração pretendida
+            # e a timeline do vídeo permanece idêntica à do áudio/legenda.
             if _render_card_clip(
                 intro_card,
-                config.render.intro_seconds,
+                config.render.intro_seconds + kit.crossfade_for_scene("intro"),
                 intro_clip,
                 width,
                 height,
@@ -591,7 +646,8 @@ def render_scenes_video(
     for i, scene in enumerate(scenes):
         duration = _scene_duration(scene, synced)
 
-        media = resolve_scene_media(assets_root, i, scene_count)
+        media_idx = scene.get("media_index", i)
+        media = resolve_scene_media(assets_root, media_idx, media_scene_count)
         scene_type = scene.get("tipo", "")
         scene_label = scene.get("visual", "")[:50]
 
@@ -602,8 +658,14 @@ def render_scenes_video(
 
         clip_out = temp_dir / f"scene_{i + 1:02d}.mp4"
 
+        # Renderiza com duração estendida pelo crossfade da própria cena.
+        # Como o xfade sobrepõe (e portanto encurta) cada transição, essa
+        # compensação garante que a soma pós-crossfade seja exatamente a
+        # duração sincronizada — sem drift acumulado ao longo do vídeo.
+        render_duration = duration + kit.crossfade_for_scene(scene_type)
+
         if render_scene_clip(
-            media, duration, clip_out, width, height,
+            media, render_duration, clip_out, width, height,
             scene_index=i,
             platform=platform,
             scene_type=scene_type,
@@ -625,7 +687,7 @@ def render_scenes_video(
         if kit.render_outro_card(outro_card, topic=topic):
             if _render_card_clip(
                 outro_card,
-                config.render.outro_seconds,
+                config.render.outro_seconds + kit.crossfade_for_scene("encerramento"),
                 outro_clip,
                 width,
                 height,
@@ -646,6 +708,8 @@ def render_scenes_video(
         render_style.crossfade_seconds,
         scene_types=scene_types,
         platform=platform,
+        width=width,
+        height=height,
     ):
         return None
 
@@ -689,14 +753,20 @@ def mux_video_audio_subtitles(
     closing = render_style.closing_fade_seconds
     fade_start = 0.0
 
-    target_duration = audio_duration if has_audio and audio_duration > 0 else video_duration
+    # A narração começa após a intro (audio_delay) e o vídeo cobre
+    # intro + cenas + outro. O alvo abrange o vídeo inteiro para nunca
+    # truncar a narração nem congelar o último frame com tpad/clone.
+    if has_audio and audio_duration > 0:
+        target_duration = max(video_duration, audio_delay + audio_duration)
+    else:
+        target_duration = video_duration
 
-    if has_audio and video_duration > 0 and target_duration > video_duration + 0.05:
+    if video_duration > 0 and target_duration > video_duration + 0.05:
         pad_seconds = target_duration - video_duration
         video_filter += f",tpad=stop_mode=clone:stop_duration={pad_seconds:.3f}"
 
     if target_duration > closing + 1:
-        fade_start = max(0.0, audio_delay + target_duration - closing)
+        fade_start = max(0.0, target_duration - closing)
         video_filter += f",fade=t=out:st={fade_start:.2f}:d={closing}"
 
     cmd = [
@@ -783,7 +853,7 @@ def mux_video_audio_subtitles(
             return False
 
         if has_audio:
-            validate_av_sync(output_path, audio_path)
+            validate_av_sync(output_path, audio_path, audio_offset=audio_delay)
 
         return True
 

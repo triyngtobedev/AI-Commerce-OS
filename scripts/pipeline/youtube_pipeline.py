@@ -71,6 +71,7 @@ def run_youtube_pipeline(
     privacy_status: str = "private",
     force_topic_name: str = None,
     production_mode: bool = False,
+    force: bool = False,
 ):
     """
     Executa pipeline completo para YouTube Dark.
@@ -139,6 +140,11 @@ def run_youtube_pipeline(
         return []
 
 
+    if force:
+        print(
+            "⚡ Modo FORCE ativo — histórico de processamento ignorado\n"
+        )
+
     processed_names = collect_processed_topic_names(
         platform=YOUTUBE_DARK.id,
     )
@@ -150,6 +156,7 @@ def run_youtube_pipeline(
         platform=YOUTUBE_DARK.id,
         force_topic_name=force_topic_name,
         processed_names=processed_names,
+        force=force,
     )
 
     if not selected:
@@ -173,6 +180,7 @@ def run_youtube_pipeline(
                 topics,
                 processed_names=processed_names,
                 platform=YOUTUBE_DARK.id,
+                force=force,
             )
 
             if not topic:
@@ -190,6 +198,7 @@ def run_youtube_pipeline(
                     production_mode=True,
                     auto_upload=should_upload,
                     privacy_status=privacy_status,
+                    force=force,
                 )
 
                 if result:
@@ -521,6 +530,7 @@ def run_youtube_pipeline(
             record_production(
                 result,
                 upload_result=upload_result,
+                update_existing=force,
             )
 
             processed_names.add(

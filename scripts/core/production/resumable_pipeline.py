@@ -538,6 +538,7 @@ def run_resumable_youtube_pipeline(
     auto_upload: bool = False,
     privacy_status: str = "private",
     force_restart: bool = False,
+    force: bool = False,
 ) -> Optional[dict]:
     """
     Executa pipeline resumível para um tema YouTube.
@@ -552,11 +553,19 @@ def run_resumable_youtube_pipeline(
 
     ctx = StageContext(topic, output_dir)
 
-    if force_restart:
+    if force_restart or force:
         ctx.state = PipelineState(output_dir)
         ctx.state._data = ctx.state._load()
         ctx.state._data["completed_steps"] = []
         ctx.state.save()
+
+        had_stage_cache = bool(ctx.cache._data.get("stages"))
+        ctx.cache.invalidate_from("collect", STAGE_ORDER)
+        main_logger.info(
+            f"Reprocessando tema existente: {topic.get('nome', '')} "
+            f"— output: {output_dir}, "
+            f"stage cache invalidado: {'sim' if had_stage_cache else 'não'}"
+        )
 
     should_upload, upload_context = resolve_upload_settings(cli_upload=auto_upload)
 
@@ -613,7 +622,11 @@ def run_resumable_youtube_pipeline(
                 _timed_stage(ctx, stage, lambda r=runner: r(ctx, block_upload=True))
 
         result = ctx.data["pipeline_result"].to_dict()
-        record_production(result, upload_result=upload_result)
+        record_production(
+            result,
+            upload_result=upload_result,
+            update_existing=force,
+        )
 
         main_logger.success(f"Pipeline concluído: {topic.get('nome')}")
         return result

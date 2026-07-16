@@ -29,7 +29,13 @@ def _has_media(media):
 
 
 def _search_pexels_only(busca: str) -> dict:
-    return search_pexels(busca)
+    # TikTok e demais formatos verticais: prioriza retrato + Full HD vertical.
+    return search_pexels(
+        busca,
+        orientation="portrait",
+        min_width=1080,
+        min_height=1920,
+    )
 
 
 def _search_youtube_dark_chain(busca: str) -> dict:

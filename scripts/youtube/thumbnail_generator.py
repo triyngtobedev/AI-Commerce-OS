@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from scripts.core.brand_kit import get_brand_kit, score_image_contrast
 from scripts.utils.slug import content_output_dir
+from scripts.video.media_probe import probe_duration
 from scripts.video.scene_timeline import resolve_scene_media, extract_scenes, is_image
 
 
@@ -58,16 +59,29 @@ def _collect_scene_media(folder: Path, scenes: list) -> List[Path]:
     return candidates
 
 
+def _video_frame_timestamp(video_path: Path) -> str:
+    """Escolhe timestamp dramático (~30% do vídeo) para frame de thumbnail."""
+
+    duration = probe_duration(str(video_path))
+    if duration <= 0:
+        return "00:00:02"
+    target = max(1.0, min(duration * 0.3, duration - 0.5))
+    minutes = int(target // 60)
+    seconds = int(target % 60)
+    return f"00:{minutes:02d}:{seconds:02d}"
+
+
 def _extract_frame(
     video_path: Path,
     output_path: Path,
-    timestamp: str = "00:00:02",
+    timestamp: str | None = None,
 ) -> bool:
+    ts = timestamp or _video_frame_timestamp(video_path)
     try:
         subprocess.run(
             [
                 "ffmpeg", "-y",
-                "-ss", timestamp,
+                "-ss", ts,
                 "-i", str(video_path),
                 "-vframes", "1",
                 "-q:v", "2",
@@ -76,7 +90,7 @@ def _extract_frame(
             check=True,
             capture_output=True,
         )
-        return output_path.exists()
+        return output_path.exists() and output_path.stat().st_size > 1024
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
 
@@ -111,17 +125,23 @@ def _pick_best_hero_image(
         return None
 
     scored = [(score_image_contrast(path), path) for path in candidates]
+    scored.sort(key=lambda item: item[0], reverse=True)
+
+    for score, path in scored:
+        if is_image(path) and score >= 20:
+            return path
+
+    best_video = scored[0][1] if scored else None
+    if best_video and not is_image(best_video):
+        frame_path = frame_dir / "best_frame.jpg"
+        if _extract_frame(best_video, frame_path):
+            return frame_path
 
     for score, path in scored:
         if is_image(path):
             return path
 
-    best_video = max(scored, key=lambda item: item[0])[1]
-    frame_path = frame_dir / "best_frame.jpg"
-    if _extract_frame(best_video, frame_path, "00:00:01"):
-        return frame_path
-
-    return best_video if is_image(best_video) else None
+    return None
 
 
 def _generate_brand_background(
@@ -181,8 +201,9 @@ def generate_thumbnail(
 
     if hero:
         if kit.compose_thumbnail(hero, hook_text, thumbnail_path, topic=topic):
-            print(f"🖼️ Thumbnail CTR gerada: {thumbnail_path}")
-            return str(thumbnail_path)
+            if thumbnail_path.exists() and thumbnail_path.stat().st_size > 2048:
+                print(f"🖼️ Thumbnail CTR gerada: {thumbnail_path}")
+                return str(thumbnail_path)
         print(
             f"⚠️ Thumbnail: falha ao compor thumbnail com hero image "
             f"({hero}) — tentando fallback de marca"
