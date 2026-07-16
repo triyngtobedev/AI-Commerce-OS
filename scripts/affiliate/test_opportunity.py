@@ -1,12 +1,19 @@
-from opportunity_engine import analyze_opportunity
+from scripts.affiliate.opportunity_engine import analyze_opportunity
 
 
-produto = {
+analise = {
     "score": 92,
     "potencial": "alto"
 }
 
+score_tecnico = {
+    "score": 85
+}
 
-resultado = analyze_opportunity(produto)
+
+resultado = analyze_opportunity(
+    analise,
+    score_tecnico
+)
 
 print(resultado)

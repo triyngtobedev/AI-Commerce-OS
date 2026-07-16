@@ -86,6 +86,13 @@ class PipelineResult:
     video: Optional[str] = None
 
 
+    platform: str = "tiktok_shop"
+
+
+    youtube_metadata: Dict[str, Any] = field(
+        default_factory=dict
+    )
+
 
     def update(self, **kwargs):
         """
@@ -193,6 +200,16 @@ class PipelineResult:
 
             video=data.get(
                 "video"
+            ),
+
+            platform=data.get(
+                "platform",
+                "tiktok_shop"
+            ),
+
+            youtube_metadata=data.get(
+                "youtube_metadata",
+                {}
             )
         )
 
@@ -221,6 +238,57 @@ class PipelineResult:
 
             errors.append(
                 "Produto deve ser um dicionário"
+            )
+
+
+        narracao = self.conteudo.get(
+            "texto_narracao"
+        )
+
+        if not narracao:
+
+            errors.append(
+                "Narração ausente"
+            )
+
+        else:
+
+            from scripts.youtube.narration_utils import (
+                count_words,
+                validate_narration,
+                MIN_NARRATION_WORDS,
+            )
+
+            words = count_words(narracao)
+
+            if words < MIN_NARRATION_WORDS // 2:
+
+                errors.append(
+                    f"Narração muito curta: {words} palavras "
+                    f"(mínimo crítico: {MIN_NARRATION_WORDS // 2})"
+                )
+
+            for warning in validate_narration(narracao):
+                print(f"⚠️ Validação: {warning}")
+
+
+        cenas = self.cenas
+
+        if isinstance(
+            cenas,
+            dict
+        ):
+
+            cenas = cenas.get(
+                "cenas",
+                []
+            )
+
+
+        if not cenas:
+
+            errors.append(
+                "Cenas ausentes"
             )
 
 

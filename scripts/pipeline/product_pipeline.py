@@ -19,15 +19,7 @@ from scripts.video.caption_generator import generate_caption
 from scripts.video.project_builder import build_video_project
 
 from scripts.video.asset_manager import prepare_assets
-from scripts.video.asset_search import generate_asset_queries
-
-from scripts.video.media_search import search_media
-from scripts.video.media_downloader import download_videos
-
-from scripts.video.persona_media_pipeline import (
-    generate_persona_media,
-    should_use_persona,
-)
+from scripts.pipeline.shared_media import run_media_pipeline as _run_media_pipeline
 
 from scripts.video.subtitle_generator import generate_subtitles
 from scripts.video.renderer import render_video_project
@@ -43,105 +35,7 @@ from scripts.publisher.exporter import export_product
 from scripts.dashboard.generator import generate_dashboard
 
 from scripts.core.pipeline_result import PipelineResult
-
-
-
-def slugify(text):
-
-    return (
-        text
-        .lower()
-        .replace(" ", "-")
-        .replace("/", "-")
-    )
-
-
-
-def _run_media_pipeline(product, scenes, queries):
-    """
-    Decide e executa o pipeline de mídia correto.
-
-    Modo PERSONA:
-        Tenta gerar imagens com a influenciadora virtual.
-        Só limpa assets antigos se a geração foi bem-sucedida.
-        Faz fallback para stock se persona retornar 0 imagens.
-
-    Modo STOCK:
-        Busca e baixa mídia do Pexels diretamente.
-
-    Retorna:
-        "persona"  — usou persona com sucesso
-        "stock"    — usou stock (direto ou via fallback)
-    """
-
-    if not should_use_persona():
-
-        print(
-            "📸 Modo STOCK ativado."
-        )
-
-        media = search_media(
-            product,
-            queries
-        )
-
-        download_videos(
-            product,
-            media
-        )
-
-        return "stock"
-
-
-    # ================================
-    # MODO PERSONA
-    # ================================
-
-    print(
-        "🤖 Modo PERSONA ativado."
-    )
-
-    persona_images = generate_persona_media(
-        product,
-        scenes
-    )
-
-    if persona_images:
-
-        # Persona gerou imagens — pipeline encerrado aqui.
-        # clear_old_assets já foi chamado internamente
-        # pelo generate_persona_media após confirmação.
-        print(
-            f"✅ Persona: {len(persona_images)} imagem(ns) gerada(s)."
-        )
-
-        return "persona"
-
-
-    # ================================
-    # FALLBACK: PERSONA → STOCK
-    # ================================
-
-    total_scenes = len(
-        scenes.get("cenas", [])
-    )
-
-    print(
-        f"⚠️ Persona falhou (0 de {total_scenes} cenas). "
-        "Usando stock como fallback."
-    )
-
-    media = search_media(
-        product,
-        queries
-    )
-
-    download_videos(
-        product,
-        media
-    )
-
-    return "stock"
+from scripts.utils.slug import slugify, product_output_dir
 
 
 
@@ -229,6 +123,22 @@ def run_pipeline():
             )
 
 
+            if action == "DESCARTAR":
+
+                print(
+                    f"⏭️ Produto descartado "
+                    f"(score: {opportunity.get('score_venda', 0)})."
+                )
+
+                continue
+
+
+            print(
+                f"▶️ Ação: {action} "
+                f"(score: {opportunity.get('score_venda', 0)})"
+            )
+
+
             creative_strategy = generate_creative_strategy(
                 product,
                 analysis,
@@ -311,10 +221,11 @@ def run_pipeline():
                         content["texto_narracao"],
 
                     "output_path":
-                    (
-                        f"output/"
-                        f"{slugify(product['nome'])}/"
-                        f"assets/audio/narracao.mp3"
+                    str(
+                        product_output_dir(product)
+                        / "assets"
+                        / "audio"
+                        / "narracao.mp3"
                     )
                 }
             )
@@ -425,13 +336,6 @@ def run_pipeline():
             )
 
 
-
-            generate_dashboard(
-                results
-            )
-
-
-
         except Exception as error:
 
             print(
@@ -440,6 +344,12 @@ def run_pipeline():
 
             continue
 
+
+    if results:
+
+        generate_dashboard(
+            results
+        )
 
 
     print(

@@ -28,9 +28,14 @@ _FALLBACK_BY_ANGLE = {
     "resultado_visual": "impressive product result close up",
     "produto_viral": "trending product unboxing reaction",
     "beneficio_direto": "practical product daily use",
+    "misterio_nao_resolvido": "mysterious historical event documentary",
+    "revelacao_historica": "historical revelation archive footage",
+    "fato_surpreendente": "surprising historical fact documentary",
+    "impacto_historico": "historical impact civilization documentary",
+    "cronologia_epica": "epic historical timeline cinematic",
 }
 
-_FALLBACK_DEFAULT = "product demonstration lifestyle"
+_FALLBACK_DEFAULT = "historical documentary cinematic footage"
 
 
 def _build_fallback(angulo, produto, tipo):
@@ -47,10 +52,17 @@ def _build_fallback(angulo, produto, tipo):
     # Variações por tipo de cena para diversificar
     # o fallback sem perder o contexto do ângulo.
     tipo_suffix = {
-        "hook": "attention grabbing",
+        "hook": "attention grabbing dramatic",
         "demonstracao": "in use close up",
         "beneficio": "positive result happy person",
         "cta": "product showcase",
+        "contexto": "historical context establishing shot",
+        "desenvolvimento_1": "historical event dramatic footage",
+        "desenvolvimento_2": "investigation research documentary",
+        "revelacao": "dramatic reveal cinematic",
+        "consequencias": "impact consequences documentary",
+        "impacto": "modern impact legacy footage",
+        "encerramento": "cinematic closing atmospheric",
     }.get(tipo, "")
 
     parts = [base_angle]

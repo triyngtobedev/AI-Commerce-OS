@@ -56755,5 +56755,349 @@
         "audio": "output\\luminária-led-inteligente\\assets\\audio\\narracao.mp3",
         "subtitle_file": "C:\\Projetos\\AI-Commerce-OS\\output\\luminária-led-inteligente\\captions.srt",
         "video": "output\\luminária-led-inteligente\\video_final.mp4"
+    },
+    {
+        "produto": {
+            "nome": "Mini Aspirador Portátil",
+            "categoria": "Casa",
+            "visualizacoes": 150000,
+            "curtidas": 12000,
+            "comentarios": 850,
+            "preco_estimado": 79.9,
+            "score_tecnico": {
+                "score": 80,
+                "engagement": 8.0,
+                "comment_rate": 0.567,
+                "factors": {
+                    "alcance": 20,
+                    "likes": 15,
+                    "comentarios": 10,
+                    "preco": 15,
+                    "demonstracao": 20
+                },
+                "classificacao": "Excelente"
+            }
+        },
+        "analise": {
+            "score": 85,
+            "potencial": "alto",
+            "publico_alvo": "mulheres e homens de 25 a 45 anos que buscam soluções práticas para a limpeza e organização de sua casa",
+            "motivos": [
+                "O produto é pequeno e portátil, facilitando a demonstração em vídeos curtos e dinâmicos",
+                "Resolve o problema de limpeza em pequenos espaços e superfícies, gerando curiosidade e interesse nos espectadores",
+                "O preço estimado de R$ 79,9 é acessível e competitivo, aumentando a probabilidade de compra",
+                "A categoria 'Casa' é popular no TikTok e o produto pode ser facilmente integrado a outros produtos e ideias de decoração e organização",
+                "O score técnico do produto é 'Excelente', indicando que ele tem um alto nível de qualidade e funcionalidade"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 82,
+            "score_ia": 85,
+            "score_mercado": 80,
+            "decisao": "TESTAR",
+            "facilidade_video": "alta",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "acao": "TESTAR_VIDEO",
+        "estrategia": {
+            "schema_version": "1.1",
+            "produto": "Mini Aspirador Portátil",
+            "angulo": "problema_solucao",
+            "gancho": "Você ainda sofre com esse problema? Testei o Mini Aspirador Portátil para descobrir se resolve de verdade.",
+            "estilo_video": "demonstracao_pratica",
+            "cta": "Aproveite a oferta e confira esse produto no TikTok Shop.",
+            "objetivo": "gerar desejo de compra",
+            "formato": "video_vertical_tiktok_shop",
+            "queries_contexto": [
+                "mini aspirador portátil solving problem demonstration",
+                "person frustrated before using mini aspirador portátil",
+                "satisfying clean result mini aspirador portátil",
+                "before after comparison mini aspirador portátil"
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar... o Mini Aspirador Portátil!",
+            "problema": "Quem nunca teve problema com poeira e sujeira em cantinhos e superfícies pequenas? Sempre achei difícil limpar esses espaços.",
+            "teste": "Então, resolvi testar o Mini Aspirador Portátil. Foi surpreendentemente fácil de usar e a sujeira sumiu em segundos! No entanto, notei que ele pode não ser tão eficaz em superfícies mais ásperas.",
+            "resultado": "Minha opinião sincera? Esse produto vale a pena, especialmente para quem busca uma solução prática para a limpeza de pequenos espaços. Eu diria que ele recebe nota 8 de 10.",
+            "cta": "Segue @testandogadgets para ver mais testes reais e descobrir produtos que podem tornar sua vida mais fácil!"
+        },
+        "conteudo": {
+            "titulo": "Desvende o Segredo para Limpar Espaços Pequenos com Facilidade!",
+            "descricao": "Eu não sabia que precisava disso até testar o Mini Aspirador Portátil! Descubra como resolver o problema da poeira e sujeira nos cantinhos mais difíceis de alcançar.",
+            "hashtags": [
+                "MiniAspiradorPortatil",
+                "LimpezaFacil",
+                "ProdutosInovadores",
+                "TikTokShop",
+                "TestandoGadgets",
+                "DicasDeLimpeza",
+                "OrganizacaoDaCasa"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar... o Mini Aspirador Portátil! Quem nunca teve problema com poeira e sujeira em cantinhos e superfícies pequenas? Sempre achei difícil limpar esses espaços. Então, resolvi testar o Mini Aspirador Portátil. Foi surpreendentemente fácil de usar e a sujeira sumiu em segundos! No entanto, notei que ele pode não ser tão eficaz em superfícies mais ásperas. Minha opinião sincera? Esse produto vale a pena, especialmente para quem busca uma solução prática para a limpeza de pequenos espaços. Eu diria que ele recebe nota 8 de 10. Aproveite a oferta e confira esse produto no TikTok Shop!",
+            "duracao": "25 segundos"
+        },
+        "legenda": {
+            "legenda": "Eu não sabia que precisava disso até testar o Mini Aspirador Portátil! Descubra como resolver o problema da poeira e sujeira nos cantinhos mais difíceis de alcançar.",
+            "hashtags": [
+                "MiniAspiradorPortatil",
+                "LimpezaFacil",
+                "ProdutosInovadores",
+                "TikTokShop",
+                "TestandoGadgets",
+                "DicasDeLimpeza",
+                "OrganizacaoDaCasa"
+            ]
+        },
+        "cenas": {
+            "produto": "Mini Aspirador Portátil",
+            "angulo": "problema_solucao",
+            "estilo_video": "demonstracao_pratica",
+            "cenas": [
+                {
+                    "tempo": "0-3",
+                    "tipo": "hook",
+                    "visual": "mini aspirador portátil solving problem demonstration, demonstracao_pratica style",
+                    "narracao": "Eu não sabia que precisava disso até testar... o Mini Aspirador Portátil! Quem nunca teve problema com poeira e sujeira em cantinhos e superfícies pequenas? Sempre achei difícil limpar esses espaços. Então, resolvi testar o Mini Aspirador Portátil. Foi surpreendentemente fácil de usar e a sujeira sumiu em segundos! No entanto, notei que ele pode não ser tão eficaz em superfícies mais ásperas. Minha opinião sincera? Esse produto vale a pena, especialmente para quem busca uma solução prática para a limpeza de pequenos espaços. Eu diria que ele recebe nota 8 de 10. Aproveite a oferta e confira esse produto no TikTok Shop!"
+                },
+                {
+                    "tempo": "3-15",
+                    "tipo": "demonstracao",
+                    "visual": "person frustrated before using mini aspirador portátil, demonstracao_pratica style",
+                    "narracao": "Eu não sabia que precisava disso até testar o Mini Aspirador Portátil! Descubra como resolver o problema da poeira e sujeira nos cantinhos mais difíceis de alcançar."
+                },
+                {
+                    "tempo": "15-25",
+                    "tipo": "beneficio",
+                    "visual": "satisfying clean result mini aspirador portátil, demonstracao_pratica style",
+                    "narracao": "Uma solução simples para facilitar o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30",
+                    "tipo": "cta",
+                    "visual": "before after comparison mini aspirador portátil, demonstracao_pratica style",
+                    "narracao": "Aproveite a oferta e confira esse produto no TikTok Shop."
+                }
+            ]
+        },
+        "asset_queries": [
+            {
+                "tempo": "0-3",
+                "tipo": "hook",
+                "busca": "mini aspirador portátil solving problem demonstration, demonstracao_pratica style",
+                "busca_fallback": "problem solution product demonstration attention grabbing"
+            },
+            {
+                "tempo": "3-15",
+                "tipo": "demonstracao",
+                "busca": "person frustrated before using mini aspirador portátil, demonstracao_pratica style",
+                "busca_fallback": "problem solution product demonstration in use close up"
+            },
+            {
+                "tempo": "15-25",
+                "tipo": "beneficio",
+                "busca": "satisfying clean result mini aspirador portátil, demonstracao_pratica style",
+                "busca_fallback": "problem solution product demonstration positive result happy person"
+            },
+            {
+                "tempo": "25-30",
+                "tipo": "cta",
+                "busca": "before after comparison mini aspirador portátil, demonstracao_pratica style",
+                "busca_fallback": "problem solution product demonstration product showcase"
+            }
+        ],
+        "audio": "output\\mini-aspirador-portatil\\assets\\audio\\narracao.mp3",
+        "subtitle_file": "C:\\Projetos\\AI-Commerce-OS\\output\\mini-aspirador-portatil\\captions.srt",
+        "video": "output\\mini-aspirador-portatil\\video_final.mp4"
+    },
+    {
+        "produto": {
+            "nome": "Luminária LED Inteligente",
+            "categoria": "Tecnologia",
+            "visualizacoes": 90000,
+            "curtidas": 7000,
+            "comentarios": 400,
+            "preco_estimado": 59.9,
+            "score_tecnico": {
+                "score": 75,
+                "engagement": 7.78,
+                "comment_rate": 0.444,
+                "factors": {
+                    "alcance": 15,
+                    "likes": 15,
+                    "comentarios": 10,
+                    "preco": 15,
+                    "demonstracao": 20
+                },
+                "classificacao": "Bom"
+            }
+        },
+        "analise": {
+            "score": 80,
+            "potencial": "alto",
+            "publico_alvo": "Jovens e adultos interessados em tecnologia e decoração de casa",
+            "motivos": [
+                "O produto tem um design atraente e pode ser facilmente demonstrado em vídeos curtos, mostrando suas funcionalidades e cores",
+                "A categoria de tecnologia é popular no TikTok e o produto pode gerar curiosidade devido às suas características inteligentes",
+                "O preço estimado é razoável, o que pode tornar o produto acessível a um público mais amplo",
+                "A luminária pode resolver problemas de iluminação em casa, como a necessidade de uma fonte de luz ajustável e econômica",
+                "O produto pode ser facilmente integrado a outros dispositivos inteligentes, o que pode aumentar seu apelo ao público"
+            ]
+        },
+        "oportunidade": {
+            "tipo": "afiliado",
+            "score_venda": 77,
+            "score_ia": 80,
+            "score_mercado": 75,
+            "decisao": "TESTAR",
+            "facilidade_video": "media",
+            "angulos": [
+                "Antes e depois",
+                "Problema e solução",
+                "Produto que você não sabia que precisava"
+            ],
+            "ganchos": [
+                "Eu não sabia que precisava disso até testar...",
+                "Esse produto parece inútil, mas olha isso..."
+            ]
+        },
+        "acao": "TESTAR_VIDEO",
+        "estrategia": {
+            "schema_version": "1.1",
+            "produto": "Luminária LED Inteligente",
+            "angulo": "transformacao_ambiente",
+            "gancho": "Esse produto muda completamente o ambiente — olha o antes e depois com o Luminária LED Inteligente.",
+            "estilo_video": "antes_depois",
+            "cta": "Segue @testandogadgets para mais testes reais.",
+            "objetivo": "gerar desejo de compra",
+            "formato": "video_vertical_tiktok_shop",
+            "queries_contexto": [
+                "luminária led inteligente room transformation",
+                "ambient lighting before after luminária led inteligente",
+                "home decor upgrade luminária led inteligente",
+                "aesthetic setup luminária led inteligente"
+            ]
+        },
+        "roteiro": {
+            "hook": "Eu não sabia que precisava disso até testar...",
+            "problema": "Eu sempre tive dificuldade em encontrar a iluminação certa para o meu quarto. Às vezes, é muito escuro, e outras vezes, é muito claro. Eu precisava de algo que pudesse se adaptar às minhas necessidades.",
+            "teste": "Então, eu decidi testar a Luminária LED Inteligente. Eu fiquei impressionado com a facilidade de instalação e a variedade de cores e intensidades que ela oferece. Eu testei diferentes configurações e fiquei surpreso com a diferença que ela fez no ambiente do meu quarto.",
+            "resultado": "A Luminária LED Inteligente é incrível! Ela é fácil de usar, econômica e oferece uma variedade de opções de iluminação. Eu diria que ela vale a pena para quem busca uma solução de iluminação inteligente e personalizável. Eu dou nota 8,5 para esse produto.",
+            "cta": "Segue @testandogadgets para ver mais testes reais."
+        },
+        "conteudo": {
+            "titulo": "TRANSFORME SEU QUARTO COM A LUMINÁRIA LED INTELIGENTE!",
+            "descricao": "Descubra como essa incrível luminária pode mudar completamente o ambiente do seu quarto! Com sua tecnologia inteligente e variedade de opções de iluminação, você nunca mais terá que se preocupar com a iluminação certa. Confira meu teste e veja como ela pode transformar o seu espaço!",
+            "hashtags": [
+                "#LuminariaLEDInteligente",
+                "#TransformacaoDeQuarto",
+                "#IluminacaoInteligente",
+                "# DecoratingIdeias",
+                "#TecnologiaParaCasa",
+                "#InovaçãoEmIluminacao",
+                "#QuartoPerfeito"
+            ],
+            "texto_narracao": "Eu não sabia que precisava disso até testar... a Luminária LED Inteligente! Eu sempre tive dificuldade em encontrar a iluminação certa para o meu quarto. Mas então, eu testei essa luminária e fiquei impressionado! Ela oferece uma variedade de cores e intensidades, é fácil de usar e econômica. Confira como ela transformou o meu quarto!",
+            "duracao": "25 segundos"
+        },
+        "legenda": {
+            "legenda": "Descubra como essa incrível luminária pode mudar completamente o ambiente do seu quarto! Com sua tecnologia inteligente e variedade de opções de iluminação, você nunca mais terá que se preocupar com a iluminação certa. Confira meu teste e veja como ela pode transformar o seu espaço!",
+            "hashtags": [
+                "#LuminariaLEDInteligente",
+                "#TransformacaoDeQuarto",
+                "#IluminacaoInteligente",
+                "# DecoratingIdeias",
+                "#TecnologiaParaCasa",
+                "#InovaçãoEmIluminacao",
+                "#QuartoPerfeito"
+            ]
+        },
+        "cenas": {
+            "produto": "Luminária LED Inteligente",
+            "angulo": "transformacao_ambiente",
+            "estilo_video": "antes_depois",
+            "cenas": [
+                {
+                    "tempo": "0-3",
+                    "tipo": "hook",
+                    "visual": "luminária led inteligente room transformation, antes_depois style",
+                    "narracao": "Eu não sabia que precisava disso até testar... a Luminária LED Inteligente! Eu sempre tive dificuldade em encontrar a iluminação certa para o meu quarto. Mas então, eu testei essa luminária e fiquei impressionado! Ela oferece uma variedade de cores e intensidades, é fácil de usar e econômica. Confira como ela transformou o meu quarto!"
+                },
+                {
+                    "tempo": "3-15",
+                    "tipo": "demonstracao",
+                    "visual": "ambient lighting before after luminária led inteligente, antes_depois style",
+                    "narracao": "Descubra como essa incrível luminária pode mudar completamente o ambiente do seu quarto! Com sua tecnologia inteligente e variedade de opções de iluminação, você nunca mais terá que se preocupar com a iluminação certa. Confira meu teste e veja como ela pode transformar o seu espaço!"
+                },
+                {
+                    "tempo": "15-25",
+                    "tipo": "beneficio",
+                    "visual": "home decor upgrade luminária led inteligente, antes_depois style",
+                    "narracao": "Uma solução simples para facilitar o seu dia a dia."
+                },
+                {
+                    "tempo": "25-30",
+                    "tipo": "cta",
+                    "visual": "aesthetic setup luminária led inteligente, antes_depois style",
+                    "narracao": "Segue @testandogadgets para mais testes reais."
+                }
+            ]
+        },
+        "asset_queries": [
+            {
+                "tempo": "0-3",
+                "tipo": "hook",
+                "busca": "luminária led inteligente room transformation, antes_depois style",
+                "busca_fallback": "home transformation lifestyle attention grabbing"
+            },
+            {
+                "tempo": "3-15",
+                "tipo": "demonstracao",
+                "busca": "ambient lighting before after luminária led inteligente, antes_depois style",
+                "busca_fallback": "home transformation lifestyle in use close up"
+            },
+            {
+                "tempo": "15-25",
+                "tipo": "beneficio",
+                "busca": "home decor upgrade luminária led inteligente, antes_depois style",
+                "busca_fallback": "home transformation lifestyle positive result happy person"
+            },
+            {
+                "tempo": "25-30",
+                "tipo": "cta",
+                "busca": "aesthetic setup luminária led inteligente, antes_depois style",
+                "busca_fallback": "home transformation lifestyle product showcase"
+            }
+        ],
+        "audio": "output\\luminaria-led-inteligente\\assets\\audio\\narracao.mp3",
+        "subtitle_file": "C:\\Projetos\\AI-Commerce-OS\\output\\luminaria-led-inteligente\\captions.srt",
+        "video": "output\\luminaria-led-inteligente\\video_final.mp4"
+    },
+    {
+        "produto": {
+            "nome": "Teste AI-Commerce"
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto"
+        }
+    },
+    {
+        "produto": {
+            "nome": "Teste AI-Commerce"
+        },
+        "analise": {
+            "score": 90,
+            "potencial": "alto"
+        }
     }
 ]

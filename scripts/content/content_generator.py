@@ -1,8 +1,7 @@
 from scripts.ai.router import ask_ai
 from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
-# TEMPORARIAMENTE DESATIVADO PARA O TESTE: 
-# from scripts.utils.ai_cache import load_cache, save_cache
+from scripts.utils.ai_cache import load_cache, save_cache
 
 def generate_content(
     product,
@@ -14,6 +13,19 @@ def generate_content(
     product_name = product["nome"]
 
     print(f"📝 Gerando conteúdo: {product_name}")
+
+    cached = load_cache(
+        "content",
+        product_name
+    )
+
+    if cached:
+
+        print(
+            f"♻️ Cache de conteúdo: {product_name}"
+        )
+
+        return cached
 
     # ===============================
     # PROMPT
@@ -78,5 +90,11 @@ Roteiro:
     print("\n========== CONTENT GERADO ==========")
     print(content)
     print("====================================\n")
+
+    save_cache(
+        "content",
+        product_name,
+        content
+    )
 
     return content

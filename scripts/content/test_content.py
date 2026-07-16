@@ -10,6 +10,11 @@ analise = {
     "potencial": "alto"
 }
 
+oportunidade = {
+    "score_venda": 90,
+    "decisao": "CRIAR_VIDEO"
+}
+
 roteiro = {
     "hook": "Eu não sabia que precisava disso...",
     "problema": "Sujeira em lugares difíceis.",
@@ -21,6 +26,7 @@ roteiro = {
 resultado = generate_content(
     produto,
     analise,
+    oportunidade,
     roteiro
 )
 

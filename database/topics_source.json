@@ -1,0 +1,29 @@
+[
+    {
+        "nome": "O Mistério da Explosão de Tunguska",
+        "categoria": "historia",
+        "subcategoria": "eventos_misteriosos",
+        "keywords": ["tunguska", "explosão", "sibéria", "1908", "meteoro"],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "revelacao_historica"
+    },
+    {
+        "nome": "A Verdade Sobre a Biblioteca de Alexandria",
+        "categoria": "historia",
+        "subcategoria": "civilizacoes_antigas",
+        "keywords": ["alexandria", "biblioteca", "egito", "conhecimento", "fogo"],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "fato_surpreendente"
+    },
+    {
+        "nome": "Como a Peste Negra Mudou a Europa Para Sempre",
+        "categoria": "historia",
+        "subcategoria": "epidemias",
+        "keywords": ["peste negra", "medieval", "europa", "século XIV"],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "media",
+        "angulo_sugerido": "impacto_historico"
+    }
+]

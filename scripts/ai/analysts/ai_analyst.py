@@ -54,7 +54,13 @@ def analyze_product(product):
         print(f"❌ ERRO CRÍTICO ao processar {product_name}: {e}")
         # Retorno de segurança para o pipeline não travar
         return {
-            "analise": "fallback", 
-            "pontos_fortes": ["Não disponível"], 
+            "score": 50,
+            "potencial": "medio",
+            "publico_alvo": "Não disponível",
+            "motivos": [
+                "Análise IA indisponível — score neutro aplicado"
+            ],
+            "analise": "fallback",
+            "pontos_fortes": ["Não disponível"],
             "pontos_fracos": ["Não disponível"]
         }

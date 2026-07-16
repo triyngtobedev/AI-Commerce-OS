@@ -20,6 +20,7 @@ renderer sem nenhuma mídia para trabalhar.
 import os
 from pathlib import Path
 
+from scripts.utils.slug import product_output_dir
 from scripts.persona.persona_generator import (
     generate_persona_reference
 )
@@ -28,24 +29,12 @@ from scripts.persona.persona_scene_generator import (
 )
 
 
-def slugify(text):
-    """
-    Cria nome de pasta compatível.
-    """
-    return (
-        text.lower()
-        .replace(" ", "-")
-        .replace("/", "-")
-    )
-
-
 def get_images_folder(product):
     """
     Retorna pasta padrão do renderer.
     """
     folder = (
-        Path("output")
-        / slugify(product["nome"])
+        product_output_dir(product)
         / "assets"
         / "images"
     )
@@ -198,17 +187,8 @@ def generate_persona_media(product, scenes):
 def should_use_persona():
     """
     Define qual pipeline usar.
-    Default:
-        stock
-    Para ativar:
-        CONTENT_MODE=persona
+
+    V1: módulo persona congelado — sempre stock.
+    Persona só será reativado em versão futura.
     """
-    mode = os.getenv(
-        "CONTENT_MODE",
-        "stock"
-    )
-    return (
-        mode.lower()
-        ==
-        "persona"
-    )
+    return False

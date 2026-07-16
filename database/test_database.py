@@ -1,10 +1,14 @@
-from database_manager import save_product, load_products
+from database.database_manager import save_product, load_products
 
 
 produto = {
-    "produto": "Teste AI-Commerce",
-    "score": 90,
-    "potencial": "alto"
+    "produto": {
+        "nome": "Teste AI-Commerce"
+    },
+    "analise": {
+        "score": 90,
+        "potencial": "alto"
+    }
 }
 
 

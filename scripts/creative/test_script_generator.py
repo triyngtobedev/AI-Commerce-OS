@@ -1,4 +1,4 @@
-from script_generator import generate_script
+from scripts.creative.script_generator import generate_script
 
 
 produto = {

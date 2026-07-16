@@ -9,6 +9,8 @@ import asyncio
 
 import edge_tts
 
+from scripts.audio.tts_text_prep import prepare_text_for_tts
+
 
 DEFAULT_VOICE = "pt-BR-FranciscaNeural"
 
@@ -104,6 +106,8 @@ def generate_audio(
         raise ValueError(
             "Texto para gerar áudio não informado."
         )
+
+    text = prepare_text_for_tts(text)
 
 
     if output_path is None:

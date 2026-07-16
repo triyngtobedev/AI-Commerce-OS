@@ -1,9 +1,22 @@
 import os
 
+from scripts.utils.slug import slugify
+
+
 def verificar_produtos():
     base_path = "output"
-    # Lista de produtos que você está trabalhando
-    produtos = ["luminaria-led-inteligente", "pirataria-body-art"]
+
+    try:
+        from scripts.data_sources.tiktok.collector import collect_products
+        produtos = [
+            slugify(p["nome"])
+            for p in collect_products()
+        ]
+    except Exception:
+        produtos = [
+            "mini-aspirador-portatil",
+            "luminaria-led-inteligente",
+        ]
     
     print("--- Relatório de Ativos ---")
     for produto in produtos:

@@ -4,19 +4,10 @@ import time
 
 from pathlib import Path
 
+from scripts.utils.slug import slugify
+
 
 OUTPUT_DIR = Path("output")
-
-
-def slugify(text):
-
-    return (
-        str(text)
-        .lower()
-        .replace(" ", "-")
-        .replace("/", "-")
-        .replace("\\", "-")
-    )
 
 
 def save_json(path, data):
@@ -284,6 +275,12 @@ def export_product(result):
         "script.json":
             result.get(
                 "roteiro",
+                {}
+            ),
+
+        "strategy.json":
+            result.get(
+                "estrategia",
                 {}
             ),
 
