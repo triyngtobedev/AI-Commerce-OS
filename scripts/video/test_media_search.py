@@ -118,13 +118,13 @@ class TestMediaSearch(unittest.TestCase):
 
 class TestAssetQueries(unittest.TestCase):
 
-    def test_preferir_imagem_for_youtube_documentary_scenes(self):
+    def test_preferir_imagem_only_for_map_and_engraving_intents(self):
         scenes = {
             "angulo": "misterio_nao_resolvido",
             "produto": "Tunguska",
             "cenas": [
                 {"tipo": "hook", "visual": "explosion", "tempo": "0-30"},
-                {"tipo": "contexto", "visual": "siberia map", "tempo": "30-90"},
+                {"tipo": "contexto", "visual": "siberia map", "tempo": "30-90", "visual_intent": "old_map"},
                 {"tipo": "encerramento", "visual": "closing", "tempo": "480-510"},
             ],
         }

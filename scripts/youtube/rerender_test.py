@@ -19,6 +19,8 @@ if hasattr(sys.stdout, "reconfigure"):
 from scripts.video.subtitle_generator import generate_subtitles
 from scripts.video.renderer import render_video_project
 from scripts.youtube.thumbnail_generator import generate_thumbnail
+from scripts.audio.soundtrack_engine import generate_soundtrack
+from scripts.core.production.quality_score import run_quality_score
 
 
 def rerender(
@@ -90,6 +92,24 @@ def rerender(
             print("\n📸 Re-buscando mídia com Visual Media Engine v2...")
             run_visual_media_pipeline(subject, result["cenas"], queries)
 
+    emotional_file = folder / "emotional_timeline.json"
+    if emotional_file.exists():
+        with open(emotional_file, encoding="utf-8") as f:
+            result["emotional_timeline"] = json.load(f)
+
+    cenas = result.get("cenas", {})
+    audio_duration = float(cenas.get("audio_duration", 0)) if isinstance(cenas, dict) else 0
+    soundtrack_path = folder / "assets" / "audio" / "soundtrack.mp3"
+    soundtrack = generate_soundtrack(
+        soundtrack_path,
+        emotional_timeline=result.get("emotional_timeline"),
+        audio_duration=audio_duration,
+        narration_path=audio if audio.exists() else None,
+    )
+    if soundtrack:
+        result["soundtrack"] = str(soundtrack)
+        print(f"🎵 Trilha gerada: {soundtrack}")
+
     subtitle = generate_subtitles(result)
     result["subtitle_file"] = str(subtitle)
 
@@ -118,6 +138,14 @@ def rerender(
         )
         if thumbnail:
             print(f"✅ Thumbnail: {thumbnail}")
+
+    pr_dict = dict(result)
+    pr_dict["youtube_metadata"] = {"thumbnail": str(folder / "thumbnail.jpg")}
+    quality = run_quality_score(folder, pr_dict, min_score=70)
+    print(f"\n📊 Quality Score: {quality.score}/100 — {'APROVADO' if quality.passed else 'REPROVADO'}")
+    if quality.failures:
+        for failure in quality.failures:
+            print(f"   ❌ {failure}")
 
     return video
 

@@ -575,17 +575,6 @@ def _resolve_scene_media(
         print(f"🤖 Cena {scene_num} ({tipo}): vídeo Pollinations")
         return result
 
-    if saved_assets and _try_local_reuse(scene_video, scene_image, saved_assets, prefer_image=preferir_imagem):
-        media_path = scene_image if scene_image.exists() else scene_video
-        result.update({
-            "saved": True,
-            "media_type": "image" if media_path == scene_image else "video",
-            "source": "local:reuse",
-            "provedor": "local",
-        })
-        print(f"♻️ Cena {scene_num} ({tipo}): asset local reutilizado")
-        return result
-
     if _try_ai_image(f"{busca}, {tipo}", scene_image, ", atmospheric wide shot", allow_upscale=True):
         result.update({"saved": True, "media_type": "ai_image_retry", "source": "pollinations:image:retry", "provedor": "pollinations"})
         print(f"🤖 Cena {scene_num} ({tipo}): imagem IA (retry)")

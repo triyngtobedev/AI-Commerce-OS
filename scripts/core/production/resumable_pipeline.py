@@ -16,6 +16,7 @@ from scripts.core.pipeline_result import PipelineResult
 from scripts.core.platform_config import YOUTUBE_DARK
 from scripts.core.production.cleanup import cleanup_temp_files
 from scripts.core.production.health_check import run_health_check
+from scripts.core.production.quality_score import run_quality_score
 from scripts.core.production.logger import get_logger
 from scripts.core.production.manifest import generate_production_manifest
 from scripts.core.production.monetization_audit import run_monetization_audit
@@ -45,6 +46,7 @@ from scripts.video.asset_manager import prepare_assets
 
 from scripts.pipeline.shared_media import run_media_pipeline
 from scripts.audio.tts_generator import create_audio
+from scripts.audio.soundtrack_engine import generate_soundtrack
 
 from scripts.publisher.youtube_exporter import export_youtube_video
 from scripts.publisher.youtube_auth import is_upload_configured, validate_credentials
@@ -341,6 +343,18 @@ def _stage_render(ctx: StageContext) -> Optional[str]:
             ctx.data["thumbnail"] = str(thumb_path)
         return str(video_path)
 
+    soundtrack_path = ctx.output_dir / "assets" / "audio" / "soundtrack.mp3"
+    cenas = ctx.data.get("scenes", {})
+    audio_duration = float(cenas.get("audio_duration", 0)) if isinstance(cenas, dict) else 0
+    soundtrack = generate_soundtrack(
+        soundtrack_path,
+        emotional_timeline=ctx.data.get("emotional_timeline"),
+        audio_duration=audio_duration,
+        narration_path=Path(ctx.data["audio"]) if ctx.data.get("audio") else None,
+    )
+    if soundtrack:
+        ctx.data["soundtrack"] = str(soundtrack)
+
     subtitles = generate_subtitles({"produto": topic, "cenas": ctx.data["scenes"]})
     chapters = build_chapters(content, ctx.data["scenes"])
 
@@ -371,6 +385,8 @@ def _stage_render(ctx: StageContext) -> Optional[str]:
 
     result = pipeline_result.to_dict()
     result["emotional_timeline"] = _serialize_timeline(ctx.data.get("emotional_timeline"))
+    if ctx.data.get("soundtrack"):
+        result["soundtrack"] = ctx.data["soundtrack"]
     if isinstance(result.get("cenas"), dict):
         result["cenas"]["emotional_timeline"] = _serialize_timeline(ctx.data.get("emotional_timeline"))
     build_video_project(result)
@@ -426,7 +442,20 @@ def _stage_validate(ctx: StageContext, *, block_upload: bool = True) -> dict:
         raise RuntimeError(
             f"Health check reprovado: {'; '.join(report.errors[:5])}"
         )
-    return report.to_dict()
+
+    quality = run_quality_score(folder, pr.to_dict())
+    ctx.data["quality_report"] = quality
+
+    if block_upload and not quality.passed:
+        raise RuntimeError(
+            f"Quality Score reprovado ({quality.score}/100): "
+            f"{'; '.join(quality.failures[:5])}"
+        )
+
+    return {
+        "health": report.to_dict(),
+        "quality": quality.to_dict(),
+    }
 
 
 def _stage_upload(

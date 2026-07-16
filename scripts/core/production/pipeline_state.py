@@ -130,7 +130,7 @@ class PipelineState:
         path = self.output_dir / filename
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as handle:
-            json.dump(data, handle, ensure_ascii=False, indent=2)
+            json.dump(data, handle, ensure_ascii=False, indent=2, default=str)
 
     def load_artifact(self, filename: str) -> Optional[Any]:
         path = self.output_dir / filename

@@ -108,27 +108,46 @@ def _ken_burns_filter(
     duration: float,
     motion: str = "zoom_in_center",
     fps: int = 30,
-    zoom_max: float = 1.14,
+    zoom_max: float = 1.22,
 ) -> str:
+    """Ken Burns com parallax — nenhuma imagem permanece estática."""
+
     frames = max(1, int(duration * fps))
     zoom_step = (zoom_max - 1.0) / frames
+    base_zoom = min(1.08, zoom_max - 0.04)
 
     if motion == "zoom_out_center":
         z_expr = f"max(1.0,zoom-{zoom_step:.6f})"
         x_expr = "iw/2-(iw/zoom/2)"
         y_expr = "ih/2-(ih/zoom/2)"
     elif motion == "pan_left":
-        z_expr = "1.10"
+        z_expr = f"{base_zoom + 0.04:.2f}"
         x_expr = f"max(0,(iw-iw/zoom)*(on/{frames}))"
-        y_expr = "ih/2-(ih/zoom/2)"
+        y_expr = f"max(0,(ih-ih/zoom)*(0.5+0.15*sin(on/{max(frames, 1)})))"
     elif motion == "pan_right":
-        z_expr = "1.10"
+        z_expr = f"{base_zoom + 0.04:.2f}"
         x_expr = f"max(0,(iw-iw/zoom)*(1-on/{frames}))"
-        y_expr = "ih/2-(ih/zoom/2)"
+        y_expr = f"max(0,(ih-ih/zoom)*(0.5-0.15*sin(on/{max(frames, 1)})))"
+    elif motion == "parallax_left":
+        z_expr = f"min(zoom+{zoom_step * 0.8:.6f},{zoom_max})"
+        x_expr = f"max(0,(iw-iw/zoom)*(on/{frames}))"
+        y_expr = f"max(0,(ih-ih/zoom)*on/{frames * 2})"
+    elif motion == "parallax_right":
+        z_expr = f"min(zoom+{zoom_step * 0.8:.6f},{zoom_max})"
+        x_expr = f"max(0,(iw-iw/zoom)*(1-on/{frames}))"
+        y_expr = f"max(0,(ih-ih/zoom)*(1-on/{frames * 2}))"
+    elif motion == "drift_up":
+        z_expr = f"{base_zoom:.2f}"
+        x_expr = "iw/2-(iw/zoom/2)"
+        y_expr = f"max(0,(ih-ih/zoom)*(1-on/{frames}))"
+    elif motion == "drift_down":
+        z_expr = f"{base_zoom:.2f}"
+        x_expr = "iw/2-(iw/zoom/2)"
+        y_expr = f"max(0,(ih-ih/zoom)*on/{frames})"
     else:
         z_expr = f"min(zoom+{zoom_step:.6f},{zoom_max})"
-        x_expr = "iw/2-(iw/zoom/2)"
-        y_expr = "ih/2-(ih/zoom/2)"
+        x_expr = "iw/2-(iw/zoom/2)+10*sin(on/30)"
+        y_expr = "ih/2-(ih/zoom/2)+6*sin(on/45)"
 
     return (
         f"zoompan=z='{z_expr}':"
@@ -145,27 +164,39 @@ def _video_motion_filter(
     scene_index: int,
     motion: str = "pan_left",
 ) -> str:
-    """Pan/zoom sutil em vídeos — evita aparência estática."""
+    """Pan/zoom/parallax em vídeos — movimento constante, nunca estático."""
 
-    overscale = 1.14
+    overscale = 1.18
     sw = int(width * overscale)
     sh = int(height * overscale)
     safe_duration = max(duration, 1.0)
 
-    if motion in ("pan_left", "zoom_in_center"):
+    if motion in ("pan_left", "zoom_in_center", "parallax_left"):
         crop = (
             f"crop={width}:{height}:"
-            f"'(iw-{width})*t/{safe_duration}':'(ih-{height})/2'"
+            f"'(iw-{width})*t/{safe_duration}':"
+            f"'(ih-{height})*(0.35+0.3*t/{safe_duration})'"
         )
-    elif motion in ("pan_right", "zoom_out_center"):
+    elif motion in ("pan_right", "zoom_out_center", "parallax_right"):
         crop = (
             f"crop={width}:{height}:"
-            f"'(iw-{width})*(1-t/{safe_duration})':'(ih-{height})/2'"
+            f"'(iw-{width})*(1-t/{safe_duration})':"
+            f"'(ih-{height})*(0.65-0.3*t/{safe_duration})'"
+        )
+    elif motion in ("drift_up",):
+        crop = (
+            f"crop={width}:{height}:"
+            f"'(iw-{width})/2':'(ih-{height})*(1-t/{safe_duration})'"
+        )
+    elif motion in ("drift_down",):
+        crop = (
+            f"crop={width}:{height}:"
+            f"'(iw-{width})/2':'(ih-{height})*t/{safe_duration}'"
         )
     else:
         motions = [
-            f"crop={width}:{height}:'(iw-{width})*t/{safe_duration}':'(ih-{height})/2'",
-            f"crop={width}:{height}:'(iw-{width})*(1-t/{safe_duration})':'(ih-{height})/2'",
+            f"crop={width}:{height}:'(iw-{width})*t/{safe_duration}':'(ih-{height})*(0.35+0.3*t/{safe_duration})'",
+            f"crop={width}:{height}:'(iw-{width})*(1-t/{safe_duration})':'(ih-{height})*(0.65-0.3*t/{safe_duration})'",
             f"crop={width}:{height}:'(iw-{width})/2':'(ih-{height})*t/{safe_duration}'",
             f"crop={width}:{height}:'(iw-{width})/2':'(ih-{height})*(1-t/{safe_duration})'",
         ]
@@ -629,8 +660,9 @@ def mux_video_audio_subtitles(
     width: int,
     height: int,
     platform: str = "youtube_dark",
+    soundtrack_path: Path | None = None,
 ) -> bool:
-    """Combina vídeo, áudio e legendas com fade de abertura/encerramento."""
+    """Combina vídeo, áudio, trilha sonora (com ducking) e legendas."""
 
     render_style = get_render_style(platform)
     opening = render_style.opening_fade_seconds
@@ -652,6 +684,7 @@ def mux_video_audio_subtitles(
         audio_duration = probe_duration(audio_path)
 
     has_audio = audio_path and audio_path.exists() and audio_path.stat().st_size > 0
+    has_soundtrack = soundtrack_path and soundtrack_path.exists() and soundtrack_path.stat().st_size > 0
     audio_delay = _audio_delay(platform) if has_audio else 0.0
     closing = render_style.closing_fade_seconds
     fade_start = 0.0
@@ -671,10 +704,21 @@ def mux_video_audio_subtitles(
         "-i", str(video_path),
     ]
 
+    input_index = 1
+    narration_index = None
+    soundtrack_index = None
+
     if has_audio:
         if audio_delay > 0:
             cmd.extend(["-itsoffset", f"{audio_delay:.3f}"])
         cmd.extend(["-i", str(audio_path.resolve())])
+        narration_index = input_index
+        input_index += 1
+
+    if has_soundtrack:
+        cmd.extend(["-stream_loop", "-1", "-i", str(soundtrack_path.resolve())])
+        soundtrack_index = input_index
+        input_index += 1
 
     cmd.extend([
         "-vf", video_filter,
@@ -684,7 +728,22 @@ def mux_video_audio_subtitles(
         "-pix_fmt", "yuv420p",
     ])
 
-    if has_audio:
+    if has_audio and has_soundtrack:
+        af = (
+            f"[{soundtrack_index}:a]volume=0.18,afade=t=in:st=0:d={opening},"
+            f"afade=t=out:st={max(0.0, target_duration - closing):.2f}:d={closing}[bgm];"
+            f"[{narration_index}:a]afade=t=in:st=0:d={opening},"
+            f"afade=t=out:st={max(0.0, audio_duration - closing):.2f}:d={closing}[voice];"
+            f"[bgm][voice]amix=inputs=2:duration=first:dropout_transition=2:weights=0.35 1.0[aout]"
+        )
+        cmd.extend([
+            "-filter_complex", af,
+            "-map", "0:v:0",
+            "-map", "[aout]",
+            "-c:a", "aac",
+            "-b:a", "192k",
+        ])
+    elif has_audio:
         af = f"afade=t=in:st=0:d={opening}"
         if audio_duration > closing + 1:
             af += f",afade=t=out:st={audio_duration - closing:.2f}:d={closing}"
@@ -693,12 +752,25 @@ def mux_video_audio_subtitles(
             "-c:a", "aac",
             "-b:a", "192k",
             "-map", "0:v:0",
-            "-map", "1:a:0",
+            "-map", f"{narration_index}:a:0",
         ])
-        if target_duration > 0:
-            cmd.extend(["-t", f"{target_duration:.3f}"])
+    elif has_soundtrack:
+        af = (
+            f"volume=0.25,afade=t=in:st=0:d={opening},"
+            f"afade=t=out:st={max(0.0, target_duration - closing):.2f}:d={closing}"
+        )
+        cmd.extend([
+            "-af", af,
+            "-c:a", "aac",
+            "-b:a", "128k",
+            "-map", "0:v:0",
+            "-map", f"{soundtrack_index}:a:0",
+        ])
     else:
         cmd.append("-an")
+
+    if target_duration > 0 and (has_audio or has_soundtrack):
+        cmd.extend(["-t", f"{target_duration:.3f}"])
 
     cmd.extend([
         "-movflags", "+faststart",

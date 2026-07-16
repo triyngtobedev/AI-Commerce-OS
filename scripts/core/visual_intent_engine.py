@@ -79,7 +79,7 @@ CAMERA_ALIASES: dict[str, str] = {
     "slow_pan": "pan_right",
     "slow_pull": "zoom_out_center",
     "shake_light": "pan_left",
-    "static": "pan_right",
+    "static": "parallax_left",
 }
 
 

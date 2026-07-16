@@ -139,6 +139,9 @@ def score_asset(
     elif width >= 1920 or height >= 1080:
         score += 0.1
 
+    if media_type == "video":
+        score += 0.12
+
     return max(0.0, round(score, 4))
 
 

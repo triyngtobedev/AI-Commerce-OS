@@ -80,8 +80,8 @@ def _split_into_lines(text: str, max_chars: int = 38, max_lines: int = 2) -> str
 
 def _chunk_by_words(
     text: str,
-    max_words: int = 8,
-    max_chars: int = 76,
+    max_words: int = 5,
+    max_chars: int = 64,
 ) -> list[str]:
     """
     Divide narração em blocos de legenda por palavras.
@@ -221,8 +221,9 @@ def generate_scene_subtitles(
     """
 
     style = style or get_subtitle_style()
-    max_words = style.get("max_words_per_block", 6)
-    max_chars = style.get("max_chars", 64)
+    max_words = style.get("max_words_per_block", 5)
+    max_chars = style.get("max_chars", 58)
+    min_chunk_gap = 0.06
     offset = max(0.0, float(timing_offset))
 
     srt_lines = []
@@ -247,10 +248,10 @@ def generate_scene_subtitles(
         scene_end = float(fim) + offset
 
         for chunk, word_count in zip(chunks, word_counts):
-            chunk_duration = max(0.35, (word_count / total_words) * duration)
-            chunk_end = min(current + chunk_duration, scene_end)
+            chunk_duration = max(0.45, (word_count / total_words) * duration)
+            chunk_end = min(current + chunk_duration, scene_end - min_chunk_gap)
 
-            if chunk_end <= current:
+            if chunk_end <= current + 0.08:
                 continue
 
             srt_lines.append(f"{index}")
@@ -268,7 +269,7 @@ def generate_scene_subtitles(
             )
 
             index += 1
-            current = chunk_end
+            current = chunk_end + min_chunk_gap
 
     srt_content = "\n".join(srt_lines)
     ass_content = _build_ass_header(style) + "\n".join(ass_events)

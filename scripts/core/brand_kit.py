@@ -44,8 +44,8 @@ class ThumbnailStyle:
     hook_max_words: int = 4
     hook_max_lines: int = 2
     hook_max_chars_per_line: int = 14
-    contrast_boost: float = 1.2
-    saturation_boost: float = 1.15
+    contrast_boost: float = 1.35
+    saturation_boost: float = 1.22
     overlay_blend: float = 0.18
     accent_bar_height: int = 6
 
@@ -63,7 +63,7 @@ class VideoOverlayStyle:
 class CinematicStyle:
     transition_seconds: float = 0.7
     crossfade_seconds: float = 0.45
-    ken_burns_zoom_max: float = 1.14
+    ken_burns_zoom_max: float = 1.22
     color_grade: str = "eq=contrast=1.08:brightness=-0.03:saturation=1.08"
     vignette: str = "vignette=PI/4.5"
     opening_fade_seconds: float = 0.8
@@ -73,11 +73,11 @@ class CinematicStyle:
 
 SCENE_MOTION: dict[str, str] = {
     "hook": "zoom_in_center",
-    "contexto": "pan_right",
-    "desenvolvimento_1": "pan_left",
-    "desenvolvimento_2": "zoom_out_center",
+    "contexto": "parallax_right",
+    "desenvolvimento_1": "parallax_left",
+    "desenvolvimento_2": "drift_up",
     "revelacao": "zoom_in_center",
-    "consequencias": "pan_right",
+    "consequencias": "parallax_right",
     "impacto": "pan_left",
     "encerramento": "zoom_out_center",
 }
@@ -113,7 +113,10 @@ class BrandKit:
     def motion_for_scene(self, scene_type: str, scene_index: int = 0) -> str:
         if scene_type in SCENE_MOTION:
             return SCENE_MOTION[scene_type]
-        presets = ["zoom_in_center", "pan_left", "pan_right", "zoom_out_center"]
+        presets = [
+            "zoom_in_center", "parallax_left", "parallax_right",
+            "drift_up", "drift_down", "pan_left", "zoom_out_center",
+        ]
         return presets[scene_index % len(presets)]
 
     def crossfade_for_scene(self, scene_type: str) -> float:

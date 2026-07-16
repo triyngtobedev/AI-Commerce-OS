@@ -37,13 +37,7 @@ _FALLBACK_BY_ANGLE = {
 
 _FALLBACK_DEFAULT = "historical documentary cinematic footage"
 
-_IMAGE_PREFERRED_SCENE_TYPES = {
-    "contexto",
-    "desenvolvimento_1",
-    "desenvolvimento_2",
-    "revelacao",
-    "consequencias",
-}
+_IMAGE_ONLY_INTENTS = {"old_map", "engraving"}
 
 
 def _build_fallback(angulo, produto, tipo):
@@ -129,7 +123,7 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
             "emotion": scene.get("emotion", "calm"),
         }
 
-        if prefer_image and tipo in _IMAGE_PREFERRED_SCENE_TYPES:
+        if prefer_image and scene.get("visual_intent") in _IMAGE_ONLY_INTENTS:
             query["preferir_imagem"] = True
 
         queries.append(query)

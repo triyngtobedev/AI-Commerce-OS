@@ -242,6 +242,15 @@ def _render_scene_aware(result, folder, width, height, output):
     if result.get("audio"):
         audio_path = Path(result["audio"])
 
+    soundtrack_path = None
+    soundtrack_ref = result.get("soundtrack")
+    if soundtrack_ref:
+        soundtrack_path = Path(soundtrack_ref)
+    else:
+        default_soundtrack = folder / "assets" / "audio" / "soundtrack.mp3"
+        if default_soundtrack.exists():
+            soundtrack_path = default_soundtrack
+
     subtitle_path = None
     if result.get("subtitle_file"):
         subtitle_path = Path(result["subtitle_file"])
@@ -254,6 +263,7 @@ def _render_scene_aware(result, folder, width, height, output):
         width,
         height,
         platform=result.get("platform", "youtube_dark"),
+        soundtrack_path=soundtrack_path,
     )
 
     if not success:
@@ -324,6 +334,14 @@ def render_video(
     audio_path = Path(audio) if audio else None
     subtitle_path = Path(subtitles) if subtitles else None
 
+    soundtrack_path = None
+    if result.get("soundtrack"):
+        soundtrack_path = Path(result["soundtrack"])
+    else:
+        default_soundtrack = folder / "assets" / "audio" / "soundtrack.mp3"
+        if default_soundtrack.exists():
+            soundtrack_path = default_soundtrack
+
     success = mux_video_audio_subtitles(
         video_track,
         audio_path,
@@ -332,6 +350,7 @@ def render_video(
         width,
         height,
         platform=platform,
+        soundtrack_path=soundtrack_path,
     )
 
     return output if success else None
