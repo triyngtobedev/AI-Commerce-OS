@@ -114,6 +114,10 @@ class PipelineStatusResponse(BaseModel):
     status: JobStatus
     output_path: Optional[str] = None
     error_message: Optional[str] = None
+    stdout_tail: Optional[str] = Field(
+        default=None,
+        description="Últimas linhas do stdout do subprocess (diagnóstico, inclui AI Router)",
+    )
     scenes: dict[str, SceneResult] = Field(default_factory=dict)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

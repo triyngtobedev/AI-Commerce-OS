@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 from api import __version__
 from api.config import get_pipeline_api_key
 from api.models.schemas import HealthResponse
-from api.routers import pipeline, scenes
+from api.routers import analytics, pipeline, scenes, youtube
 
 load_dotenv()
 
@@ -104,6 +104,9 @@ async def security_middleware(request: Request, call_next: Callable):
 @app.on_event("startup")
 async def log_auth_config() -> None:
     """Avisa no log do Railway se a chave de API não estiver configurada."""
+    git_commit = os.getenv("RAILWAY_GIT_COMMIT_SHA", "unknown")
+    print(f"GIT_COMMIT: {git_commit}", flush=True)
+
     # Diagnóstico explícito nos logs do Railway (stdout, visível no Deploy Logs)
     print(
         f"PIPELINE_API_KEY presente: {bool(os.getenv('PIPELINE_API_KEY'))}",
@@ -119,6 +122,14 @@ async def log_auth_config() -> None:
     )
     print(
         f"GEMINI_API_KEY presente: {bool(os.getenv('GEMINI_API_KEY'))}",
+        flush=True,
+    )
+    print(
+        f"GROQ_API_KEY presente: {bool(os.getenv('GROQ_API_KEY'))}",
+        flush=True,
+    )
+    print(
+        f"OPENROUTER_API_KEY presente: {bool(os.getenv('OPENROUTER_API_KEY'))}",
         flush=True,
     )
     print(
@@ -160,3 +171,5 @@ async def health_check() -> HealthResponse:
 # Registra routers sob prefixo /api/v1
 app.include_router(pipeline.router, prefix="/api/v1")
 app.include_router(scenes.router, prefix="/api/v1")
+app.include_router(youtube.router, prefix="/api/v1")
+app.include_router(analytics.router, prefix="/api/v1")

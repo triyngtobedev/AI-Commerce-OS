@@ -106,7 +106,7 @@ def resolve_upload_visibility(
     O pipeline nunca deve hardcodar visibilidade — sempre usar esta função.
     """
 
-    env_value = os.getenv("UPLOAD_VISIBILITY", "private").strip().lower()
+    env_value = os.getenv("UPLOAD_VISIBILITY", "unlisted").strip().lower()
     context = {
         "upload_visibility_env": os.getenv("UPLOAD_VISIBILITY", ""),
         "cli_privacy": cli_privacy or "",
@@ -125,9 +125,9 @@ def resolve_upload_visibility(
         context["reason"] = f"UPLOAD_VISIBILITY={env_value} no .env"
         return env_value, context
 
-    context["decision"] = "private"
+    context["decision"] = "unlisted"
     context["reason"] = (
         f"UPLOAD_VISIBILITY inválido ({env_value!r}) — "
-        "usando private como padrão seguro"
+        "usando unlisted (não listado) como padrão seguro"
     )
-    return "private", context
+    return "unlisted", context

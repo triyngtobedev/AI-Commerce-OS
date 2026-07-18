@@ -14,12 +14,12 @@ from scripts.publisher.youtube_publish_config import (
 
 class TestResolveUploadVisibility(unittest.TestCase):
 
-    def test_defaults_to_private(self):
+    def test_defaults_to_unlisted(self):
         with patch.dict(os.environ, {}, clear=True):
             visibility, ctx = resolve_upload_visibility()
 
-        self.assertEqual(visibility, "private")
-        self.assertIn("private", ctx["reason"])
+        self.assertEqual(visibility, "unlisted")
+        self.assertIn("unlisted", ctx["reason"])
 
     def test_env_visibility(self):
         with patch.dict(
@@ -42,7 +42,7 @@ class TestResolveUploadVisibility(unittest.TestCase):
 
         self.assertEqual(visibility, "unlisted")
 
-    def test_invalid_env_falls_back_to_private(self):
+    def test_invalid_env_falls_back_to_unlisted(self):
         with patch.dict(
             os.environ,
             {"UPLOAD_VISIBILITY": "invalid"},
@@ -50,7 +50,7 @@ class TestResolveUploadVisibility(unittest.TestCase):
         ):
             visibility, ctx = resolve_upload_visibility()
 
-        self.assertEqual(visibility, "private")
+        self.assertEqual(visibility, "unlisted")
         self.assertIn("inválido", ctx["reason"])
 
 

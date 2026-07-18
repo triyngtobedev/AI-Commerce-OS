@@ -2,7 +2,7 @@ import os
 from google import genai
 
 
-def generate(prompt, model="gemini-2.5-flash"):
+def generate(prompt, model="gemini-2.0-flash"):
 
     api_key = os.getenv("GEMINI_API_KEY")
 

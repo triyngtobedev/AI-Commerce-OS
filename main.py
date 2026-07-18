@@ -333,6 +333,12 @@ def run():
     print("\n🚀 Iniciando AI-Commerce-OS\n")
     print(f"Plataforma: {args.platform}\n")
 
+    from scripts.youtube.template_override import get_template_override
+
+    template_override = get_template_override()
+    if template_override:
+        print(f"📋 Template de roteiro: {template_override}\n")
+
     all_results = []
 
     if args.platform in ("tiktok_shop", "all") and not args.production:
@@ -366,10 +372,19 @@ def run():
         )
         all_results.extend(youtube_results)
 
+    videos_produced = sum(
+        1 for item in all_results if item.get("video")
+    )
+
     print("\n==============================")
     print("PROCESSO FINALIZADO")
     print(f"Conteúdos gerados: {len(all_results)}")
+    print(f"Vídeos com arquivo final: {videos_produced}")
     print("==============================\n")
+
+    if args.platform in ("youtube_dark", "tiktok_shop", "all") and videos_produced == 0:
+        print("❌ Pipeline concluiu sem produzir vídeo final.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

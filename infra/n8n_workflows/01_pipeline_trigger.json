@@ -23,7 +23,7 @@
     },
     {
       "parameters": {
-        "content": "## Etapa 1 — Trigger diário\n\nTodo dia às 8h (Brasília), aciona o pipeline no Railway.\n\nHeader **X-API-Key** vem de `$env.PIPELINE_API_KEY` (configurado pelo ativar-n8n.ps1).",
+        "content": "## Etapa 1 — Trigger diário\n\nTodo dia às 8h (Brasília), aciona o pipeline no Railway.\n\n**X-API-Key** via credencial n8n `Pipeline API Key` (sincronizada por setup_n8n.py).\n**URL** via `$env.PIPELINE_API_BASE_URL` (infra/.env.n8n).",
         "height": 200,
         "width": 380
       },
@@ -37,19 +37,20 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.PIPELINE_API_BASE_URL }}/api/v1/pipeline/run",
-        "authentication": "none",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-API-Key",
-              "value": "={{ $env.PIPELINE_API_KEY }}"
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"platform\": \"youtube_dark\",\n  \"production\": true,\n  \"research\": true,\n  \"upload\": false,\n  \"max_videos\": 1,\n  \"language\": \"pt-BR\",\n  \"metadata\": {\n    \"triggered_by\": \"n8n_schedule\",\n    \"workflow\": \"01_pipeline_trigger\"\n  }\n}",
+        "jsonBody": "={\n  \"platform\": \"youtube_dark\",\n  \"production\": true,\n  \"research\": true,\n  \"upload\": true,\n  \"max_videos\": 1,\n  \"language\": \"pt-BR\",\n  \"metadata\": {\n    \"triggered_by\": \"n8n_schedule\",\n    \"workflow\": \"01_pipeline_trigger\"\n  }\n}",
         "options": {}
       },
       "id": "http-run-pipeline",
@@ -57,7 +58,13 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [480, 300],
-      "notes": "Envia POST para /api/v1/pipeline/run. Header X-API-Key vem de $env.PIPELINE_API_KEY."
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PIPELINE_API_CREDENTIAL_ID",
+          "name": "Pipeline API Key"
+        }
+      },
+      "notes": "Envia POST para /api/v1/pipeline/run. X-API-Key via credencial 'Pipeline API Key' (sincronizada pelo setup_n8n.py)."
     },
     {
       "parameters": {
@@ -105,16 +112,8 @@
       "parameters": {
         "method": "GET",
         "url": "={{ $env.PIPELINE_API_BASE_URL }}/api/v1/pipeline/status/{{ $('POST Pipeline Run').item.json.job_id }}",
-        "authentication": "none",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-API-Key",
-              "value": "={{ $env.PIPELINE_API_KEY }}"
-            }
-          ]
-        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "options": {}
       },
       "id": "http-poll-status",
@@ -122,7 +121,13 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1200, 220],
-      "notes": "Polling do status do job. Header X-API-Key vem de $env.PIPELINE_API_KEY."
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PIPELINE_API_CREDENTIAL_ID",
+          "name": "Pipeline API Key"
+        }
+      },
+      "notes": "Polling do status do job. X-API-Key via credencial 'Pipeline API Key'."
     },
     {
       "parameters": {
@@ -210,6 +215,39 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PIPELINE_API_BASE_URL }}/api/v1/youtube/upload",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"job_id\": \"{{ $('POST Pipeline Run').item.json.job_id }}\",\n  \"force\": false\n}",
+        "options": {}
+      },
+      "id": "http-youtube-upload",
+      "name": "POST YouTube Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1680, 220],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PIPELINE_API_CREDENTIAL_ID",
+          "name": "Pipeline API Key"
+        }
+      },
+      "notes": "Dispara upload no Railway após job completed. Idempotente — não re-publica se já feito no pipeline."
+    },
+    {
+      "parameters": {
         "authentication": "oAuth2",
         "select": "channel",
         "channelId": {
@@ -217,7 +255,7 @@
           "mode": "list",
           "value": "C0000000000"
         },
-        "text": "=✅ Pipeline concluído!\n\nJob ID: {{ $('POST Pipeline Run').item.json.job_id }}\nOutput: {{ $json.output_path }}\nStatus: {{ $json.status }}",
+        "text": "=✅ Pipeline concluído!\n\nJob ID: {{ $('POST Pipeline Run').item.json.job_id }}\nOutput: {{ $('GET Pipeline Status').item.json.output_path }}\nYouTube: {{ $('POST YouTube Upload').item.json.url || 'upload pendente/skipped' }}\nStatus: {{ $('GET Pipeline Status').item.json.status }}",
         "otherOptions": {}
       },
       "id": "slack-success",
@@ -332,7 +370,7 @@
       "main": [
         [
           {
-            "node": "Slack — Sucesso (opcional)",
+            "node": "POST YouTube Upload",
             "type": "main",
             "index": 0
           }
@@ -340,6 +378,17 @@
         [
           {
             "node": "IF failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST YouTube Upload": {
+      "main": [
+        [
+          {
+            "node": "Slack — Sucesso (opcional)",
             "type": "main",
             "index": 0
           }

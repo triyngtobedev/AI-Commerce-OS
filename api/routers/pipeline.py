@@ -36,6 +36,7 @@ async def run_pipeline(request: PipelineRunRequest) -> PipelineRunResponse:
         "topic": request.topic,
         "language": request.language,
         "platform": request.platform,
+        "template": request.template,
     }
     job_store.create_job(job_id, metadata=metadata)
 

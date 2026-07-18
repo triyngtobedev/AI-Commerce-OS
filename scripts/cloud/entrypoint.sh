@@ -7,6 +7,13 @@ cd /app
 # Railway injeta PORT; fallback 8080 (não usar --workers: fork quebra detecção Active)
 : "${PORT:=8080}"
 
+# Commit em execução (Railway injeta RAILWAY_GIT_COMMIT_SHA no runtime)
+if [ -n "${RAILWAY_GIT_COMMIT_SHA:-}" ]; then
+  echo "GIT_COMMIT: ${RAILWAY_GIT_COMMIT_SHA}"
+else
+  echo "GIT_COMMIT: unknown (RAILWAY_GIT_COMMIT_SHA não definido)"
+fi
+
 # Diagnóstico de variáveis antes do uvicorn (Deploy Logs do Railway)
 if [ -n "${PIPELINE_API_KEY:-}" ]; then
   echo "PIPELINE_API_KEY presente: True"
@@ -22,6 +29,16 @@ if [ -n "${GEMINI_API_KEY:-}" ]; then
   echo "GEMINI_API_KEY presente: True"
 else
   echo "GEMINI_API_KEY presente: False"
+fi
+if [ -n "${GROQ_API_KEY:-}" ]; then
+  echo "GROQ_API_KEY presente: True"
+else
+  echo "GROQ_API_KEY presente: False"
+fi
+if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+  echo "OPENROUTER_API_KEY presente: True"
+else
+  echo "OPENROUTER_API_KEY presente: False"
 fi
 if [ -n "${PEXELS_API_KEY:-}" ]; then
   echo "PEXELS_API_KEY presente: True"

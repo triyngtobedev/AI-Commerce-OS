@@ -61,7 +61,7 @@ O projeto é organizado em **engines modulares** orquestradas por pipelines espe
 
 | Engine | Módulo | Responsabilidade |
 |---|---|---|
-| **AI Router** | `scripts/ai/router.py` | Roteamento Gemini → Groq (fallback) |
+| **AI Router** | `scripts/ai/router.py` | Roteamento Gemini → Groq → OpenRouter (fallback) |
 | **Analyst** | `scripts/ai/analysts/` | Análise de produtos/temas com IA |
 | **Scoring** | `scripts/scoring/` | Pontuação e ranking |
 | **Opportunity** | `scripts/affiliate/`, `scripts/youtube/topic_opportunity.py` | Avaliação de oportunidade comercial |
@@ -250,6 +250,7 @@ Copie `.env.example` para `.env` e preencha:
 # APIs de IA (pelo menos uma obrigatória)
 GEMINI_API_KEY=sua_chave_gemini
 GROQ_API_KEY=sua_chave_groq
+OPENROUTER_API_KEY=sua_chave_openrouter
 
 # Mídia stock (Pexels)
 PEXELS_API_KEY=sua_chave_pexels
@@ -288,6 +289,7 @@ PIPELINE_API_KEY=              # mesma chave no Railway e no PC
 |---|---|
 | `GEMINI_API_KEY` | API Google Gemini (provider principal) |
 | `GROQ_API_KEY` | API Groq (fallback automático) |
+| `OPENROUTER_API_KEY` | API OpenRouter (fallback final — modelo free) |
 | `PEXELS_API_KEY` | Busca de vídeos/imagens stock (Pexels) |
 | `PIXABAY_API_KEY` | Fallback de mídia stock gratuito (YouTube Dark) |
 | `CONTENT_MODE` | `stock` usa Pexels/Pixabay; `persona` gera imagens IA por cena via Pollinations.ai (gratuito) + Ken Burns |

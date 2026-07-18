@@ -29,6 +29,53 @@ FINAL_VIDEO_LOG_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Marcadores de falha no stdout — usados para diagnóstico quando exit code é 0
+_FAILURE_STDOUT_MARKERS = (
+    "❌ Pipeline concluiu sem produzir vídeo final.",
+    "❌ Vídeo não criado",
+    "❌ Erro no render:",
+    "❌ Falha total",
+    "Nenhuma API de IA disponível",
+    "❌ Nenhum tema encontrado",
+    "❌ Nenhum tema novo",
+    "❌ Erro processando",
+    "Vídeos gerados: 0",
+    "Vídeos com arquivo final: 0",
+    "[Lofi] Nenhum footage disponível",
+    "Sem mídia para cena",
+)
+
+
+def _extract_failure_reason(stdout: str, stderr: str) -> str | None:
+    """Extrai a linha de erro mais relevante do stdout/stderr."""
+    for line in reversed(stdout.splitlines()):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if any(marker in stripped for marker in _FAILURE_STDOUT_MARKERS):
+            return stripped
+
+    for line in reversed(stderr.splitlines()):
+        stripped = line.strip()
+        if stripped:
+            return stripped
+
+    return None
+
+# Linhas de stdout persistidas no job para diagnóstico via GET /pipeline/status
+JOB_STDOUT_TAIL_LINES = 100
+
+# Marcadores do AI Router — sempre incluídos no trecho retornado pelo job
+_AI_ROUTER_MARKERS = (
+    "[AI Router]",
+    "[Groq/",
+    "[OpenRouter]",
+    "❌ Falha total",
+    "Nenhuma API de IA disponível",
+    "⚠️ Gemini indisponível",
+    "⚠️ Groq indisponível",
+)
+
 
 def build_cli_args(request: PipelineRunRequest) -> list[str]:
     """
@@ -90,34 +137,41 @@ async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> 
         stderr = stderr_bytes.decode("utf-8", errors="replace")
 
         _emit_subprocess_logs(job_id, stdout, stderr)
+        stdout_excerpt = _stdout_for_job(stdout)
 
         if process.returncode == 0:
             try:
                 output_path = _resolve_output_path(stdout, request)
             except ValueError as exc:
+                reason = _extract_failure_reason(stdout, stderr)
                 diagnostic = _failure_diagnostic(stdout, stderr)
+                error_msg = str(exc)
+                if reason:
+                    error_msg = f"{error_msg}\nCausa provável: {reason}"
                 job_store.update_job_status(
                     job_id,
                     JobStatus.FAILED,
-                    error_message=f"{exc}\n\n{diagnostic}"[:4000],
+                    error_message=f"{error_msg}\n\n{diagnostic}"[:4000],
+                    stdout_tail=stdout_excerpt,
                 )
             else:
                 job_store.update_job_status(
                     job_id,
                     JobStatus.COMPLETED,
                     output_path=output_path,
+                    stdout_tail=stdout_excerpt,
                 )
         else:
-            stderr_tail = _stderr_tail(stderr)
-            error_msg = (
-                stderr_tail
-                or stdout.strip()
-                or f"Exit code {process.returncode}"
-            )
+            reason = _extract_failure_reason(stdout, stderr)
+            diagnostic = _failure_diagnostic(stdout, stderr)
+            error_msg = reason or f"Exit code {process.returncode}"
+            if diagnostic:
+                error_msg = f"{error_msg}\n\n{diagnostic}"
             job_store.update_job_status(
                 job_id,
                 JobStatus.FAILED,
                 error_message=error_msg[:4000],
+                stdout_tail=stdout_excerpt,
             )
     except Exception as exc:
         job_store.update_job_status(
@@ -134,11 +188,44 @@ def _stderr_tail(stderr: str, lines: int = 20) -> str:
     return "\n".join(stderr.strip().splitlines()[-lines:])
 
 
-def _stdout_tail(stdout: str, lines: int = 40) -> str:
+def _stdout_tail(stdout: str, lines: int = JOB_STDOUT_TAIL_LINES) -> str:
     """Retorna as últimas N linhas do stdout para diagnóstico."""
     if not stdout.strip():
         return ""
     return "\n".join(stdout.strip().splitlines()[-lines:])
+
+
+def _extract_ai_router_lines(stdout: str) -> list[str]:
+    """Extrai linhas do AI Router presentes no stdout completo."""
+    return [
+        line
+        for line in stdout.splitlines()
+        if any(marker in line for marker in _AI_ROUTER_MARKERS)
+    ]
+
+
+def _stdout_for_job(stdout: str) -> str:
+    """
+    Monta trecho de stdout para persistir no job.
+
+    Usa as últimas JOB_STDOUT_TAIL_LINES linhas e garante que o resultado
+    final do AI Router (provider usado ou falha total) apareça no excerpt.
+    """
+    tail = _stdout_tail(stdout)
+    if not tail:
+        return ""
+
+    router_lines = _extract_ai_router_lines(stdout)
+    if not router_lines:
+        return tail
+
+    tail_line_set = set(tail.splitlines())
+    missing_router = [line for line in router_lines if line not in tail_line_set]
+    if not missing_router:
+        return tail
+
+    router_excerpt = "\n".join(router_lines[-30:])
+    return f"{tail}\n\n--- AI Router (garantido) ---\n{router_excerpt}"
 
 
 def _emit_subprocess_logs(job_id: UUID, stdout: str, stderr: str) -> None:
@@ -153,10 +240,10 @@ def _emit_subprocess_logs(job_id: UUID, stdout: str, stderr: str) -> None:
 
 
 def _failure_diagnostic(stdout: str, stderr: str) -> str:
-    """Monta trecho de log útil quando o subprocess termina 0 sem vídeo final."""
+    """Monta trecho de log útil quando o subprocess falha ou termina sem vídeo."""
     parts: list[str] = []
-    out_tail = _stdout_tail(stdout)
-    err_tail = _stderr_tail(stderr, lines=40)
+    out_tail = _stdout_for_job(stdout)
+    err_tail = _stderr_tail(stderr, lines=JOB_STDOUT_TAIL_LINES)
     if out_tail:
         parts.append("--- stdout (últimas linhas) ---")
         parts.append(out_tail)

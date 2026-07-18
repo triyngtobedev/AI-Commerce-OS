@@ -44,6 +44,7 @@ class JobStore:
 
     def _ensure_store(self) -> None:
         with self._lock:
+<<<<<<< HEAD
             if self.store_path.exists():
                 return
             migrated = self._migrate_from_sqlite()
@@ -83,6 +84,31 @@ class JobStore:
             return False
         finally:
             if conn is not None:
+=======
+            conn = self._connect()
+            try:
+                conn.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS jobs (
+                        job_id TEXT PRIMARY KEY,
+                        status TEXT NOT NULL,
+                        output_path TEXT,
+                        error_message TEXT,
+                        stdout_tail TEXT,
+                        metadata TEXT,
+                        scenes TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
+                    """
+                )
+                try:
+                    conn.execute("ALTER TABLE jobs ADD COLUMN stdout_tail TEXT")
+                except sqlite3.OperationalError:
+                    pass
+                conn.commit()
+            finally:
+>>>>>>> 9e31449727825f390659d3d72a228a8bae937a04
                 conn.close()
 
         if not rows:
@@ -140,8 +166,10 @@ class JobStore:
         status: JobStatus,
         output_path: Optional[str] = None,
         error_message: Optional[str] = None,
+        stdout_tail: Optional[str] = None,
     ) -> None:
         """Atualiza status geral do job de pipeline."""
+<<<<<<< HEAD
 
         def _apply(record: dict[str, Any]) -> None:
             record["status"] = status.value
@@ -151,6 +179,33 @@ class JobStore:
                 record["error_message"] = error_message
 
         self._mutate(job_id, _apply)
+=======
+        now = _utcnow().isoformat()
+        with self._lock:
+            conn = self._connect()
+            try:
+                conn.execute(
+                    """
+                    UPDATE jobs
+                    SET status = ?, output_path = COALESCE(?, output_path),
+                        error_message = COALESCE(?, error_message),
+                        stdout_tail = COALESCE(?, stdout_tail),
+                        updated_at = ?
+                    WHERE job_id = ?
+                    """,
+                    (
+                        status.value,
+                        output_path,
+                        error_message,
+                        stdout_tail,
+                        now,
+                        str(job_id),
+                    ),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+>>>>>>> 9e31449727825f390659d3d72a228a8bae937a04
 
     def update_scene(
         self,
@@ -231,11 +286,20 @@ class JobStore:
             for sid, data in scenes_raw.items()
         }
         return {
+<<<<<<< HEAD
             "job_id": UUID(record["job_id"]),
             "status": JobStatus(record["status"]),
             "output_path": record.get("output_path"),
             "error_message": record.get("error_message"),
             "metadata": record.get("metadata") or {},
+=======
+            "job_id": UUID(row["job_id"]),
+            "status": JobStatus(row["status"]),
+            "output_path": row["output_path"],
+            "error_message": row["error_message"],
+            "stdout_tail": row["stdout_tail"] if "stdout_tail" in row.keys() else None,
+            "metadata": json.loads(row["metadata"] or "{}"),
+>>>>>>> 9e31449727825f390659d3d72a228a8bae937a04
             "scenes": scenes,
             "created_at": datetime.fromisoformat(record["created_at"]),
             "updated_at": datetime.fromisoformat(record["updated_at"]),

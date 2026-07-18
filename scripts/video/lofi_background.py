@@ -9,6 +9,7 @@ Prioridade:
 from __future__ import annotations
 
 import shutil
+import subprocess
 from pathlib import Path
 
 from scripts.video.media_downloader import download_file, select_video_file_with_fallback
@@ -17,6 +18,28 @@ from scripts.youtube.lofi_dark_config import (
     LOFI_LOCAL_BACKGROUND_DIR,
     lofi_background_query,
 )
+
+
+def _generate_placeholder_clip(output_path: Path, duration: float = 12.0) -> bool:
+    """Gera clip escuro minimalista via FFmpeg quando Pexels/local falham."""
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "lavfi",
+        "-i", f"color=c=0x0d0d14:s=1920x1080:d={duration}",
+        "-vf", "noise=alls=6:allf=t+u,eq=brightness=-0.1:saturation=0.5",
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-pix_fmt", "yuv420p",
+        "-t", f"{duration:.1f}",
+        str(output_path),
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, timeout=60)
+        return output_path.exists() and output_path.stat().st_size > 10_000
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return False
 
 
 def _local_background_clips() -> list[Path]:
@@ -83,6 +106,10 @@ def resolve_lofi_background_clip(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, output_path)
         print(f"[Lofi] Footage local: {source.name} → {output_path.name}")
+        return output_path
+
+    if _generate_placeholder_clip(output_path):
+        print(f"[Lofi] Footage placeholder FFmpeg → {output_path.name}")
         return output_path
 
     print(f"[Lofi] Nenhum footage disponível para cena {scene_index + 1}")
