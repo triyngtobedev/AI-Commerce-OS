@@ -129,6 +129,7 @@ O script envia o tema, mostra progresso a cada 30 segundos e salva o MP4 em `dow
 | "Não foi possível conectar" | Confira `CLOUD_API_URL` (com `https://`), deploy Active no Railway |
 | 502 / timeout no health check | App deve escutar em `0.0.0.0:$PORT`. Em **Settings → Networking**, confira que **Target Port** coincide com a porta do uvicorn (Deploy Logs mostram `Starting uvicorn on 0.0.0.0:XXXX`) |
 | "Invalid X-API-Key" | `CLOUD_API_KEY` no PC = `PIPELINE_API_KEY` no Railway |
+| 503 `PIPELINE_API_KEY not configured` | Defina `PIPELINE_API_KEY` no Railway (ou `CLOUD_API_KEY` — mesmo valor). Após deploy, GET `/api/v1/health` deve retornar `"auth_configured": true` |
 | Job falhou / OOM | Confirme 4 GB RAM em Settings → Resources |
 | Deploy falhou | Veja **Deploy Logs** no Railway — geralmente falta variável |
 

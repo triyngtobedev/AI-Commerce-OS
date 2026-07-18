@@ -364,7 +364,9 @@ docs/n8n_integration.md
 
 ### FastAPI retorna 503 — PIPELINE_API_KEY not configured
 
-- Defina `PIPELINE_API_KEY` no `.env` antes de iniciar a API
+- Defina `PIPELINE_API_KEY` no Railway (ou `CLOUD_API_KEY` com o mesmo valor — alias aceito)
+- No PC local, use `CLOUD_API_KEY` com a mesma chave
+- Confira `auth_configured: true` em GET `/api/v1/health` após o deploy
 
 ### Pipeline subprocess falha (status: failed)
 

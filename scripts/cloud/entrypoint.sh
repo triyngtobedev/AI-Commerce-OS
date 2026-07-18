@@ -7,6 +7,18 @@ cd /app
 # Railway injeta PORT; fallback 8080 (não usar --workers: fork quebra detecção Active)
 : "${PORT:=8080}"
 
+# Diagnóstico de variáveis antes do uvicorn (Deploy Logs do Railway)
+if [ -n "${PIPELINE_API_KEY:-}" ]; then
+  echo "PIPELINE_API_KEY presente: True"
+else
+  echo "PIPELINE_API_KEY presente: False"
+fi
+if [ -n "${CLOUD_API_KEY:-}" ]; then
+  echo "CLOUD_API_KEY presente: True"
+else
+  echo "CLOUD_API_KEY presente: False"
+fi
+
 echo "Starting uvicorn on 0.0.0.0:${PORT} (pid $$)"
 exec uvicorn api.main_api:app \
   --host 0.0.0.0 \

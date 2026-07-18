@@ -141,3 +141,4 @@ class HealthResponse(BaseModel):
     status: str = "ok"
     version: str
     service: str = "ai-commerce-os-pipeline-api"
+    auth_configured: bool = False

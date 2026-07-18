@@ -8,6 +8,7 @@ Execução:
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from collections import defaultdict, deque
@@ -18,12 +19,13 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 from api import __version__
+from api.config import get_pipeline_api_key
 from api.models.schemas import HealthResponse
 from api.routers import pipeline, scenes
 
 load_dotenv()
 
-API_KEY = os.getenv("PIPELINE_API_KEY", "")
+logger = logging.getLogger("uvicorn.error")
 RATE_LIMIT_REQUESTS = int(os.getenv("PIPELINE_API_RATE_LIMIT", "60"))
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("PIPELINE_API_RATE_WINDOW", "60"))
 
@@ -77,14 +79,20 @@ async def security_middleware(request: Request, call_next: Callable):
         client_ip = request.client.host if request.client else "unknown"
         _check_rate_limit(client_ip)
 
-        if not API_KEY:
+        api_key = get_pipeline_api_key()
+        if not api_key:
             return JSONResponse(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                content={"detail": "PIPELINE_API_KEY not configured"},
+                content={
+                    "detail": (
+                        "PIPELINE_API_KEY not configured "
+                        "(defina PIPELINE_API_KEY ou CLOUD_API_KEY no Railway)"
+                    )
+                },
             )
 
-        provided_key = request.headers.get("X-API-Key", "")
-        if provided_key != API_KEY:
+        provided_key = request.headers.get("X-API-Key", "").strip()
+        if provided_key != api_key:
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={"detail": "Invalid or missing X-API-Key header"},
@@ -93,11 +101,47 @@ async def security_middleware(request: Request, call_next: Callable):
     return await call_next(request)
 
 
+@app.on_event("startup")
+async def log_auth_config() -> None:
+    """Avisa no log do Railway se a chave de API não estiver configurada."""
+    # Diagnóstico explícito nos logs do Railway (stdout, visível no Deploy Logs)
+    print(
+        f"PIPELINE_API_KEY presente: {bool(os.getenv('PIPELINE_API_KEY'))}",
+        flush=True,
+    )
+    print(
+        f"CLOUD_API_KEY presente: {bool(os.getenv('CLOUD_API_KEY'))}",
+        flush=True,
+    )
+    print(
+        f"auth_configured (get_pipeline_api_key): {bool(get_pipeline_api_key())}",
+        flush=True,
+    )
+
+    if get_pipeline_api_key():
+        if not os.getenv("PIPELINE_API_KEY", "").strip() and os.getenv(
+            "CLOUD_API_KEY", ""
+        ).strip():
+            logger.warning(
+                "CLOUD_API_KEY detectada sem PIPELINE_API_KEY — "
+                "funciona, mas prefira PIPELINE_API_KEY no Railway"
+            )
+        return
+    logger.warning(
+        "PIPELINE_API_KEY/CLOUD_API_KEY ausente — "
+        "POST /api/v1/pipeline/run retornará 503 até configurar no Railway"
+    )
+
+
 @app.get("/health", response_model=HealthResponse, tags=["health"])
 @app.get("/api/v1/health", response_model=HealthResponse, tags=["health"])
 async def health_check() -> HealthResponse:
     """Health check simples — usado por Railway, n8n e monitoramento."""
-    return HealthResponse(status="ok", version=__version__)
+    return HealthResponse(
+        status="ok",
+        version=__version__,
+        auth_configured=bool(get_pipeline_api_key()),
+    )
 
 
 # Registra routers sob prefixo /api/v1

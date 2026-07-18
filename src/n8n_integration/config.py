@@ -47,12 +47,17 @@ def get_config() -> N8nIntegrationConfig:
     webhook_url = os.getenv("N8N_SCENE_WEBHOOK_URL", "").strip()
     api_base = os.getenv("PIPELINE_API_BASE_URL", "http://127.0.0.1:8000").strip()
     callback_base = os.getenv("N8N_CALLBACK_BASE_URL", api_base).strip() or api_base
-    api_key = os.getenv("PIPELINE_API_KEY", "").strip()
+    api_key = (
+        os.getenv("PIPELINE_API_KEY", "").strip()
+        or os.getenv("CLOUD_API_KEY", "").strip()
+    )
 
     if not webhook_url:
         raise ValueError("N8N_SCENE_WEBHOOK_URL is not set in environment")
     if not api_key:
-        raise ValueError("PIPELINE_API_KEY is not set in environment")
+        raise ValueError(
+            "PIPELINE_API_KEY (ou CLOUD_API_KEY) is not set in environment"
+        )
 
     return N8nIntegrationConfig(
         n8n_scene_webhook_url=webhook_url,
