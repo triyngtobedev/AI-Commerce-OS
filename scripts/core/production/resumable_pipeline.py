@@ -186,6 +186,7 @@ def _stage_strategy(ctx: StageContext) -> dict:
     if ctx.cache.is_valid("strategy", cache_input, artifacts):
         loaded = ctx.state.load_artifact("strategy.json")
         if loaded:
+            loaded = apply_template_override(loaded)
             ctx.data["strategy"] = loaded
             return loaded
 
@@ -377,6 +378,9 @@ def _stage_render(ctx: StageContext) -> Optional[str]:
         ctx.data["video"] = str(video_path)
         if thumb_path.exists():
             ctx.data["thumbnail"] = str(thumb_path)
+        resolved = video_path.resolve()
+        print(f"🎬 Vídeo final criado: {resolved}")
+        print(f"PIPELINE_OUTPUT_VIDEO={resolved}")
         return str(video_path)
 
     soundtrack_path = ctx.output_dir / "assets" / "audio" / "soundtrack.mp3"

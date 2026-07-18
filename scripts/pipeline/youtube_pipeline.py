@@ -44,7 +44,7 @@ from scripts.pipeline.shared_media import run_media_pipeline
 from scripts.audio.tts_generator import create_audio
 from scripts.audio.soundtrack_engine import generate_soundtrack
 from scripts.youtube.lofi_dark_config import is_lofi_dark
-from scripts.youtube.template_override import apply_template_override
+from scripts.youtube.template_override import apply_template_override, get_template_override
 
 from scripts.publisher.youtube_exporter import export_youtube_video
 from scripts.publisher.youtube_auth import (
@@ -100,6 +100,10 @@ def run_youtube_pipeline(
     print(
         "\n🎬 Pipeline YouTube Dark iniciado\n"
     )
+
+    template_override = get_template_override()
+    if template_override:
+        print(f"📋 Template de roteiro: {template_override}\n")
 
     should_upload, upload_context = resolve_upload_settings(
         cli_upload=auto_upload or production_mode,
@@ -445,20 +449,12 @@ def run_youtube_pipeline(
             video = render_video_project(result)
 
 
-            if video:
+            if not video:
+                print("❌ Vídeo não criado — etapa de render falhou.")
+                continue
 
-                pipeline_result.video = str(video)
-
-                print(
-                    f"✅ Vídeo criado: {video}"
-                )
-
-            else:
-
-                print(
-                    "⚠️ Vídeo não criado."
-                )
-
+            pipeline_result.video = str(video)
+            print(f"✅ Vídeo criado: {video}")
 
             thumbnail = generate_thumbnail(
                 topic,

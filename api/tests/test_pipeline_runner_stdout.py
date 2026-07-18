@@ -37,6 +37,20 @@ class TestStdoutForJob(unittest.TestCase):
         self.assertIn("[AI Router] Tentando: openrouter", diagnostic)
         self.assertGreaterEqual(len(diagnostic.splitlines()), 80)
 
+    def test_extract_failure_reason_from_stdout(self):
+        stdout = (
+            "Pipeline ok\n"
+            "❌ Erro processando Tunguska: Nenhuma API de IA disponível.\n"
+        )
+        reason = pipeline_runner._extract_failure_reason(stdout, "")
+        self.assertIn("Erro processando", reason)
+
+    def test_extract_failure_reason_prefers_stdout_over_stderr(self):
+        stdout = "❌ Pipeline concluiu sem produzir vídeo final."
+        stderr = "some stderr noise"
+        reason = pipeline_runner._extract_failure_reason(stdout, stderr)
+        self.assertIn("Pipeline concluiu", reason)
+
 
 if __name__ == "__main__":
     unittest.main()

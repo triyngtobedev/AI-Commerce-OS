@@ -29,6 +29,39 @@ FINAL_VIDEO_LOG_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Marcadores de falha no stdout — usados para diagnóstico quando exit code é 0
+_FAILURE_STDOUT_MARKERS = (
+    "❌ Pipeline concluiu sem produzir vídeo final.",
+    "❌ Vídeo não criado",
+    "❌ Erro no render:",
+    "❌ Falha total",
+    "Nenhuma API de IA disponível",
+    "❌ Nenhum tema encontrado",
+    "❌ Nenhum tema novo",
+    "❌ Erro processando",
+    "Vídeos gerados: 0",
+    "Vídeos com arquivo final: 0",
+    "[Lofi] Nenhum footage disponível",
+    "Sem mídia para cena",
+)
+
+
+def _extract_failure_reason(stdout: str, stderr: str) -> str | None:
+    """Extrai a linha de erro mais relevante do stdout/stderr."""
+    for line in reversed(stdout.splitlines()):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if any(marker in stripped for marker in _FAILURE_STDOUT_MARKERS):
+            return stripped
+
+    for line in reversed(stderr.splitlines()):
+        stripped = line.strip()
+        if stripped:
+            return stripped
+
+    return None
+
 # Linhas de stdout persistidas no job para diagnóstico via GET /pipeline/status
 JOB_STDOUT_TAIL_LINES = 100
 
@@ -110,11 +143,15 @@ async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> 
             try:
                 output_path = _resolve_output_path(stdout, request)
             except ValueError as exc:
+                reason = _extract_failure_reason(stdout, stderr)
                 diagnostic = _failure_diagnostic(stdout, stderr)
+                error_msg = str(exc)
+                if reason:
+                    error_msg = f"{error_msg}\nCausa provável: {reason}"
                 job_store.update_job_status(
                     job_id,
                     JobStatus.FAILED,
-                    error_message=f"{exc}\n\n{diagnostic}"[:4000],
+                    error_message=f"{error_msg}\n\n{diagnostic}"[:4000],
                     stdout_tail=stdout_excerpt,
                 )
             else:
@@ -125,8 +162,11 @@ async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> 
                     stdout_tail=stdout_excerpt,
                 )
         else:
+            reason = _extract_failure_reason(stdout, stderr)
             diagnostic = _failure_diagnostic(stdout, stderr)
-            error_msg = diagnostic or f"Exit code {process.returncode}"
+            error_msg = reason or f"Exit code {process.returncode}"
+            if diagnostic:
+                error_msg = f"{error_msg}\n\n{diagnostic}"
             job_store.update_job_status(
                 job_id,
                 JobStatus.FAILED,
