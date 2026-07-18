@@ -19,7 +19,7 @@ GROQ_MODELS_FALLBACK = [
     "gemma2-9b-it",              # terceiro fallback
 ]
 
-GEMINI_MODEL_PRIMARY = "gemini-2.5-flash"
+GEMINI_MODEL_PRIMARY = "gemini-2.0-flash"
 GEMINI_MODEL_LITE = "gemini-2.0-flash-lite"
 
 PRIMARY_GEMINI_CONTEXTS = {"script_generation"}

@@ -7,6 +7,13 @@ cd /app
 # Railway injeta PORT; fallback 8080 (não usar --workers: fork quebra detecção Active)
 : "${PORT:=8080}"
 
+# Commit em execução (Railway injeta RAILWAY_GIT_COMMIT_SHA no runtime)
+if [ -n "${RAILWAY_GIT_COMMIT_SHA:-}" ]; then
+  echo "GIT_COMMIT: ${RAILWAY_GIT_COMMIT_SHA}"
+else
+  echo "GIT_COMMIT: unknown (RAILWAY_GIT_COMMIT_SHA não definido)"
+fi
+
 # Diagnóstico de variáveis antes do uvicorn (Deploy Logs do Railway)
 if [ -n "${PIPELINE_API_KEY:-}" ]; then
   echo "PIPELINE_API_KEY presente: True"

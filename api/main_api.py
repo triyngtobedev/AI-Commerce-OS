@@ -104,6 +104,9 @@ async def security_middleware(request: Request, call_next: Callable):
 @app.on_event("startup")
 async def log_auth_config() -> None:
     """Avisa no log do Railway se a chave de API não estiver configurada."""
+    git_commit = os.getenv("RAILWAY_GIT_COMMIT_SHA", "unknown")
+    print(f"GIT_COMMIT: {git_commit}", flush=True)
+
     # Diagnóstico explícito nos logs do Railway (stdout, visível no Deploy Logs)
     print(
         f"PIPELINE_API_KEY presente: {bool(os.getenv('PIPELINE_API_KEY'))}",
