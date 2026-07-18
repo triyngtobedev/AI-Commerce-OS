@@ -117,11 +117,17 @@ def run_oauth_flow(json_path: Path):
         scopes=YOUTUBE_SCOPES,
     )
 
-    return flow.run_local_server(
-        port=0,
-        prompt="consent",
-        access_type="offline",
-    )
+    server_kwargs: dict = {
+        "port": 0,
+        "prompt": "consent",
+        "access_type": "offline",
+        "authorization_prompt_message": "\nAbra essa URL no navegador:\n{url}\n",
+    }
+
+    if sys.platform == "win32":
+        server_kwargs["browser"] = "windows-default"
+
+    return flow.run_local_server(**server_kwargs)
 
 
 def main() -> int:
