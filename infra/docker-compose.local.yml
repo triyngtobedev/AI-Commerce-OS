@@ -23,6 +23,8 @@ services:
       - N8N_DIAGNOSTICS_ENABLED=false
       # URL da API do pipeline — Railway em produção, localhost em dev
       - PIPELINE_API_BASE_URL=${PIPELINE_API_BASE_URL:-http://host.docker.internal:8000}
+      # Chave X-API-Key enviada nos workflows (mesma do Railway)
+      - PIPELINE_API_KEY=${PIPELINE_API_KEY}
     volumes:
       - n8n_data:/home/node/.n8n
     ports:

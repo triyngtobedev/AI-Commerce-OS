@@ -23,7 +23,7 @@
     },
     {
       "parameters": {
-        "content": "## Etapa 1 — Trigger diário\n\nEste workflow é o **alimentador** do sistema.\n\nTodo dia às 8h (Brasília), aciona o pipeline no Railway via FastAPI.\n\nCredencial **Pipeline API Key** é configurada automaticamente pelo setup.",
+        "content": "## Etapa 1 — Trigger diário\n\nTodo dia às 8h (Brasília), aciona o pipeline no Railway.\n\nHeader **X-API-Key** vem de `$env.PIPELINE_API_KEY` (configurado pelo ativar-n8n.ps1).",
         "height": 200,
         "width": 380
       },
@@ -37,8 +37,16 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.PIPELINE_API_BASE_URL }}/api/v1/pipeline/run",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.PIPELINE_API_KEY }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"platform\": \"youtube_dark\",\n  \"production\": true,\n  \"research\": true,\n  \"upload\": false,\n  \"max_videos\": 1,\n  \"language\": \"pt-BR\",\n  \"metadata\": {\n    \"triggered_by\": \"n8n_schedule\",\n    \"workflow\": \"01_pipeline_trigger\"\n  }\n}",
@@ -49,13 +57,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [480, 300],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "PIPELINE_API_CREDENTIAL_ID",
-          "name": "Pipeline API Key"
-        }
-      },
-      "notes": "Envia POST para /api/v1/pipeline/run. Retorna job_id imediatamente (status: queued)."
+      "notes": "Envia POST para /api/v1/pipeline/run. Header X-API-Key vem de $env.PIPELINE_API_KEY."
     },
     {
       "parameters": {
@@ -103,8 +105,16 @@
       "parameters": {
         "method": "GET",
         "url": "={{ $env.PIPELINE_API_BASE_URL }}/api/v1/pipeline/status/{{ $('POST Pipeline Run').item.json.job_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.PIPELINE_API_KEY }}"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "http-poll-status",
@@ -112,13 +122,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1200, 220],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "PIPELINE_API_CREDENTIAL_ID",
-          "name": "Pipeline API Key"
-        }
-      },
-      "notes": "Polling do status do job. Repita enquanto status for queued ou running."
+      "notes": "Polling do status do job. Header X-API-Key vem de $env.PIPELINE_API_KEY."
     },
     {
       "parameters": {

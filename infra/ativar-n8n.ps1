@@ -57,18 +57,56 @@ if (-not (Test-Path $EnvMain)) {
 
 $envMain = Read-EnvFile $EnvMain
 $cloudUrl = $envMain["CLOUD_API_URL"]
-$apiKey = $envMain["PIPELINE_API_KEY"]
-if (-not $apiKey) { $apiKey = $envMain["CLOUD_API_KEY"] }
+
+# Mesma ordem do gerar_video.py: CLOUD_API_KEY → PIPELINE_API_KEY
+$apiKey = $envMain["CLOUD_API_KEY"]
+if (-not $apiKey) { $apiKey = $envMain["PIPELINE_API_KEY"] }
+
+if ($envMain["CLOUD_API_KEY"] -and $envMain["PIPELINE_API_KEY"] -and
+    $envMain["CLOUD_API_KEY"] -ne $envMain["PIPELINE_API_KEY"]) {
+    Write-Warning "CLOUD_API_KEY e PIPELINE_API_KEY diferem no .env — usando CLOUD_API_KEY"
+    $apiKey = $envMain["CLOUD_API_KEY"]
+}
 
 if (-not $cloudUrl) {
     Write-Error "CLOUD_API_URL ausente no .env.`nGuia: docs/deploy-railway.md"
 }
 if (-not $apiKey) {
-    Write-Error "PIPELINE_API_KEY (ou CLOUD_API_KEY) ausente no .env."
+    Write-Error "CLOUD_API_KEY ou PIPELINE_API_KEY ausente no .env."
 }
 
 Write-Host "Railway URL: $cloudUrl" -ForegroundColor Green
 Write-Host "API Key:     $($apiKey.Substring(0, [Math]::Min(8, $apiKey.Length)))..." -ForegroundColor Green
+Write-Host ""
+
+# --- Testar chave no Railway antes de continuar ---
+Write-Host "Testando chave no Railway..."
+try {
+    $testBody = '{"platform":"youtube_dark","topic":"teste n8n"}'
+    $testResp = Invoke-WebRequest -Uri "$cloudUrl/api/v1/pipeline/run" `
+        -Method POST `
+        -Headers @{ "X-API-Key" = $apiKey; "Content-Type" = "application/json" } `
+        -Body $testBody `
+        -UseBasicParsing `
+        -TimeoutSec 30
+    Write-Host "Chave OK — Railway retornou $($testResp.StatusCode)" -ForegroundColor Green
+} catch {
+    $status = $_.Exception.Response.StatusCode.value__
+    if ($status -eq 401) {
+        Write-Host ""
+        Write-Host "ERRO 401 — chave local NAO bate com o Railway." -ForegroundColor Red
+        Write-Host ""
+        Write-Host "  1. Abra railway.app -> seu projeto -> Variables"
+        Write-Host "  2. Copie o valor de PIPELINE_API_KEY"
+        Write-Host "  3. Cole no .env do PC (CLOUD_API_KEY e PIPELINE_API_KEY = mesmo valor):"
+        Write-Host "     CLOUD_API_KEY=cole_aqui"
+        Write-Host "     PIPELINE_API_KEY=cole_aqui"
+        Write-Host "  4. Rode .\infra\ativar-n8n.ps1 de novo"
+        Write-Host ""
+        exit 1
+    }
+    Write-Warning "Teste Railway retornou HTTP $status — continuando mesmo assim..."
+}
 Write-Host ""
 
 # --- Criar/atualizar infra/.env.n8n ---
@@ -107,7 +145,14 @@ if ($webhookSecret -and $n8nContent -match "N8N_WEBHOOK_SECRET=\s*$") {
 if ($n8nContent -match "PIPELINE_API_BASE_URL=") {
     $n8nContent = $n8nContent -replace "PIPELINE_API_BASE_URL=.*", "PIPELINE_API_BASE_URL=$cloudUrl"
 } else {
-    $n8nContent += "`n# URL da API no Railway (usada pelos workflows n8n)`nPIPELINE_API_BASE_URL=$cloudUrl`n"
+    $n8nContent += "`nPIPELINE_API_BASE_URL=$cloudUrl`n"
+}
+
+# PIPELINE_API_KEY → mesma chave validada no Railway
+if ($n8nContent -match "PIPELINE_API_KEY=") {
+    $n8nContent = $n8nContent -replace "PIPELINE_API_KEY=.*", "PIPELINE_API_KEY=$apiKey"
+} else {
+    $n8nContent += "`nPIPELINE_API_KEY=$apiKey`n"
 }
 
 Set-Content -Path $EnvN8n -Value $n8nContent -NoNewline
@@ -119,7 +164,7 @@ Set-Location $InfraDir
 
 Write-Host ""
 Write-Host "Subindo n8n (localhost:5678)..."
-& $Docker compose -f docker-compose.local.yml up -d
+& $Docker compose -f docker-compose.local.yml up -d --force-recreate
 
 # --- Aguardar healthcheck ---
 Write-Host "Aguardando n8n ficar pronto..."

@@ -113,7 +113,7 @@ Se retornar `✓ Servidor online`, o Railway está OK.
 | "CLOUD_API_URL ausente" | Preencha no `.env` (passo 3 do deploy-railway) |
 | "PIPELINE_API_KEY ausente" | Gere uma chave e coloque no `.env` **e** no Railway |
 | Workflow não dispara | Confira se o toggle está **Active** (verde) |
-| Erro 401 no workflow | `PIPELINE_API_KEY` no `.env` ≠ Railway — devem ser iguais |
+| Erro 401 no teste | `CLOUD_API_KEY` e `PIPELINE_API_KEY` no `.env` devem ser **iguais** ao `PIPELINE_API_KEY` do Railway (Variables) |
 | PC desligado às 8h | Vídeo não gera naquele dia — deixe PC ligado |
 | n8n parou após reiniciar PC | Rode `.\infra\start-local.ps1` ou `.\infra\ativar-n8n.ps1` de novo |
 

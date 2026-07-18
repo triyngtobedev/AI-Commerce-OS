@@ -159,9 +159,9 @@ def ensure_credentials(client: N8nClient, env_main: dict[str, str]) -> dict[str,
     """Cria credenciais HTTP Header exigidas pelos workflows."""
     cred_ids: dict[str, str] = {}
 
-    pipeline_key = env_main.get("PIPELINE_API_KEY", "")
+    pipeline_key = resolve_api_key(env_main)
     if not pipeline_key:
-        raise RuntimeError("PIPELINE_API_KEY ausente em .env")
+        raise RuntimeError("PIPELINE_API_KEY ou CLOUD_API_KEY ausente em .env")
 
     cred_ids["Pipeline API Key"] = create_header_auth_credential(
         client,
@@ -287,6 +287,23 @@ def activate_workflow(client: N8nClient, wf_id: str, name: str) -> None:
     print(f"Workflow ativado: {wf_id}")
 
 
+def resolve_api_key(env_main: dict[str, str]) -> str:
+    """
+    Chave para chamar o Railway (cliente).
+
+    Mesma ordem de gerar_video.py: CLOUD_API_KEY → PIPELINE_API_KEY.
+    """
+    cloud = env_main.get("CLOUD_API_KEY", "").strip()
+    pipeline = env_main.get("PIPELINE_API_KEY", "").strip()
+    if cloud and pipeline and cloud != pipeline:
+        print(
+            "⚠️ CLOUD_API_KEY e PIPELINE_API_KEY diferem no .env — "
+            "usando CLOUD_API_KEY (mesma lógica do gerar_video.py)"
+        )
+        return cloud
+    return cloud or pipeline
+
+
 def resolve_pipeline_api_url(env_main: dict[str, str]) -> str:
     """Prioriza CLOUD_API_URL (Railway) → PIPELINE_API_BASE_URL → localhost."""
     for key in ("CLOUD_API_URL", "PIPELINE_API_BASE_URL"):
@@ -312,6 +329,13 @@ def test_pipeline(api_key: str, api_base: str) -> None:
     except urllib.error.HTTPError as exc:
         raw = exc.read().decode("utf-8", errors="replace")
         print(f"Pipeline teste HTTP {exc.code} ({api_base}): {raw}")
+        if exc.code == 401:
+            print(
+                "\n  ERRO 401 — chave local não bate com o Railway.\n"
+                "  1. Abra railway.app → Variables → copie PIPELINE_API_KEY\n"
+                "  2. Cole no .env do PC em CLOUD_API_KEY e PIPELINE_API_KEY (mesmo valor)\n"
+                "  3. Rode .\\infra\\ativar-n8n.ps1 de novo\n"
+            )
     except urllib.error.URLError as exc:
         print(f"Pipeline teste falhou ({api_base}): {exc.reason}")
         print("  → Confira se o Railway está Active ou se a FastAPI local está rodando.")
@@ -319,9 +343,9 @@ def test_pipeline(api_key: str, api_base: str) -> None:
 
 def main() -> int:
     env_main = load_env(ENV_MAIN)
-    api_key = env_main.get("PIPELINE_API_KEY", "")
+    api_key = resolve_api_key(env_main)
     if not api_key:
-        print("PIPELINE_API_KEY ausente em .env", file=sys.stderr)
+        print("PIPELINE_API_KEY ou CLOUD_API_KEY ausente em .env", file=sys.stderr)
         return 1
 
     print(f"n8n: {N8N_BASE}")
