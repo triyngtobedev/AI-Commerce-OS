@@ -15,6 +15,8 @@ if hasattr(sys.stdout, "reconfigure"):
 ROOT = Path(__file__).resolve().parents[1]
 ENV = ROOT / ".env"
 
+env: dict[str, str | None] = {}
+
 
 def mask(value: str | None) -> str:
     value = (value or "").strip()
@@ -64,6 +66,52 @@ def check_http(
         }
 
 
+def check_openrouter(api_key: str) -> dict:
+    if not api_key:
+        return {
+            "name": "OPENROUTER_API_KEY",
+            "set": False,
+            "ok": False,
+            "status": None,
+            "detail": "nao configurado (openrouter.ai/keys)",
+            "masked": mask(api_key),
+        }
+
+    try:
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com/triyngtobedev/AI-Commerce-OS",
+                "X-OpenRouter-Title": "Vibecoder AI-Commerce-OS",
+            },
+            json={
+                "model": "mistralai/mistral-7b-instruct:free",
+                "messages": [{"role": "user", "content": "Responda apenas: OK"}],
+            },
+            timeout=45,
+        )
+        ok = resp.status_code == 200 and "OK" in resp.text.upper()
+        return {
+            "name": "OPENROUTER_API_KEY",
+            "set": True,
+            "ok": ok,
+            "status": resp.status_code,
+            "detail": "OK" if ok else resp.text[:240],
+            "masked": mask(api_key),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "name": "OPENROUTER_API_KEY",
+            "set": True,
+            "ok": False,
+            "status": None,
+            "detail": str(exc),
+            "masked": mask(api_key),
+        }
+
+
 def main() -> int:
     global env
     env = dotenv_values(ENV)
@@ -78,6 +126,8 @@ def main() -> int:
     fal_key = (env.get("FAL_KEY") or env.get("FAL_API_KEY") or "").strip()
     gemini = (env.get("GEMINI_API_KEY") or "").strip()
     groq = (env.get("GROQ_API_KEY") or "").strip()
+    openrouter = (env.get("OPENROUTER_API_KEY") or "").strip()
+    pexels = (env.get("PEXELS_API_KEY") or "").strip()
     kling_email = (env.get("KLING_EMAIL") or "").strip()
     kling_password = (env.get("KLING_PASSWORD") or "").strip()
 
@@ -101,7 +151,28 @@ def main() -> int:
             "https://api.groq.com/openai/v1/models",
             {"Authorization": f"Bearer {groq}"},
         ),
+        check_openrouter(openrouter),
     ]
+
+    if pexels:
+        checks.append(
+            check_http(
+                "PEXELS_API_KEY",
+                "https://api.pexels.com/v1/search?query=test&per_page=1",
+                {"Authorization": pexels},
+            )
+        )
+    else:
+        checks.append(
+            {
+                "name": "PEXELS_API_KEY",
+                "set": False,
+                "ok": False,
+                "status": None,
+                "detail": "nao configurado (pexels.com/api)",
+                "masked": mask(pexels),
+            }
+        )
 
     optional = []
     if fal_key:
@@ -172,13 +243,21 @@ def main() -> int:
 
     print()
     if failed:
-        hf = (env.get("HF_API_TOKEN") or "").strip()
-        if hf and len(hf) < 20:
+        hf_token = (env.get("HF_API_TOKEN") or "").strip()
+        if hf_token and len(hf_token) < 20:
             print("Dica: HF_API_TOKEN parece placeholder (ex.: hf_...) — gere em https://huggingface.co/settings/tokens")
         if not fal_key:
             print("Dica: FAL_KEY em fal.ai/dashboard/keys — Kling 2.6 Pro (~$0,35/clip 5s)")
-        if not (env.get("GEMINI_API_KEY") or "").strip() and not (env.get("GROQ_API_KEY") or "").strip():
-            print("Dica: configure GEMINI_API_KEY (Google AI Studio) ou GROQ_API_KEY (console.groq.com) para roteiro.")
+        if (
+            not (env.get("GEMINI_API_KEY") or "").strip()
+            and not (env.get("GROQ_API_KEY") or "").strip()
+            and not openrouter
+        ):
+            print(
+                "Dica: configure GEMINI_API_KEY, GROQ_API_KEY ou OPENROUTER_API_KEY para roteiro."
+            )
+        if not pexels:
+            print("Dica: PEXELS_API_KEY em pexels.com/api — obrigatório para footage lofi_dark.")
         print(f"Resultado: {failed} token(s) com problema.")
         return 1
 
