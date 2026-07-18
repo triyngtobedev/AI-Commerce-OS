@@ -26,7 +26,7 @@ _REJECT_PATTERNS = re.compile(
     r"twitch|streamer|video[\s_-]?game|playstation|xbox|"
     r"green[\s_-]?screen|chroma|mockup|placeholder|"
     r"office[\s_-]?worker|business[\s_-]?meeting|handshake|"
-    "stock[\s_-]?footage[\s_-]?loop|loopable|"
+    r"stock[\s_-]?footage[\s_-]?loop|loopable|"
     r"people[\s_-]?walking|crowd[\s_-]?walking|"
     r"abstract[\s_-]?background|bokeh[\s_-]?background|"
     r"cartoon|animation|animated|3d[\s_-]?render|cgi|"

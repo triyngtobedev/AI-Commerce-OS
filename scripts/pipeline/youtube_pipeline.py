@@ -63,6 +63,12 @@ from scripts.core.emotional_effects import apply_effect_hints_to_scenes
 from scripts.utils.slug import content_output_dir
 
 
+def _is_cloud_injected_topic() -> bool:
+    """Tema explícito via API/n8n — não descartar por score baixo."""
+
+    return bool(os.getenv("PIPELINE_TOPIC_OVERRIDE", "").strip())
+
+
 def run_youtube_pipeline(
     auto_research: bool = False,
     research_count: int = 3,
@@ -233,16 +239,19 @@ def run_youtube_pipeline(
 
             action = decide_action(opportunity)
 
-
             if action == "DESCARTAR":
-
-                print(
-                    f"⏭️ Tema descartado "
-                    f"(score: {opportunity.get('score_venda', 0)})."
-                )
-
-                continue
-
+                if _is_cloud_injected_topic():
+                    print(
+                        f"⚡ Tema injetado pela API — "
+                        f"ignorando score baixo ({opportunity.get('score_venda', 0)})"
+                    )
+                    action = "TESTAR_VIDEO"
+                else:
+                    print(
+                        f"⏭️ Tema descartado "
+                        f"(score: {opportunity.get('score_venda', 0)})."
+                    )
+                    continue
 
             print(
                 f"▶️ Ação: {action} "

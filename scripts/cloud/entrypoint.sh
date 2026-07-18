@@ -18,6 +18,16 @@ if [ -n "${CLOUD_API_KEY:-}" ]; then
 else
   echo "CLOUD_API_KEY presente: False"
 fi
+if [ -n "${GEMINI_API_KEY:-}" ]; then
+  echo "GEMINI_API_KEY presente: True"
+else
+  echo "GEMINI_API_KEY presente: False"
+fi
+if [ -n "${PEXELS_API_KEY:-}" ]; then
+  echo "PEXELS_API_KEY presente: True"
+else
+  echo "PEXELS_API_KEY presente: False"
+fi
 
 if command -v ffmpeg >/dev/null 2>&1; then
   echo "FFmpeg presente: True ($(ffmpeg -version 2>&1 | head -n 1))"

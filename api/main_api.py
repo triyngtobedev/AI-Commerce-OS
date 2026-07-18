@@ -117,6 +117,14 @@ async def log_auth_config() -> None:
         f"auth_configured (get_pipeline_api_key): {bool(get_pipeline_api_key())}",
         flush=True,
     )
+    print(
+        f"GEMINI_API_KEY presente: {bool(os.getenv('GEMINI_API_KEY'))}",
+        flush=True,
+    )
+    print(
+        f"PEXELS_API_KEY presente: {bool(os.getenv('PEXELS_API_KEY'))}",
+        flush=True,
+    )
 
     if get_pipeline_api_key():
         if not os.getenv("PIPELINE_API_KEY", "").strip() and os.getenv(
@@ -126,11 +134,16 @@ async def log_auth_config() -> None:
                 "CLOUD_API_KEY detectada sem PIPELINE_API_KEY — "
                 "funciona, mas prefira PIPELINE_API_KEY no Railway"
             )
-        return
-    logger.warning(
-        "PIPELINE_API_KEY/CLOUD_API_KEY ausente — "
-        "POST /api/v1/pipeline/run retornará 503 até configurar no Railway"
-    )
+    else:
+        logger.warning(
+            "PIPELINE_API_KEY/CLOUD_API_KEY ausente — "
+            "POST /api/v1/pipeline/run retornará 503 até configurar no Railway"
+        )
+
+    if not os.getenv("GEMINI_API_KEY", "").strip():
+        logger.warning(
+            "GEMINI_API_KEY ausente — pipeline usará Groq como fallback (qualidade reduzida)"
+        )
 
 
 @app.get("/health", response_model=HealthResponse, tags=["health"])

@@ -92,7 +92,13 @@ CLOUD_API_KEY=a1b2c3d4e5f6...
 python scripts/cloud/gerar_video.py --topic "teste de conexão"
 ```
 
-Se aparecer `✓ Servidor online`, está pronto.
+Se aparecer `✓ Servidor online`, a API está OK. Esse tema é só ping — pode falhar no score ou render.
+
+Para validar o pipeline completo, use um tema real:
+
+```powershell
+python scripts/cloud/gerar_video.py --topic "Os 5 crimes mais perturbadores da história"
+```
 
 ### 5. Gerar vídeos (uso diário)
 
@@ -130,6 +136,8 @@ O script envia o tema, mostra progresso a cada 30 segundos e salva o MP4 em `dow
 | 502 / timeout no health check | App deve escutar em `0.0.0.0:$PORT`. Em **Settings → Networking**, confira que **Target Port** coincide com a porta do uvicorn (Deploy Logs mostram `Starting uvicorn on 0.0.0.0:XXXX`) |
 | "Invalid X-API-Key" | `CLOUD_API_KEY` no PC = `PIPELINE_API_KEY` no Railway |
 | 503 `PIPELINE_API_KEY not configured` | Defina `PIPELINE_API_KEY` no Railway (ou `CLOUD_API_KEY` — mesmo valor). Após deploy, GET `/api/v1/health` deve retornar `"auth_configured": true` |
+| Job falha com `GEMINI_API_KEY não encontrada` | Adicione `GEMINI_API_KEY` em Variables (Google AI Studio → Get API Key). Deploy Logs devem mostrar `GEMINI_API_KEY presente: True` |
+| Tema descartado por score baixo | Normal para temas genéricos (`teste de conexão`). Use tema real ou injete via API (score ignorado automaticamente) |
 | Job falhou / OOM | Confirme 4 GB RAM em Settings → Resources |
 | Deploy falhou | Veja **Deploy Logs** no Railway — geralmente falta variável |
 

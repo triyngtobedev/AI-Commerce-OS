@@ -7,6 +7,7 @@ da última etapa válida sem reprocessamento desnecessário.
 
 from __future__ import annotations
 
+import os
 import time
 import traceback
 from pathlib import Path
@@ -149,9 +150,16 @@ def _stage_analysis(ctx: StageContext) -> dict:
     action = decide_action(opportunity)
 
     if action == "DESCARTAR":
-        raise RuntimeError(
-            f"Tema descartado (score: {opportunity.get('score_venda', 0)})"
-        )
+        if os.getenv("PIPELINE_TOPIC_OVERRIDE", "").strip():
+            ctx.logger.info(
+                "Tema injetado pela API — ignorando score baixo (%s)",
+                opportunity.get("score_venda", 0),
+            )
+            action = "TESTAR_VIDEO"
+        else:
+            raise RuntimeError(
+                f"Tema descartado (score: {opportunity.get('score_venda', 0)})"
+            )
 
     payload = {
         "score": score,
