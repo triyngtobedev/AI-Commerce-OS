@@ -40,4 +40,5 @@ RUN chmod +x scripts/cloud/entrypoint.sh
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD-SHELL curl -sf "http://127.0.0.1:$${PORT:-8080}/api/v1/health" || exit 1
 
-CMD ["/bin/sh", "scripts/cloud/entrypoint.sh"]
+# exec substitui o shell por uvicorn — PID 1 fica vivo (Railway Active, não Completed)
+CMD ["/bin/sh", "/app/scripts/cloud/entrypoint.sh"]

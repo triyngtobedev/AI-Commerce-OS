@@ -7,7 +7,7 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 # Bind explícito em $PORT (Railway injeta automaticamente)
-startCommand = "/bin/sh scripts/cloud/entrypoint.sh"
+startCommand = "/bin/sh /app/scripts/cloud/entrypoint.sh"
 healthcheckPath = "/api/v1/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
