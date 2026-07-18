@@ -42,11 +42,16 @@ DARK5_SECTIONS_TO_EXPAND = [
     "revelacao",
     "encerramento",
 ]
-from scripts.utils.prompt_loader import load_prompt, load_script_prompt
-from scripts.utils.json_parser import parse_json
-from scripts.utils.ai_cache import load_cache, save_cache
 
-CACHE_PREFIX = "youtube"
+from scripts.youtube.lofi_dark_config import (
+    LOFI_DARK_MIN_NARRATION_WORDS,
+    LOFI_DARK_SECTIONS_TO_EXPAND,
+    LOFI_DARK_TARGET_DURATION_SECONDS,
+    is_lofi_dark,
+)
+from scripts.utils.json_parser import parse_json
+from scripts.utils.prompt_loader import load_prompt, load_script_prompt
+from scripts.utils.ai_cache import load_cache, save_cache
 
 
 def generate_youtube_script(
@@ -110,6 +115,35 @@ def generate_youtube_script(
 - revelacao: 150-200 palavras
 - encerramento: 60-100 palavras
 """
+        target_words_meta = "entre 1600 e 1800 palavras no total"
+        narration_rules = """
+## Regras de narração dark (OBRIGATÓRIO)
+- Máximo 12 palavras por frase — quebre frases longas em duas ou três
+- Tom grave e pausado — nunca apressado
+- Use [PAUSA] antes de revelações importantes
+- Termine cada seção (exceto encerramento) com gancho: "E isso não é o pior..."
+- Proibido linguagem formal, jargão técnico e frases enciclopédicas
+"""
+    elif is_lofi_dark(roteiro_template):
+        section_metas = """
+## Metas por seção — Template Lofi Dark / Filosofatos (OBRIGATÓRIO)
+- hook: 80-100 palavras (abertura íntima, sem clickbait)
+- abertura: 350-450 palavras
+- reflexao_1, reflexao_2, reflexao_3: 400-500 palavras cada
+- conexoes: 350-450 palavras
+- aprofundamento: 350-450 palavras
+- encerramento: 80-120 palavras (sem CTA agressivo)
+"""
+        target_words_meta = "entre 2500 e 3200 palavras no total"
+        narration_rules = """
+## Regras de narração lofi dark (OBRIGATÓRIO)
+- Máximo 15 palavras por frase
+- Tom reflexivo — conversa às 2h da manhã, sem urgência
+- Use [PAUSA] e [PAUSA LONGA] para respirações e silêncios (2-3s)
+- Sem listas numeradas, sem ganchos de retenção agressivos
+- Permita divagações filosóficas e referências a pensadores/filmes/músicas
+- Encerramento natural — sem pedir inscrição
+"""
     else:
         section_metas = """
 ## Metas por seção (OBRIGATÓRIO)
@@ -120,6 +154,22 @@ def generate_youtube_script(
 - consequencias: 200-250 palavras
 - encerramento: 60-100 palavras
 """
+        target_words_meta = "entre 1600 e 1800 palavras no total"
+        narration_rules = """
+## Regras de narração dark (OBRIGATÓRIO)
+- Máximo 12 palavras por frase — quebre frases longas em duas ou três
+- Tom grave e pausado — nunca apressado
+- Use [PAUSA] antes de revelações importantes
+- Termine cada seção (exceto encerramento) com gancho: "E isso não é o pior..."
+- Proibido linguagem formal, jargão técnico e frases enciclopédicas
+"""
+
+    if is_lofi_dark(roteiro_template):
+        target_seconds = LOFI_DARK_TARGET_DURATION_SECONDS
+        min_words = LOFI_DARK_MIN_NARRATION_WORDS
+    else:
+        target_seconds = YOUTUBE_DARK.target_duration_seconds
+        min_words = MIN_NARRATION_WORDS
 
     full_prompt = f"""
 TASK: YOUTUBE_SCRIPT_GENERATION
@@ -128,23 +178,18 @@ TASK: YOUTUBE_SCRIPT_GENERATION
 
 ## Parâmetros de produção
 - Template de roteiro: {roteiro_template}
-- Duração alvo: {duracao} ({YOUTUBE_DARK.target_duration_seconds} segundos)
-- Mínimo de palavras: {MIN_NARRATION_WORDS}
-- Meta de palavras: entre 1600 e 1800 palavras no total
+- Duração alvo: {duracao} ({target_seconds} segundos)
+- Mínimo de palavras: {min_words}
+- Meta de palavras: {target_words_meta}
 - Tom de narração: {tom}
 - Ângulo criativo: {angulo_label}
 
 {section_metas}
 
-IMPORTANTE: o roteiro DEVE ter entre 1600 e 1800 palavras no total.
+IMPORTANTE: o roteiro DEVE ter {target_words_meta}.
 Seções precisam de conteúdo denso — NÃO resuma.
 
-## Regras de narração dark (OBRIGATÓRIO)
-- Máximo 12 palavras por frase — quebre frases longas em duas ou três
-- Tom grave e pausado — nunca apressado
-- Use [PAUSA] antes de revelações importantes
-- Termine cada seção (exceto encerramento) com gancho: "E isso não é o pior..."
-- Proibido linguagem formal, jargão técnico e frases enciclopédicas
+{narration_rules}
 
 ## Gancho obrigatório (use como base do hook)
 "{gancho}"
@@ -188,7 +233,11 @@ Estratégia completa:
     narration = stitch_script_to_narration(script)
     word_count = count_words(narration)
 
-    for warning in validate_narration(narration):
+    for warning in validate_narration(
+        narration,
+        min_words=min_words,
+        target_seconds=target_seconds,
+    ):
         print(f"⚠️ Roteiro: {warning}")
 
     for warning in validate_sentence_length(script):
@@ -197,7 +246,6 @@ Estratégia completa:
     for warning in validate_scene_hooks(script):
         print(f"⚠️ Gancho: {warning}")
 
-    target_seconds = YOUTUBE_DARK.target_duration_seconds
     estimated_duration = estimate_duration_seconds(narration)
 
     if estimated_duration < target_seconds:
@@ -335,7 +383,9 @@ def expand_script_in_sections(script, topic, strategy, target_words, roteiro_tem
     current_words = count_words(stitch_script_to_narration(script))
     needed = target_words - current_words
     sections = (
-        DARK5_SECTIONS_TO_EXPAND
+        LOFI_DARK_SECTIONS_TO_EXPAND
+        if is_lofi_dark(roteiro_template)
+        else DARK5_SECTIONS_TO_EXPAND
         if roteiro_template == "dark5"
         else SECTIONS_TO_EXPAND
     )
@@ -403,6 +453,18 @@ def _fallback_script(topic, strategy, roteiro_template="documentario"):
             "fato_1": f"Número 1: o fato mais chocante sobre {nome}.",
             "revelacao": "Mas o verdadeiro impacto só fica claro quando olhamos de perto.",
             "encerramento": "Se essa lista te pegou, inscreva-se no canal.",
+        }
+
+    if is_lofi_dark(roteiro_template):
+        return {
+            "hook": gancho or f"São duas da manhã. E talvez seja nessa hora que {nome} finalmente faz sentido.",
+            "abertura": f"Para entender {nome}, precisamos desacelerar e escutar o que o silêncio diz.",
+            "reflexao_1": f"A primeira camada de {nome} não aparece nos livros didáticos.",
+            "reflexao_2": f"Quando olhamos de lado, {nome} conecta memórias que a gente evita.",
+            "reflexao_3": f"Há algo em {nome} que fala sobre quem somos quando ninguém está olhando.",
+            "conexoes": "As ideias se entrelaçam como fios de uma conversa que nunca termina de verdade.",
+            "aprofundamento": "E talvez o ponto não seja a resposta, mas a coragem de ficar com a pergunta.",
+            "encerramento": "Boa noite. Deixe isso tocar enquanto o resto do mundo continua.",
         }
 
     return {

@@ -83,6 +83,12 @@ SCENE_MOTION: dict[str, str] = {
     "consequencias": "parallax_right",
     "impacto": "pan_left",
     "encerramento": "zoom_out_center",
+    "abertura": "slow_pan",
+    "reflexao_1": "slow_pan",
+    "reflexao_2": "slow_pan",
+    "reflexao_3": "slow_pan",
+    "conexoes": "slow_pan",
+    "aprofundamento": "slow_pan",
 }
 
 SCENE_CROSSFADE: dict[str, float] = {
@@ -388,6 +394,63 @@ class BrandKit:
         canvas.save(output_path, "JPEG", quality=93)
         return True
 
+    def compose_thumbnail_lofi(
+        self,
+        hero_image_path: Path,
+        hook_text: str,
+        output_path: Path,
+        topic: str = "",
+    ) -> bool:
+        """Thumbnail minimalista estilo Filosofatos — texto pequeno, paleta roxo/noite."""
+
+        try:
+            from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
+        except ImportError:
+            return False
+
+        style = self.thumbnail
+        w, h = style.width, style.height
+
+        try:
+            hero = Image.open(hero_image_path).convert("RGB")
+        except OSError:
+            return False
+
+        hero = hero.resize((w, h), Image.LANCZOS)
+        hero = ImageEnhance.Brightness(hero).enhance(0.72)
+        hero = ImageEnhance.Color(hero).enhance(1.05)
+
+        overlay = Image.new("RGBA", (w, h), (12, 8, 28, 110))
+        hero = Image.alpha_composite(hero.convert("RGBA"), overlay).convert("RGB")
+        canvas = hero
+        draw = ImageDraw.Draw(canvas)
+
+        hook_font = resolve_font(self.profile.font_body, 42)
+        sub_font = resolve_font(self.profile.font_body, 24)
+
+        lines = self.wrap_hook_text(hook_text)
+        if not lines:
+            lines = [topic[:30] or "REFLEXÃO"]
+
+        y = h - 160
+        for line in lines:
+            normalized = line.title()
+            draw.text((56, y + 2), normalized, fill=(0, 0, 0), font=hook_font)
+            draw.text((54, y), normalized, fill=(210, 205, 235), font=hook_font)
+            y += 52
+
+        if topic:
+            draw.text(
+                (54, h - 56),
+                topic[:50],
+                fill=(120, 110, 180),
+                font=sub_font,
+            )
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        canvas.save(output_path, "JPEG", quality=93)
+        return True
+
     # ── Cards de abertura / encerramento ────────────────────────────────
 
     def render_intro_card(self, output_path: Path, topic: str = "") -> bool:
@@ -476,8 +539,47 @@ class BrandKit:
 
 YOUTUBE_DARK_KIT = BrandKit.from_profile(get_brand("youtube_dark"))
 
+_lofi_profile = get_brand("youtube_dark")
+LOFI_DARK_KIT = BrandKit(
+    profile=_lofi_profile,
+    colors=ColorPalette(
+        background=(8, 6, 18),
+        primary=(36, 24, 72),
+        accent=(120, 110, 180),
+        text=(210, 205, 235),
+        text_muted=(130, 125, 160),
+        panel=(12, 8, 28),
+    ),
+    typography=Typography(
+        title_size=72,
+        hook_size=42,
+        subtitle_size=24,
+        body_size=20,
+        badge_size=18,
+        lower_third_size=24,
+    ),
+    thumbnail=ThumbnailStyle(
+        hook_max_words=6,
+        hook_max_chars_per_line=22,
+        contrast_boost=1.08,
+        saturation_boost=1.05,
+        border_width=0,
+        accent_bar_height=0,
+    ),
+    cinematic=CinematicStyle(
+        transition_seconds=1.2,
+        crossfade_seconds=0.15,
+        ken_burns_zoom_max=1.02,
+        color_grade="eq=brightness=-0.14:contrast=0.94:saturation=0.88",
+        vignette="",
+        film_grain="",
+    ),
+)
 
-def get_brand_kit(platform_id: str = "youtube_dark") -> BrandKit:
+
+def get_brand_kit(platform_id: str = "youtube_dark", *, roteiro_template: str = "") -> BrandKit:
+    if roteiro_template == "lofi_dark":
+        return LOFI_DARK_KIT
     if platform_id == "youtube_dark":
         return YOUTUBE_DARK_KIT
     return BrandKit.from_profile(get_brand(platform_id))

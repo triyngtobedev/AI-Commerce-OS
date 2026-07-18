@@ -15,7 +15,7 @@ Retorne APENAS JSON no formato:
   "cta": "Inscreva-se e ative o sininho para mais histórias incríveis",
   "objetivo": "maximizar watch time e retenção",
   "formato": "video_horizontal_youtube_documentario",
-  "roteiro_template": "documentario | dark5",
+  "roteiro_template": "documentario | dark5 | lofi_dark",
   "queries_contexto": [
     "ancient stone temple ruins, cinematic aerial establishing shot, golden hour, dramatic god rays, atmospheric fog",
     "archaeological excavation site, slow dolly shot, warm dust particles floating in light beams, shallow depth of field",
@@ -46,6 +46,12 @@ Regras:
 - O gancho deve criar curiosidade imediata sem clickbait enganoso.
 - Use `roteiro_template: "dark5"` quando o tema se presta a ranking/lista numerada (5 itens em contagem regressiva).
 - Use `roteiro_template: "documentario"` (padrão) para narrativa linear contínua.
+- Use `roteiro_template: "lofi_dark"` para reflexão longa estilo Filosofatos — ouvir enquanto faz outra coisa (15–25 min, tom contemplativo, sem listas).
+- Para `lofi_dark`, use `duracao_alvo: "20 minutos"` e títulos no formato:
+  - "[Tema] pra ouvir enquanto faz outra coisa"
+  - "A verdade sobre [tema] | ouça enquanto trabalha"
+  - "[Tema] | para refletir enquanto faz algo"
+- Para `lofi_dark`, `queries_contexto` deve ter 8 entradas genéricas de ambiente dark (chuva, cidade à noite, floresta, café, etc.) — **não precisam ser temáticas ao assunto**.
 - Ângulo deve explorar o aspecto mais surpreendente do tema.
 - Alinhe as 8 queries à progressão narrativa do documentário, reforçando o objetivo visual de cada ato:
   1. Hook — impacto, close-up dramático, alto contraste.

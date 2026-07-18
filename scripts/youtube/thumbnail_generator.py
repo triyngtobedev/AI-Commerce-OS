@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from scripts.core.brand_kit import get_brand_kit, score_image_contrast
+from scripts.youtube.lofi_dark_config import LOFI_THUMBNAIL_QUERIES, is_lofi_dark
+from scripts.video.pexels_provider import search_pexels
+from scripts.video.media_downloader import download_file
 from scripts.utils.slug import content_output_dir
 from scripts.video.media_probe import probe_duration
 from scripts.video.scene_timeline import resolve_scene_media, extract_scenes, is_image
@@ -171,11 +174,42 @@ def _derive_hook_text(
         or content.get("titulo", "")
     )
 
+    if is_lofi_dark((strategy or {}).get("roteiro_template")):
+        words = hook.strip().split()
+        if len(words) > 6:
+            hook = " ".join(words[:6])
+        return hook.strip() or "para refletir"
+
     words = hook.strip().split()
     if len(words) > 4:
         hook = " ".join(words[:4])
 
     return hook.strip() or "DOCUMENTÁRIO"
+
+
+def _fetch_lofi_hero_image(folder: Path) -> Optional[Path]:
+    """Busca imagem anime/arte digital no Pexels para thumbnail lofi."""
+
+    frame_dir = folder / "assets" / "thumbnail_candidates"
+    frame_dir.mkdir(parents=True, exist_ok=True)
+
+    for index, query in enumerate(LOFI_THUMBNAIL_QUERIES):
+        media = search_pexels(query, orientation="landscape")
+        photos = media.get("photos") or []
+        for photo in photos[:3]:
+            src = photo.get("src") or {}
+            url = src.get("large2x") or src.get("large") or src.get("original")
+            if not url:
+                continue
+            target = frame_dir / f"lofi_hero_{index}.jpg"
+            try:
+                download_file(url, target)
+                if target.exists() and target.stat().st_size > 2048:
+                    return target
+            except Exception:
+                continue
+
+    return None
 
 
 def generate_thumbnail(
@@ -192,15 +226,20 @@ def generate_thumbnail(
     folder.mkdir(parents=True, exist_ok=True)
 
     thumbnail_path = folder / "thumbnail.jpg"
-    kit = get_brand_kit(platform)
+    roteiro_template = (strategy or {}).get("roteiro_template", "")
+    kit = get_brand_kit(platform, roteiro_template=roteiro_template)
+    lofi = is_lofi_dark(roteiro_template)
 
     hook_text = _derive_hook_text(content, strategy)
     topic = subject.get("nome", content.get("titulo", ""))[:50]
 
     hero = _pick_best_hero_image(folder, scenes, video_path)
+    if lofi and not hero:
+        hero = _fetch_lofi_hero_image(folder)
 
     if hero:
-        if kit.compose_thumbnail(hero, hook_text, thumbnail_path, topic=topic):
+        compose = kit.compose_thumbnail_lofi if lofi else kit.compose_thumbnail
+        if compose(hero, hook_text, thumbnail_path, topic=topic):
             if thumbnail_path.exists() and thumbnail_path.stat().st_size > 2048:
                 print(f"🖼️ Thumbnail CTR gerada: {thumbnail_path}")
                 return str(thumbnail_path)
@@ -212,7 +251,8 @@ def generate_thumbnail(
         print("⚠️ Thumbnail: sem hero image — usando fallback de marca")
 
     background = _generate_brand_background(kit, folder, topic)
-    if background and kit.compose_thumbnail(
+    compose = kit.compose_thumbnail_lofi if lofi else kit.compose_thumbnail
+    if background and compose(
         background,
         hook_text,
         thumbnail_path,
@@ -230,7 +270,7 @@ def generate_thumbnail(
         img = Image.new("RGB", (1280, 720), color=kit.colors.primary)
         img.save(frame_path, "JPEG")
 
-        if kit.compose_thumbnail(frame_path, hook_text, thumbnail_path, topic=topic):
+        if compose(frame_path, hook_text, thumbnail_path, topic=topic):
             print(f"🖼️ Thumbnail placeholder com marca: {thumbnail_path}")
             return str(thumbnail_path)
 

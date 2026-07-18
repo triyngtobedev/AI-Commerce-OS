@@ -231,6 +231,15 @@ def resolve_scene_media(
 def _run_stock_or_visual(subject, scenes, queries, platform):
     """Pipeline padrão: Visual Media Engine (YouTube) ou stock (demais)."""
 
+    roteiro_template = scenes.get("roteiro_template") if isinstance(scenes, dict) else ""
+
+    if roteiro_template == "lofi_dark":
+        from scripts.video.lofi_background import run_lofi_background_pipeline
+
+        print("🌙 Modo LOFI DARK — footage genérico de fundo (Pexels/local).")
+        clear_media_assets(subject)
+        return run_lofi_background_pipeline(subject, scenes)
+
     if platform == "youtube_dark":
         print("📸 Visual Media Engine ativado (scene-aware + VideoGenerator IA).")
         clear_media_assets(subject)

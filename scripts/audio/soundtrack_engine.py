@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from scripts.core.emotional_effects import get_section_effect_hints
 from scripts.core.emotional_timeline import EmotionalTimeline
 from scripts.core.production.retry import retry_with_backoff
+from scripts.youtube.lofi_dark_config import LOFI_SOUNDTRACK_QUERY
 from scripts.video.media_probe import probe_duration
 
 load_dotenv()
@@ -154,6 +155,7 @@ def generate_soundtrack(
     emotional_timeline: EmotionalTimeline | dict | None = None,
     audio_duration: float = 0.0,
     narration_path: Path | None = None,
+    roteiro_template: str = "",
 ) -> Optional[Path]:
     """
     Gera trilha sonora para o vídeo.
@@ -167,7 +169,10 @@ def generate_soundtrack(
         audio_duration = 300.0
 
     emotion = _dominant_emotion(emotional_timeline)
-    query = _EMOTION_TO_QUERY.get(emotion, _EMOTION_TO_QUERY["neutral"])
+    if roteiro_template == "lofi_dark":
+        query = LOFI_SOUNDTRACK_QUERY
+    else:
+        query = _EMOTION_TO_QUERY.get(emotion, _EMOTION_TO_QUERY["neutral"])
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

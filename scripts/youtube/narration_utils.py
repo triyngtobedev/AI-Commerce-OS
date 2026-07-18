@@ -6,6 +6,15 @@ Metadados de conteúdo não reescrevem a narração.
 """
 
 from scripts.core.platform_config import YOUTUBE_DARK
+from scripts.youtube.lofi_dark_config import (
+    LOFI_DARK_MAX_WORDS_PER_SENTENCE,
+    LOFI_DARK_MIN_NARRATION_WORDS,
+    LOFI_DARK_SCRIPT_SECTIONS,
+    LOFI_DARK_SECTION_TRANSITIONS,
+    LOFI_DARK_TARGET_DURATION_SECONDS,
+    LOFI_DARK_TARGET_NARRATION_WORDS,
+    is_lofi_dark,
+)
 
 SCRIPT_SECTIONS = [
     "hook",
@@ -51,12 +60,18 @@ SECTION_TRANSITIONS = {
 def _script_sections_for(script: dict) -> list[str]:
     """Retorna ordem de seções conforme o template do roteiro."""
 
+    meta_template = (script.get("_meta") or {}).get("roteiro_template")
+    if is_lofi_dark(meta_template) or script.get("reflexao_1"):
+        return LOFI_DARK_SCRIPT_SECTIONS
     if any(script.get(key) for key in ("fato_1", "fato_5")):
         return DARK5_SCRIPT_SECTIONS
     return SCRIPT_SECTIONS
 
 
 def _transitions_for(script: dict) -> dict:
+    meta_template = (script.get("_meta") or {}).get("roteiro_template")
+    if is_lofi_dark(meta_template) or script.get("reflexao_1"):
+        return LOFI_DARK_SECTION_TRANSITIONS
     if any(script.get(key) for key in ("fato_1", "fato_5")):
         return DARK5_SECTION_TRANSITIONS
     return SECTION_TRANSITIONS
@@ -183,7 +198,7 @@ def detect_banned_phrases(script: dict) -> list[str]:
 
 def validate_sentence_length(
     script: dict,
-    max_words: int = MAX_WORDS_PER_SENTENCE,
+    max_words: int | None = None,
 ) -> list[str]:
     """
     Valida se frases respeitam o limite de palavras (estilo dark YouTube).
@@ -191,6 +206,13 @@ def validate_sentence_length(
     """
 
     import re
+
+    if max_words is None:
+        meta_template = (script.get("_meta") or {}).get("roteiro_template")
+        if is_lofi_dark(meta_template) or script.get("reflexao_1"):
+            max_words = LOFI_DARK_MAX_WORDS_PER_SENTENCE
+        else:
+            max_words = MAX_WORDS_PER_SENTENCE
 
     warnings = []
 
@@ -219,6 +241,10 @@ def validate_sentence_length(
 
 def validate_scene_hooks(script: dict) -> list[str]:
     """Verifica se seções narrativas terminam com gancho de retenção."""
+
+    meta_template = (script.get("_meta") or {}).get("roteiro_template")
+    if is_lofi_dark(meta_template) or script.get("reflexao_1"):
+        return []
 
     warnings = []
     sections = _script_sections_for(script)
@@ -280,8 +306,8 @@ def format_duration_label(seconds: int) -> str:
 
 def validate_narration(
     text: str,
-    min_words: int = MIN_NARRATION_WORDS,
-    target_seconds: int = YOUTUBE_DARK.target_duration_seconds,
+    min_words: int | None = None,
+    target_seconds: int | None = None,
 ) -> list:
     """
     Valida narração contra requisitos de duração.
@@ -289,6 +315,15 @@ def validate_narration(
     """
 
     warnings = []
+    if min_words is None:
+        min_words = MIN_NARRATION_WORDS
+    if target_seconds is None:
+        target_seconds = YOUTUBE_DARK.target_duration_seconds
+
+    target_narration_words = TARGET_NARRATION_WORDS
+    if min_words >= LOFI_DARK_MIN_NARRATION_WORDS:
+        target_narration_words = LOFI_DARK_TARGET_NARRATION_WORDS
+
     words = count_words(text)
     estimated = estimate_duration_seconds(text)
 
@@ -302,7 +337,7 @@ def validate_narration(
             f"~{target_seconds_est}s)"
         )
 
-    target_min_words = int(TARGET_NARRATION_WORDS * 0.9)
+    target_min_words = int(target_narration_words * 0.9)
 
     if words < target_min_words:
         warnings.append(

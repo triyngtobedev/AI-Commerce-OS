@@ -6,6 +6,7 @@ reutilizando engines compartilhados de mídia, áudio e render.
 """
 
 import os
+from pathlib import Path
 
 from scripts.core.pipeline_result import PipelineResult
 from scripts.core.platform_config import YOUTUBE_DARK
@@ -41,6 +42,8 @@ from scripts.video.asset_manager import prepare_assets
 
 from scripts.pipeline.shared_media import run_media_pipeline
 from scripts.audio.tts_generator import create_audio
+from scripts.audio.soundtrack_engine import generate_soundtrack
+from scripts.youtube.lofi_dark_config import is_lofi_dark
 
 from scripts.publisher.youtube_exporter import export_youtube_video
 from scripts.publisher.youtube_auth import (
@@ -362,11 +365,16 @@ def run_youtube_pipeline(
                 queries,
             )
 
+            lofi_template = is_lofi_dark(strategy.get("roteiro_template"))
 
-            subtitles = generate_subtitles({
-                "produto": topic,
-                "cenas": scenes,
-            })
+            if lofi_template:
+                print("🌙 Lofi Dark: legendas opcionais — pulando geração automática.")
+                subtitles = None
+            else:
+                subtitles = generate_subtitles({
+                    "produto": topic,
+                    "cenas": scenes,
+                })
 
 
             chapters = build_chapters(
@@ -418,6 +426,16 @@ def run_youtube_pipeline(
 
             result = pipeline_result.to_dict()
 
+            soundtrack_path = output_dir / "assets" / "audio" / "soundtrack.mp3"
+            soundtrack = generate_soundtrack(
+                soundtrack_path,
+                emotional_timeline=emotional_timeline,
+                audio_duration=float(scenes.get("audio_duration", 0) or 0),
+                narration_path=Path(audio) if audio else None,
+                roteiro_template=strategy.get("roteiro_template", ""),
+            )
+            if soundtrack:
+                result["soundtrack"] = str(soundtrack)
 
             build_video_project(result)
 

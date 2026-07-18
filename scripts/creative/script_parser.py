@@ -36,6 +36,17 @@ DARK5_SECTION_KEYS = [
     "encerramento",
 ]
 
+LOFI_DARK_SECTION_KEYS = [
+    "hook",
+    "abertura",
+    "reflexao_1",
+    "reflexao_2",
+    "reflexao_3",
+    "conexoes",
+    "aprofundamento",
+    "encerramento",
+]
+
 TIKTOK_SECTION_KEYS = [
     "hook",
     "problema",
@@ -61,6 +72,12 @@ DEFAULT_EMOTION_BY_SECTION: dict[str, str] = {
     "fato_3": "warning",
     "fato_4": "calm",
     "fato_5": "mystery",
+    "abertura": "calm",
+    "reflexao_1": "calm",
+    "reflexao_2": "calm",
+    "reflexao_3": "calm",
+    "conexoes": "calm",
+    "aprofundamento": "calm",
     "problema": "warning",
     "teste": "calm",
     "resultado": "impact",
@@ -93,6 +110,12 @@ DEFAULT_VISUAL_INTENT_BY_SECTION: dict[str, str] = {
     "fato_3": "historical_event",
     "fato_4": "investigation",
     "fato_5": "dramatic_opening",
+    "abertura": "lofi_ambient",
+    "reflexao_1": "lofi_ambient",
+    "reflexao_2": "lofi_ambient",
+    "reflexao_3": "lofi_ambient",
+    "conexoes": "lofi_ambient",
+    "aprofundamento": "lofi_ambient",
     "problema": "problem_setup",
     "teste": "product_demo",
     "resultado": "result_showcase",
@@ -205,6 +228,8 @@ def _sections_from_keyed_dict(script: dict) -> list[dict[str, Any]]:
 
     if any(key in script for key in ("fato_1", "fato_5")):
         keys = DARK5_SECTION_KEYS
+    elif any(key in script for key in LOFI_DARK_SECTION_KEYS[1:3]):
+        keys = LOFI_DARK_SECTION_KEYS
     elif any(key in script for key in YOUTUBE_SECTION_KEYS):
         keys = YOUTUBE_SECTION_KEYS
     elif any(key in script for key in TIKTOK_SECTION_KEYS):

@@ -308,7 +308,21 @@ def _video_motion_filter(
     return f"{normalize},{crop},setsar=1,fps=30"
 
 
-def _cinematic_grade(render_style) -> str:
+def _lofi_grade_filter() -> str:
+    """Footage de fundo levemente escurecido (~70% de opacidade visual)."""
+
+    return "eq=brightness=-0.14:contrast=0.94:saturation=0.88"
+
+
+def _is_lofi_scene(scene: dict | None) -> bool:
+    if not scene:
+        return False
+    return scene.get("render_profile") == "lofi_dark"
+
+
+def _cinematic_grade(render_style, *, lofi: bool = False) -> str:
+    if lofi:
+        return _lofi_grade_filter()
     filters = [render_style.color_grade]
     if render_style.vignette:
         filters.append(render_style.vignette)
@@ -406,19 +420,21 @@ def render_scene_clip(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     hints = get_scene_render_hints(scene or {"tipo": scene_type})
-    motion = hints.get("motion") or kit.motion_for_scene(scene_type, scene_index)
-    zoom_max = render_style.ken_burns_zoom_max * (1.0 + hints.get("zoom_intensity", 0.0))
+    lofi = _is_lofi_scene(scene)
+    motion = "slow_pan" if lofi else (
+        hints.get("motion") or kit.motion_for_scene(scene_type, scene_index)
+    )
+    zoom_max = 1.02 if lofi else (
+        render_style.ken_burns_zoom_max * (1.0 + hints.get("zoom_intensity", 0.0))
+    )
+    fade = 1.2 if lofi else render_style.transition_seconds
 
-    # FUTURE: shake — emotion impact + intensity > 0.8
-    # FUTURE: flash — transition_speed == "fast"
-    # FUTURE: blur — emotion mystery + transition_speed == "slow"
-    # FUTURE: silêncio — hints["silence_before"] / hints["silence_after"]
-
-    grade = _cinematic_grade(render_style)
+    grade = _cinematic_grade(render_style, lofi=lofi)
 
     lower_third = ""
     if (
-        should_show_lower_thirds(platform)
+        not lofi
+        and should_show_lower_thirds(platform)
         and kit.should_show_lower_third(scene_type)
         and scene_label
     ):
@@ -710,6 +726,7 @@ def render_scenes_video(
     scenes = extract_scenes(result.get("cenas", {}))
     cenas_meta = result.get("cenas", {}) if isinstance(result.get("cenas"), dict) else {}
     synced = bool(cenas_meta.get("synced"))
+    lofi_template = cenas_meta.get("roteiro_template") == "lofi_dark"
 
     if not scenes:
         return None
@@ -728,7 +745,7 @@ def render_scenes_video(
     media_scene_count = cenas_meta.get("media_scene_count") or scene_count
     topic = result.get("produto", {}).get("nome", "")
 
-    if should_show_intro(platform):
+    if should_show_intro(platform) and not lofi_template:
         intro_card = temp_dir / "intro_card.jpg"
         intro_clip = temp_dir / "intro.mp4"
         if kit.render_intro_card(intro_card, topic=topic):
@@ -768,7 +785,9 @@ def render_scenes_video(
         # Como o xfade sobrepõe (e portanto encurta) cada transição, essa
         # compensação garante que a soma pós-crossfade seja exatamente a
         # duração sincronizada — sem drift acumulado ao longo do vídeo.
-        render_duration = duration + kit.crossfade_for_scene(scene_type)
+        render_duration = duration + (
+            0.15 if lofi_template else kit.crossfade_for_scene(scene_type)
+        )
 
         if render_scene_clip(
             media, render_duration, clip_out, width, height,
@@ -787,7 +806,7 @@ def render_scenes_video(
 
     _validate_scene_coverage(scenes, rendered_scenes)
 
-    if should_show_outro(platform):
+    if should_show_outro(platform) and not lofi_template:
         outro_card = temp_dir / "outro_card.jpg"
         outro_clip = temp_dir / "outro.mp4"
         if kit.render_outro_card(outro_card, topic=topic):
@@ -810,10 +829,12 @@ def render_scenes_video(
     video_only = temp_dir / "video_track.mp4"
     render_style = get_render_style(platform)
 
+    crossfade = 0.15 if lofi_template else render_style.crossfade_seconds
+
     if not concat_scene_clips(
         clip_paths,
         video_only,
-        render_style.crossfade_seconds,
+        crossfade,
         scene_types=scene_types,
         platform=platform,
         width=width,

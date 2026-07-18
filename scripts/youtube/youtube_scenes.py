@@ -8,6 +8,11 @@ para vídeos de 6-10 minutos.
 from scripts.core.platform_config import YOUTUBE_DARK
 from scripts.video.scene_timeline import SCENE_WEIGHTS, _split_text_by_weights
 from scripts.youtube.narration_utils import DARK5_SCRIPT_SECTIONS
+from scripts.youtube.lofi_dark_config import (
+    LOFI_DARK_SCENE_TYPES,
+    lofi_background_query,
+    is_lofi_dark,
+)
 
 
 SCENE_TYPES = [
@@ -36,8 +41,11 @@ SCENE_TIMINGS = [
 
 
 def _scene_types_for_strategy(strategy) -> list[str]:
-    if strategy and strategy.get("roteiro_template") == "dark5":
+    template = (strategy or {}).get("roteiro_template", "documentario")
+    if template == "dark5":
         return DARK5_SCENE_TYPES
+    if is_lofi_dark(template):
+        return LOFI_DARK_SCENE_TYPES
     return SCENE_TYPES
 
 
@@ -135,6 +143,7 @@ def generate_youtube_scenes(
 
     scene_types = _scene_types_for_strategy(strategy)
     scene_timings = _scene_timings_for_types(scene_types)
+    lofi_template = is_lofi_dark((strategy or {}).get("roteiro_template"))
 
     narration_parts = _split_narration(narracao, scene_types)
 
@@ -143,20 +152,25 @@ def generate_youtube_scenes(
 
     for i, tipo in enumerate(scene_types):
 
-        fallback = (
-            f"{keywords[i % len(keywords)]} "
-            "historical documentary footage"
-        )
+        if lofi_template:
+            visual = lofi_background_query(i)
+        else:
+            fallback = (
+                f"{keywords[i % len(keywords)]} "
+                "historical documentary footage"
+            )
+            visual = _get_query(
+                queries_contexto,
+                i,
+                fallback,
+            )
 
         cenas.append({
             "tempo": scene_timings[i],
             "tipo": tipo,
-            "visual": _get_query(
-                queries_contexto,
-                i,
-                fallback,
-            ),
+            "visual": visual,
             "narracao": narration_parts[i],
+            "render_profile": "lofi_dark" if lofi_template else "default",
         })
 
 
@@ -165,5 +179,6 @@ def generate_youtube_scenes(
         "angulo": angulo,
         "estilo_video": estilo,
         "formato": YOUTUBE_DARK.formato,
+        "roteiro_template": (strategy or {}).get("roteiro_template", "documentario"),
         "cenas": cenas,
     }

@@ -30,6 +30,12 @@ SCENE_WEIGHTS = {
     "fato_3": 17,
     "fato_4": 17,
     "fato_5": 17,
+    "abertura": 14,
+    "reflexao_1": 14,
+    "reflexao_2": 14,
+    "reflexao_3": 14,
+    "conexoes": 12,
+    "aprofundamento": 14,
 }
 
 DEFAULT_WEIGHT = 10

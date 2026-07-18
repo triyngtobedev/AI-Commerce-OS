@@ -14,7 +14,12 @@ from scripts.youtube.narration_utils import (
 )
 from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
-from scripts.utils.ai_cache import load_cache, save_cache
+from scripts.youtube.lofi_dark_config import (
+    LOFI_DARK_MIN_NARRATION_WORDS,
+    LOFI_DARK_TARGET_DURATION_SECONDS,
+    LOFI_TITLE_PATTERNS,
+    is_lofi_dark,
+)
 
 CACHE_PREFIX = "youtube"
 
@@ -125,8 +130,18 @@ def _apply_narration_from_script(content, script, strategy, topic):
     content["duracao"] = meta["duracao"]
     content["narracao_meta"] = meta
 
-    for warning in validate_narration(narration):
-        print(f"⚠️ Narração: {warning}")
+    meta = narration_metadata(narration)
+    roteiro_template = (strategy or {}).get("roteiro_template", "")
+    if is_lofi_dark(roteiro_template):
+        for warning in validate_narration(
+            narration,
+            min_words=LOFI_DARK_MIN_NARRATION_WORDS,
+            target_seconds=LOFI_DARK_TARGET_DURATION_SECONDS,
+        ):
+            print(f"⚠️ Narração: {warning}")
+    else:
+        for warning in validate_narration(narration):
+            print(f"⚠️ Narração: {warning}")
 
     content = _ensure_metadata(content, topic, strategy)
 
@@ -158,13 +173,17 @@ def _ensure_metadata(content, topic, strategy=None):
 
     topic_name = topic.get("nome", "Documentário Histórico")
     current_title = content.get("titulo", "")
+    roteiro_template = (strategy or {}).get("roteiro_template", "") if strategy else ""
 
     if not current_title or _is_generic_title(current_title, topic_name):
-        content["titulo"] = _resolve_title(
-            gancho,
-            topic_name,
-            content.get("titulo_alternativos", []),
-        )
+        if is_lofi_dark(roteiro_template):
+            content["titulo"] = _resolve_lofi_title(topic_name, content.get("titulo_alternativos", []))
+        else:
+            content["titulo"] = _resolve_title(
+                gancho,
+                topic_name,
+                content.get("titulo_alternativos", []),
+            )
 
     content.setdefault(
         "descricao",
@@ -183,7 +202,7 @@ def _ensure_metadata(content, topic, strategy=None):
 
     content.setdefault(
         "thumbnail_texto",
-        _thumbnail_from_gancho(gancho, topic.get("nome", ""))
+        _thumbnail_from_gancho(gancho, topic.get("nome", ""), roteiro_template)
     )
 
     content.setdefault(
@@ -268,8 +287,23 @@ def _title_from_gancho(gancho, fallback):
 
 
 
-def _thumbnail_from_gancho(gancho, topic_name):
+def _resolve_lofi_title(topic_name: str, alternativas=None) -> str:
+    for alt in alternativas or []:
+        if alt and len(str(alt)) <= 70:
+            return str(alt)
+
+    pattern = LOFI_TITLE_PATTERNS[0]
+    return pattern.format(tema=topic_name)[:70]
+
+
+def _thumbnail_from_gancho(gancho, topic_name, roteiro_template=""):
     """Deriva texto de thumbnail curto do gancho."""
+
+    if is_lofi_dark(roteiro_template):
+        if gancho:
+            words = gancho.split()[:6]
+            return " ".join(words)
+        return f"{topic_name} | para refletir"
 
     if not gancho:
         return topic_name[:20].upper()

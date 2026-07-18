@@ -41,6 +41,12 @@ _THEMATIC_BY_TIPO = {
     "consequencias": "impact aftermath devastation documentary",
     "impacto": "modern science research documentary",
     "encerramento": "cinematic closing atmospheric landscape",
+    "abertura": "rain window night dark aesthetic",
+    "reflexao_1": "city lights night timelapse dark",
+    "reflexao_2": "dark forest fog ambient",
+    "reflexao_3": "coffee shop night aesthetic",
+    "conexoes": "anime aesthetic dark room",
+    "aprofundamento": "ocean waves night slow",
     "demonstracao": "product demonstration close up",
     "beneficio": "positive result lifestyle",
     "cta": "product showcase cinematic",
@@ -50,7 +56,7 @@ _THEMATIC_BY_TIPO = {
 _ATMOSPHERE_BY_EMOTION = {
     "impact": "dramatic explosion smoke clouds aerial",
     "mystery": "mysterious dark forest fog atmosphere",
-    "calm": "peaceful landscape documentary aerial",
+    "calm": "rain window night dark lofi aesthetic",
     "warning": "storm clouds dramatic sky tension",
     "tension": "dark moody cinematic atmosphere",
     "curiosity": "ancient ruins exploration documentary",
@@ -142,16 +148,6 @@ def _build_atmosphere_query(emotion: str, tipo: str) -> str:
 def generate_asset_queries(scenes, platform: str = "", timeline=None):
     """
     Gera queries de mídia para cada cena.
-
-    Consome:
-        scenes["cenas"]       — lista de cenas com campo visual
-        scenes["angulo"]      — ângulo estratégico (novo no schema 1.1)
-        scenes["estilo_video"] — estilo visual (novo no schema 1.1)
-        timeline              — EmotionalTimeline opcional para visual_intent
-
-    Retorna lista de dicts com:
-        tempo, tipo, busca, busca_fallback, visual_intent, emotion
-        preferir_imagem (youtube_dark + cenas documentais)
     """
 
     from scripts.core.visual_intent_engine import (
@@ -161,6 +157,7 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
     from scripts.core.visual_director_engine import direct_scene_visual
     from scripts.video.query_localizer import localize_search_query
     from scripts.video.scene_emotion import SCENE_SECTION_ALIASES
+    from scripts.youtube.lofi_dark_config import is_lofi_dark, lofi_background_query
 
     queries = []
 
@@ -168,6 +165,7 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
     produto = scenes.get("produto", "product")
     prefer_image = platform == "youtube_dark"
     timeline_sections = timeline.sections if timeline else []
+    lofi_template = is_lofi_dark(scenes.get("roteiro_template"))
 
     # Indexa seções por section_key para casar cena↔seção pela narrativa,
     # não pela posição. As cenas (8) e as seções do roteiro (~6) não têm
@@ -184,20 +182,24 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
         tipo = scene.get("tipo", "")
         visual = scene.get("visual", "")
 
-        # Casa por section_key (com os mesmos aliases usados no render) e,
-        # só se não houver correspondência, recorre ao índice posicional.
-        section_key = SCENE_SECTION_ALIASES.get(tipo, tipo)
-        section = sections_by_key.get(section_key)
-        if section is None and index < len(timeline_sections):
-            section = timeline_sections[index]
+        if lofi_template:
+            visual = lofi_background_query(index)
+            scene.setdefault("visual_intent", "lofi_ambient")
+            scene.setdefault("emotion", "calm")
+            scene.setdefault("camera_motion", "slow_pan")
+        else:
+            # Casa por section_key (com os mesmos aliases usados no render) e,
+            # só se não houver correspondência, recorre ao índice posicional.
+            section_key = SCENE_SECTION_ALIASES.get(tipo, tipo)
+            section = sections_by_key.get(section_key)
+            if section is None and index < len(timeline_sections):
+                section = timeline_sections[index]
 
-        if section:
-            # Query enriquecida (cinematográfica) só quando há timeline —
-            # preserva buscas literais de produto (TikTok) sem timeline.
-            visual = build_visual_search_query(visual or section.text[:80], section)
-            scene.setdefault("visual_intent", section.visual_intent)
-            scene.setdefault("emotion", section.emotion)
-            scene.setdefault("camera_motion", section.camera_motion)
+            if section:
+                visual = build_visual_search_query(visual or section.text[:80], section)
+                scene.setdefault("visual_intent", section.visual_intent)
+                scene.setdefault("emotion", section.emotion)
+                scene.setdefault("camera_motion", section.camera_motion)
 
         visual_intent = scene.get("visual_intent", "general_narrative")
         emotion = scene.get("emotion", "calm")
@@ -216,9 +218,14 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
         scene.setdefault("visual_direction", direction_dict)
 
         localized_visual = localize_search_query(visual or produto)
-        thematic = _build_thematic_query(localized_visual, tipo, angulo)
-        atmosphere = _build_atmosphere_query(emotion, tipo)
-        fallback = _build_fallback(angulo, produto, tipo)
+        if lofi_template:
+            thematic = lofi_background_query((index + 1) % 10)
+            atmosphere = lofi_background_query((index + 2) % 10)
+            fallback = lofi_background_query((index + 3) % 10)
+        else:
+            thematic = _build_thematic_query(localized_visual, tipo, angulo)
+            atmosphere = _build_atmosphere_query(emotion, tipo)
+            fallback = _build_fallback(angulo, produto, tipo)
 
         query = {
             "tempo": scene.get("tempo", ""),
