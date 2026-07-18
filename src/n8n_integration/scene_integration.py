@@ -63,8 +63,18 @@ async def _generate_scene_video_fallback_n8n(
             metadata["visual_direction"] = direction
 
     try:
-        await request_scene_generation(prompt, scene_id, job_id, metadata)
-        result = await wait_for_scene(scene_id, job_id)
+        ack = await request_scene_generation(prompt, scene_id, job_id, metadata)
+        video_path = ack.get("video_path")
+        if video_path and Path(video_path).exists():
+            result = {
+                "scene_id": scene_id,
+                "job_id": job_id,
+                "status": ack.get("status", "completed"),
+                "video_path": video_path,
+                "provider_used": ack.get("provider_used", "n8n"),
+            }
+        else:
+            result = await wait_for_scene(scene_id, job_id)
     except Exception as error:
         print(f"[n8n] Orquestrador falhou ({error}) — fallback Python local")
         from scripts.pipeline.shared_media import _generate_scene_video_fallback_local

@@ -3,7 +3,7 @@ Visual Media Engine — busca e geração de mídia por cena.
 
 Cadeia de fallback por cena (youtube_dark):
   1. Stock — Wikimedia (prioridade histórica) → Pixabay → Pexels
-  2. VideoGenerator T2V — Kling Web (grátis) → fal Kling 2.6 → Replicate Wan → HF Wan
+  2. T2V — n8n (USE_N8N_FOR_SCENES) ou VideoGenerator local (Kling → fal → Replicate → HF)
   3. Pollinations IA — bloqueado em hook/revelação/encerramento
   4. Hugging Face SDXL — imagem (se HF_TOKEN configurado)
   5. Placeholder ilustrativo — se tudo falhar
@@ -56,6 +56,10 @@ from scripts.video.query_localizer import (
     localize_search_query,
     should_prioritize_wikimedia,
     wikimedia_query_variants,
+)
+from src.n8n_integration.scene_integration import (
+    generate_scene_video_fallback,
+    use_n8n_for_scenes,
 )
 from scripts.video.media_downloader import (
     download_file,
@@ -934,11 +938,11 @@ def _resolve_scene_media(
                 print(f"🖼️ Cena {scene_num} ({tipo}): imagem stock — {source}")
                 return result
 
-    # Stock falhou — Replicate T2V antes de Pollinations (mesmo com preferir_imagem).
+    # Stock falhou — n8n T2V (se habilitado) ou VideoGenerator local.
     if not stock_video_found and not result.get("saved"):
         print(
             f"  ⚠️ Cena {scene_num}: stock sem mídia adequada — "
-            f"acionando Replicate T2V"
+            f"acionando geração IA"
         )
         image_url = None
         product_name = None
@@ -951,20 +955,62 @@ def _resolve_scene_media(
             material = subject.get("material")
 
         platform = (subject or {}).get("_output_platform", "youtube_dark")
-        ai_video_saved, ai_video_provider = _try_ai_video(
-            busca,
-            scene_video,
-            image_url=image_url,
-            product_name=product_name,
-            category=category,
-            material=material,
-            scene_description=query_item.get("visual_goal", busca),
-            scene_tipo=tipo,
-            emotion=query_item.get("emotion", ""),
-            platform=platform,
-            visual_direction=visual_direction,
-            allow_pollinations=allow_pollinations,
+        scene_description = query_item.get("visual_goal", busca)
+        emotion = query_item.get("emotion", "")
+
+        ai_video_saved = False
+        ai_video_provider = ""
+
+        # I2V e-commerce: sempre local (n8n orquestra só T2V documental).
+        i2v_ecommerce = (
+            image_url
+            and (fal_kling_is_configured() or replicate_is_configured())
+            and product_name
         )
+        if i2v_ecommerce:
+            ai_video_saved, ai_video_provider = _try_ai_video(
+                busca,
+                scene_video,
+                image_url=image_url,
+                product_name=product_name,
+                category=category,
+                material=material,
+                scene_description=scene_description,
+                scene_tipo=tipo,
+                emotion=emotion,
+                platform=platform,
+                visual_direction=visual_direction,
+                allow_pollinations=allow_pollinations,
+            )
+        elif use_n8n_for_scenes():
+            print(f"[n8n] delegando T2V cena {scene_num} ao orquestrador n8n")
+            fallback = generate_scene_video_fallback(
+                scene_description=scene_description,
+                scene_query=busca,
+                output_path=scene_video,
+                platform=platform,
+                scene_tipo=tipo,
+                emotion=emotion,
+                scene=query_item,
+            )
+            if fallback and fallback.get("local_path"):
+                ai_video_saved = True
+                ai_video_provider = fallback.get("api_used", "n8n")
+        else:
+            ai_video_saved, ai_video_provider = _try_ai_video(
+                busca,
+                scene_video,
+                image_url=image_url,
+                product_name=product_name,
+                category=category,
+                material=material,
+                scene_description=scene_description,
+                scene_tipo=tipo,
+                emotion=emotion,
+                platform=platform,
+                visual_direction=visual_direction,
+                allow_pollinations=allow_pollinations,
+            )
         if ai_video_saved:
             result.update({
                 "saved": True,
