@@ -24,7 +24,8 @@ Plataforma funcional de automação com IA para produção de vídeos **TikTok S
 - **Plataforma recomendada:** [Railway.app](https://railway.app) (~R$ 25/mês, 4 GB RAM)
 - **URL de produção:** `https://ai-commerce-os-production-b4f9.up.railway.app`
 - **Guia:** [docs/deploy-railway.md](deploy-railway.md)
-- **Comando local:** `python scripts/cloud/gerar_video.py --topic "Seu tema"`
+- **Comando local (PC do dono):** `python scripts/cloud/gerar_video.py --topic "Seu tema"`
+- **Template lofi_dark:** `python scripts/cloud/gerar_video.py --topic "Seu tema" --template lofi_dark`
 
 Correção recente (commit `9deab98`): bind uvicorn em `0.0.0.0:$PORT`, entrypoint LF, alias `/health`.
 

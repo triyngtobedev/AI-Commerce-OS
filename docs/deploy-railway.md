@@ -100,6 +100,12 @@ Para validar o pipeline completo, use um tema real:
 python scripts/cloud/gerar_video.py --topic "Os 5 crimes mais perturbadores da história"
 ```
 
+Template **lofi_dark** (15–25 min, estilo Filosofatos):
+
+```powershell
+python scripts/cloud/gerar_video.py --topic "O Mistério da Explosão de Tunguska" --template lofi_dark
+```
+
 ### 5. Gerar vídeos (uso diário)
 
 ```powershell

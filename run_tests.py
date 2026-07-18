@@ -25,6 +25,7 @@ if ROOT_STR not in sys.path:
 
 DEFAULT_MODULES = (
     "scripts.youtube.test_lofi_dark",
+    "scripts.youtube.test_template_override",
     "scripts.youtube.test_youtube_scenes",
 )
 

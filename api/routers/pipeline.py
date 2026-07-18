@@ -34,6 +34,7 @@ async def run_pipeline(request: PipelineRunRequest) -> PipelineRunResponse:
     metadata = {
         **request.metadata,
         "topic": request.topic,
+        "template": request.template,
         "language": request.language,
         "platform": request.platform,
     }

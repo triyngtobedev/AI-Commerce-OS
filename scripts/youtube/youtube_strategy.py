@@ -9,6 +9,7 @@ from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
 from scripts.utils.ai_cache import load_cache, save_cache
 from scripts.core.platform_config import YOUTUBE_DARK
+from scripts.youtube.template_override import apply_template_override
 
 CACHE_PREFIX = "youtube"
 
@@ -41,7 +42,7 @@ def generate_youtube_strategy(
             f"♻️ Cache de estratégia: {topic_name}"
         )
 
-        return cached
+        return apply_template_override(cached)
 
 
     prompt = load_prompt(
@@ -104,7 +105,7 @@ Oportunidade:
     )
 
 
-    return strategy
+    return apply_template_override(strategy)
 
 
 

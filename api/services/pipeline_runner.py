@@ -69,6 +69,8 @@ async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> 
     # topic/language não têm flag CLI em main.py — repassados via env para integrações
     if request.topic:
         env["PIPELINE_TOPIC_OVERRIDE"] = str(request.topic)
+    if request.template:
+        env["PIPELINE_ROTEIRO_TEMPLATE"] = str(request.template).strip().lower()
     if request.language:
         env["PIPELINE_LANGUAGE"] = request.language
     for key, value in request.metadata.items():

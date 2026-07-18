@@ -6,6 +6,7 @@ O PC NÃO processa nada pesado: só envia o pedido, acompanha o status e baixa o
 
 Uso:
     python scripts/cloud/gerar_video.py --topic "A verdade sobre a Biblioteca de Alexandria"
+    python scripts/cloud/gerar_video.py --topic "Tunguska" --template lofi_dark
     python scripts/cloud/gerar_video.py --topic "Emus vs Austrália" --production
 
 Configure no .env local:
@@ -59,14 +60,17 @@ def _start_job(
     topic: str | None,
     production: bool,
     platform: str,
+    template: str | None = None,
 ) -> str:
     url = f"{base_url.rstrip('/')}/api/v1/pipeline/run"
-    payload = {
+    payload: dict = {
         "platform": platform,
         "production": production,
         "max_videos": 1,
         "topic": topic,
     }
+    if template:
+        payload["template"] = template
     response = requests.post(
         url,
         json=payload,
@@ -173,6 +177,12 @@ def main() -> int:
         choices=["youtube_dark", "tiktok_shop"],
     )
     parser.add_argument(
+        "--template",
+        default=None,
+        choices=["documentario", "dark5", "lofi_dark"],
+        help="Template de roteiro (ex: lofi_dark para vídeos 15–25 min estilo Filosofatos)",
+    )
+    parser.add_argument(
         "--output-dir",
         default=str(DEFAULT_DOWNLOAD_DIR),
         help=f"Pasta local para salvar o MP4 (padrão: {DEFAULT_DOWNLOAD_DIR})",
@@ -198,6 +208,8 @@ def main() -> int:
         return 1
 
     print(f"\n🎬 Gerando vídeo na nuvem: {args.topic}\n")
+    if args.template:
+        print(f"   Template: {args.template}")
     print(f"   Servidor: {base_url}\n")
 
     try:
@@ -208,6 +220,7 @@ def main() -> int:
             topic=args.topic,
             production=args.production,
             platform=args.platform,
+            template=args.template,
         )
         result = _poll_status(
             base_url,
