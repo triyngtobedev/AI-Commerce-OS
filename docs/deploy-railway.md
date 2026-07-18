@@ -116,6 +116,18 @@ O script envia o tema, mostra progresso a cada 30 segundos e salva o MP4 em `dow
 
 **Tempo típico:** 45–120 minutos. Seu PC fica livre.
 
+### 6. Automação diária com n8n (opcional — zero comandos manuais)
+
+Depois do Railway funcionando, ative a geração automática:
+
+```powershell
+.\infra\ativar-n8n.ps1
+```
+
+Isso configura o n8n para disparar **1 vídeo por dia às 8h** no Railway, sem você rodar nada.
+
+Guia completo: [`docs/ATIVAR-N8N.md`](docs/ATIVAR-N8N.md)
+
 ---
 
 ## Custos

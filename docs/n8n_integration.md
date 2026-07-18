@@ -1,5 +1,8 @@
 # Integração n8n — AI-Commerce-OS
 
+> **Guia simples para o dono:** [ATIVAR-N8N.md](ATIVAR-N8N.md) — ativação em 1 comando.
+> Este documento é a referência técnica completa.
+
 Camada de integração que conecta o pipeline Python existente ao **n8n** hospedado em uma VM Linux (Hetzner Cloud). O n8n atua **apenas nas bordas** do sistema:
 
 1. **Alimentador (Trigger)** — dispara o pipeline periodicamente via HTTP

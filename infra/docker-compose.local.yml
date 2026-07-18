@@ -21,8 +21,8 @@ services:
       - N8N_PROTOCOL=http
       - N8N_SECURE_COOKIE=false
       - N8N_DIAGNOSTICS_ENABLED=false
-      # FastAPI no host (Docker Desktop Windows)
-      - PIPELINE_API_BASE_URL=http://host.docker.internal:8000
+      # URL da API do pipeline — Railway em produção, localhost em dev
+      - PIPELINE_API_BASE_URL=${PIPELINE_API_BASE_URL:-http://host.docker.internal:8000}
     volumes:
       - n8n_data:/home/node/.n8n
     ports:

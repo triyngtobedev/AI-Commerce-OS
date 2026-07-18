@@ -32,4 +32,7 @@ Write-Host ""
 & $Docker compose -f docker-compose.local.yml ps
 Write-Host ""
 Write-Host "n8n: http://localhost:5678"
-Write-Host "Login: admin + senha definida em infra/.env.n8n"
+Write-Host "Login: admin@local.dev + senha em infra/.env.n8n"
+Write-Host ""
+Write-Host "Para ativar automação completa (workflows + Railway):"
+Write-Host "  ..\infra\ativar-n8n.ps1"

@@ -287,10 +287,20 @@ def activate_workflow(client: N8nClient, wf_id: str, name: str) -> None:
     print(f"Workflow ativado: {wf_id}")
 
 
-def test_pipeline(api_key: str) -> None:
-    payload = json.dumps({"platform": "youtube_dark", "topic": "teste local"}).encode("utf-8")
+def resolve_pipeline_api_url(env_main: dict[str, str]) -> str:
+    """Prioriza CLOUD_API_URL (Railway) → PIPELINE_API_BASE_URL → localhost."""
+    for key in ("CLOUD_API_URL", "PIPELINE_API_BASE_URL"):
+        value = env_main.get(key, "").strip()
+        if value:
+            return value.rstrip("/")
+    return "http://127.0.0.1:8000"
+
+
+def test_pipeline(api_key: str, api_base: str) -> None:
+    payload = json.dumps({"platform": "youtube_dark", "topic": "teste n8n setup"}).encode("utf-8")
+    url = f"{api_base.rstrip('/')}/api/v1/pipeline/run"
     req = urllib.request.Request(
-        "http://127.0.0.1:8000/api/v1/pipeline/run",
+        url,
         data=payload,
         headers={"Content-Type": "application/json", "X-API-Key": api_key},
         method="POST",
@@ -298,10 +308,13 @@ def test_pipeline(api_key: str) -> None:
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             result = json.loads(resp.read().decode("utf-8"))
-            print(f"Pipeline teste OK: {result}")
+            print(f"Pipeline teste OK ({api_base}): {result}")
     except urllib.error.HTTPError as exc:
         raw = exc.read().decode("utf-8", errors="replace")
-        print(f"Pipeline teste HTTP {exc.code}: {raw}")
+        print(f"Pipeline teste HTTP {exc.code} ({api_base}): {raw}")
+    except urllib.error.URLError as exc:
+        print(f"Pipeline teste falhou ({api_base}): {exc.reason}")
+        print("  → Confira se o Railway está Active ou se a FastAPI local está rodando.")
 
 
 def main() -> int:
@@ -330,12 +343,14 @@ def main() -> int:
         activate_workflow(client, wf_ids[path.name], raw["name"])
 
     print("\nTestando pipeline via API...")
-    test_pipeline(api_key)
+    api_base = resolve_pipeline_api_url(env_main)
+    test_pipeline(api_key, api_base)
 
     print("\nConcluído.")
-    print(f"  n8n UI:     {N8N_BASE}")
-    print(f"  Login n8n:  {OWNER_EMAIL} / {OWNER_PASSWORD}")
-    print(f"  API docs:   http://127.0.0.1:8000/api/docs")
+    print(f"  n8n UI:       {N8N_BASE}")
+    print(f"  Login n8n:    {OWNER_EMAIL} / {OWNER_PASSWORD}")
+    print(f"  Pipeline API: {api_base}")
+    print(f"  Guia:         docs/ATIVAR-N8N.md")
     return 0
 
 

@@ -223,6 +223,16 @@ python scripts/cloud/gerar_video.py --topic "teste de conexão"
 .\scripts\cloud\gerar_video.ps1 -Topic "A verdade sobre a Biblioteca de Alexandria"
 ```
 
+### Automação diária (n8n — sem comandos manuais)
+
+Depois do Railway ativo, rode **uma vez**:
+
+```powershell
+.\infra\ativar-n8n.ps1
+```
+
+O n8n dispara **1 vídeo por dia às 8h** automaticamente. Guia: [`docs/ATIVAR-N8N.md`](docs/ATIVAR-N8N.md)
+
 | Recurso | Detalhe |
 |---|---|
 | Custo estimado | ~R$ 25/mês (Railway Hobby + 4 GB RAM) |
@@ -525,7 +535,7 @@ Versão funcional com suporte multi-plataforma, API HTTP e deploy na nuvem.
 - API FastAPI (`/api/v1/pipeline/run`, status, download)
 - Deploy Docker no Railway (`Dockerfile`, `railway.toml`)
 - Cliente local `scripts/cloud/gerar_video.py` (tema → MP4 na pasta `downloads/`)
-- Integração n8n em progresso (workflows + bridge HTTP)
+- Integração n8n pronta para ativação (`infra/ativar-n8n.ps1` + [`docs/ATIVAR-N8N.md`](docs/ATIVAR-N8N.md))
 
 **Qualidade**
 - Testes unitários YouTube, VideoGenerator e APIs de vídeo
@@ -549,7 +559,7 @@ Versão funcional com suporte multi-plataforma, API HTTP e deploy na nuvem.
 - [x] API HTTP para acionamento remoto do pipeline
 
 ### Em progresso
-- [ ] Integração n8n (orquestração de cenas IA assíncronas)
+- [x] Integração n8n (workflows + bridge HTTP + guia de ativação)
 - [ ] Validação end-to-end na nuvem (Railway + `gerar_video.py`)
 
 ### Próximos passos

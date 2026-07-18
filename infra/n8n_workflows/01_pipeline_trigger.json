@@ -6,8 +6,10 @@
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 6
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
             }
           ]
         }
@@ -17,11 +19,11 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [240, 300],
-      "notes": "Dispara a cada 6 horas. Ajuste o intervalo conforme necessidade de produção."
+      "notes": "Dispara todo dia às 8h (horário de Brasília). Ajuste hora/minuto conforme necessidade."
     },
     {
       "parameters": {
-        "content": "## Etapa 1 — Trigger periódico\n\nEste workflow é o **alimentador** do sistema.\n\nA cada 6h (configurável), aciona o pipeline Python via FastAPI.\n\nConfigure credencial **Pipeline API Key** no nó HTTP Request.",
+        "content": "## Etapa 1 — Trigger diário\n\nEste workflow é o **alimentador** do sistema.\n\nTodo dia às 8h (Brasília), aciona o pipeline no Railway via FastAPI.\n\nCredencial **Pipeline API Key** é configurada automaticamente pelo setup.",
         "height": 200,
         "width": 380
       },
@@ -385,6 +387,6 @@
   ],
   "meta": {
     "templateCredsSetupCompleted": false,
-    "description": "Workflow alimentador: dispara pipeline Python via FastAPI em schedule de 6h com polling de status."
+    "description": "Workflow alimentador: dispara pipeline no Railway via FastAPI todo dia às 8h com polling de status."
   }
 }

@@ -15,7 +15,7 @@ Plataforma funcional de automação com IA para produção de vídeos **TikTok S
 | API FastAPI (`/api/v1`) | ✅ Jobs assíncronos, health, download |
 | Deploy Railway (Docker) | ✅ Dockerfile + `railway.toml` — ver [deploy-railway.md](deploy-railway.md) |
 | Cliente nuvem (`gerar_video.py`) | ✅ Envia tema, faz polling, baixa MP4 |
-| Integração n8n | 🚧 Workflows + bridge HTTP (ver [n8n_integration.md](n8n_integration.md)) |
+| Integração n8n | ✅ Pronta — ativar com `infra/ativar-n8n.ps1` (ver [ATIVAR-N8N.md](ATIVAR-N8N.md)) |
 | Dashboard web | ⏳ Planejado |
 | CI/CD automatizado | ⏳ Planejado |
 
@@ -53,5 +53,5 @@ docs/deploy-nuvem.md
 
 1. Confirmar health check Railway após redeploy (`/api/v1/health`)
 2. Validar geração completa na nuvem com `gerar_video.py`
-3. Finalizar orquestração n8n para cenas IA assíncronas
+3. Ativar automação n8n (`infra/ativar-n8n.ps1`) para geração diária no Railway
 4. Dashboard web e CI/CD
