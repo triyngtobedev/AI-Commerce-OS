@@ -100,6 +100,7 @@ def ask_ai(prompt, context_type):
     gemini_model = _gemini_model_for(context_type)
 
     # 1. Tenta Gemini (google.genai)
+    print("[AI Router] Tentando: gemini")
     try:
         return gemini_generate(prompt, model=gemini_model)
     except Exception as gemini_error:
@@ -116,6 +117,7 @@ def ask_ai(prompt, context_type):
     last_error = None
 
     for model in GROQ_MODELS_FALLBACK:
+        print(f"[AI Router] Tentando: groq/{model}")
         try:
             return _groq_complete(prompt, model)
         except Exception as error:
@@ -136,6 +138,7 @@ def ask_ai(prompt, context_type):
             print(f"[Groq/{model}] Falha — tentando próximo modelo...")
 
     # 3. Tenta OpenRouter
+    print("[AI Router] Tentando: openrouter")
     print("⚠️ Groq indisponível, tentando OpenRouter...")
     try:
         return _openrouter_complete(prompt)
