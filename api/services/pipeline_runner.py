@@ -43,6 +43,9 @@ _FAILURE_STDOUT_MARKERS = (
     "Vídeos com arquivo final: 0",
     "[Lofi] Nenhum footage disponível",
     "Sem mídia para cena",
+    "Pipeline interrompido",
+    "Etapa '",
+    "Resposta de roteiro inválida",
 )
 
 
