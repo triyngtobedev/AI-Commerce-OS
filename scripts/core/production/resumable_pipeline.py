@@ -40,6 +40,8 @@ from scripts.youtube.topic_analyst import analyze_topic
 from scripts.youtube.topic_scorer import calculate_topic_score
 from scripts.youtube.topic_opportunity import analyze_topic_opportunity
 from scripts.decision.decision_engine import decide_action
+from scripts.youtube.lofi_dark_config import is_lofi_dark
+from scripts.youtube.template_override import apply_template_override
 from scripts.youtube.youtube_strategy import generate_youtube_strategy
 from scripts.youtube.youtube_script import generate_youtube_script
 from scripts.youtube.youtube_content import generate_youtube_content
@@ -192,6 +194,7 @@ def _stage_strategy(ctx: StageContext) -> dict:
         ctx.data["analysis"],
         ctx.data["opportunity"],
     )
+    strategy = apply_template_override(strategy)
     ctx.state.save_artifact("strategy.json", strategy)
     ctx.data["strategy"] = strategy
     ctx.cache.record("strategy", cache_input, artifacts)
@@ -379,16 +382,22 @@ def _stage_render(ctx: StageContext) -> Optional[str]:
     soundtrack_path = ctx.output_dir / "assets" / "audio" / "soundtrack.mp3"
     cenas = ctx.data.get("scenes", {})
     audio_duration = float(cenas.get("audio_duration", 0)) if isinstance(cenas, dict) else 0
+    roteiro_template = ctx.data.get("strategy", {}).get("roteiro_template", "")
     soundtrack = generate_soundtrack(
         soundtrack_path,
         emotional_timeline=ctx.data.get("emotional_timeline"),
         audio_duration=audio_duration,
         narration_path=Path(ctx.data["audio"]) if ctx.data.get("audio") else None,
+        roteiro_template=roteiro_template,
     )
     if soundtrack:
         ctx.data["soundtrack"] = str(soundtrack)
 
-    subtitles = generate_subtitles({"produto": topic, "cenas": ctx.data["scenes"]})
+    if is_lofi_dark(roteiro_template):
+        ctx.logger.info("Lofi Dark: legendas opcionais — pulando geração automática.")
+        subtitles = None
+    else:
+        subtitles = generate_subtitles({"produto": topic, "cenas": ctx.data["scenes"]})
     chapters = build_chapters(content, ctx.data["scenes"])
 
     pipeline_result = PipelineResult(

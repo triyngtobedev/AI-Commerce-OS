@@ -44,6 +44,7 @@ from scripts.pipeline.shared_media import run_media_pipeline
 from scripts.audio.tts_generator import create_audio
 from scripts.audio.soundtrack_engine import generate_soundtrack
 from scripts.youtube.lofi_dark_config import is_lofi_dark
+from scripts.youtube.template_override import apply_template_override
 
 from scripts.publisher.youtube_exporter import export_youtube_video
 from scripts.publisher.youtube_auth import (
@@ -267,6 +268,7 @@ def run_youtube_pipeline(
                 analysis,
                 opportunity,
             )
+            strategy = apply_template_override(strategy)
 
 
             script = generate_youtube_script(

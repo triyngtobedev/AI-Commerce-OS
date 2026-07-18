@@ -15,6 +15,7 @@ from uuid import UUID
 
 from api.models.schemas import JobStatus, PipelineRunRequest
 from api.services.job_store import job_store
+from scripts.youtube.template_override import ENV_ROTEIRO_TEMPLATE
 
 # Raiz do projeto (dois níveis acima de api/services/)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -69,6 +70,8 @@ async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> 
     # topic/language não têm flag CLI em main.py — repassados via env para integrações
     if request.topic:
         env["PIPELINE_TOPIC_OVERRIDE"] = str(request.topic)
+    if request.template:
+        env[ENV_ROTEIRO_TEMPLATE] = str(request.template)
     if request.language:
         env["PIPELINE_LANGUAGE"] = request.language
     for key, value in request.metadata.items():

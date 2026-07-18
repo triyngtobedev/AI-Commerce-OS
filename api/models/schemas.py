@@ -73,6 +73,11 @@ class PipelineRunRequest(BaseModel):
                     "Se ausente, pipeline usa fonte de temas padrão.",
         example="crimes famosos não resolvidos",
     )
+    template: str | None = Field(
+        default=None,
+        description="Template de roteiro forçado: documentario | dark5 | lofi_dark",
+        example="lofi_dark",
+    )
     language: Optional[str] = Field(
         default="pt-BR",
         description="Idioma do conteúdo (metadata para workflows n8n)",
