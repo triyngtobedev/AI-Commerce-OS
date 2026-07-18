@@ -14,6 +14,7 @@ from scripts.youtube.narration_utils import (
 )
 from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
+from scripts.utils.ai_cache import load_cache, save_cache
 from scripts.youtube.lofi_dark_config import (
     LOFI_DARK_MIN_NARRATION_WORDS,
     LOFI_DARK_TARGET_DURATION_SECONDS,
