@@ -24,6 +24,15 @@ GEMINI_MODEL_LITE = "gemini-2.0-flash-lite"
 
 PRIMARY_GEMINI_CONTEXTS = {"script_generation"}
 
+GROQ_MAX_TOKENS = {
+    "script_generation": 16384,
+    "script_rewrite": 8192,
+    "script_expansion": 4096,
+    "strategy": 4096,
+    "analysis": 2048,
+    "content_generation": 4096,
+}
+
 _gemini_daily_quota_exhausted = False
 
 
@@ -70,7 +79,8 @@ def _groq_error_details(error: Exception) -> str:
     return f"status={status} error={str(error)[:500]}"
 
 
-def _groq_complete(prompt: str, model: str) -> str:
+def _groq_complete(prompt: str, model: str, context_type: str = "") -> str:
+    max_tokens = GROQ_MAX_TOKENS.get(context_type, 4096)
     completion = groq_client.chat.completions.create(
         messages=[
             {
@@ -79,6 +89,7 @@ def _groq_complete(prompt: str, model: str) -> str:
             }
         ],
         model=model,
+        max_tokens=max_tokens,
     )
 
     content = completion.choices[0].message.content
@@ -125,7 +136,7 @@ def ask_ai(prompt, context_type):
     for model in GROQ_MODELS_FALLBACK:
         print(f"[AI Router] Tentando: groq/{model}")
         try:
-            return _groq_complete(prompt, model)
+            return _groq_complete(prompt, model, context_type)
         except Exception as error:
             last_error = error
             print(f"[Groq/{model}] {_groq_error_details(error)}")
