@@ -110,12 +110,6 @@
       "typeVersion": 4.2,
       "position": [720, 520],
       "onError": "continueRegularOutput",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLICATE_CREDENTIAL_ID",
-          "name": "Replicate API Token"
-        }
-      },
       "notes": "Inicia prediction Wan 2.6 T2V (wan-video/wan-2.6-t2v, 720p 5s)."
     },
     {
@@ -180,13 +174,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1200, 520],
-      "onError": "continueRegularOutput",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLICATE_CREDENTIAL_ID",
-          "name": "Replicate API Token"
-        }
-      }
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -319,12 +307,6 @@
       "typeVersion": 4.2,
       "position": [1920, 680],
       "onError": "continueRegularOutput",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "HF_CREDENTIAL_ID",
-          "name": "Hugging Face API Token"
-        }
-      },
       "notes": "Fallback free HF Router (fal.ai Wan2.2). Crédito mensal limitado."
     },
     {
@@ -399,13 +381,7 @@
       "name": "Callback — Sucesso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2640, 520],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "PIPELINE_API_CREDENTIAL_ID",
-          "name": "Pipeline API Key"
-        }
-      }
+      "position": [2640, 520]
     },
     {
       "parameters": {
@@ -422,13 +398,7 @@
       "name": "Callback — Erro",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2400, 820],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "PIPELINE_API_CREDENTIAL_ID",
-          "name": "Pipeline API Key"
-        }
-      }
+      "position": [2400, 820]
     }
   ],
   "connections": {
