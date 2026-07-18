@@ -122,6 +122,14 @@ async def log_auth_config() -> None:
         flush=True,
     )
     print(
+        f"GROQ_API_KEY presente: {bool(os.getenv('GROQ_API_KEY'))}",
+        flush=True,
+    )
+    print(
+        f"OPENROUTER_API_KEY presente: {bool(os.getenv('OPENROUTER_API_KEY'))}",
+        flush=True,
+    )
+    print(
         f"PEXELS_API_KEY presente: {bool(os.getenv('PEXELS_API_KEY'))}",
         flush=True,
     )

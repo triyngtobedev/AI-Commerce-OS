@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from groq import Groq
 
 from scripts.ai.providers.gemini import generate as gemini_generate
+from scripts.ai.providers.openrouter import generate as openrouter_generate
 
 load_dotenv()
 
@@ -87,6 +88,14 @@ def _groq_complete(prompt: str, model: str) -> str:
     return content
 
 
+def _openrouter_complete(prompt: str) -> str:
+    if not os.getenv("OPENROUTER_API_KEY", "").strip():
+        raise Exception("OPENROUTER_API_KEY não configurada")
+
+    print("[OpenRouter] Tentando fallback OpenRouter...")
+    return openrouter_generate(prompt)
+
+
 def ask_ai(prompt, context_type):
     gemini_model = _gemini_model_for(context_type)
 
@@ -124,12 +133,15 @@ def ask_ai(prompt, context_type):
                 print(f"[Groq/{model}] Rate limit — tentando próximo modelo...")
                 continue
 
-            print(f"❌ Falha total: {error}")
-            raise Exception(
-                "Nenhuma API de IA disponível."
-            ) from error
+            print(f"[Groq/{model}] Falha — tentando próximo modelo...")
 
-    print(f"❌ Falha total: {last_error}")
-    raise Exception(
-        "Nenhuma API de IA disponível."
-    ) from last_error
+    # 3. Tenta OpenRouter
+    print("⚠️ Groq indisponível, tentando OpenRouter...")
+    try:
+        return _openrouter_complete(prompt)
+    except Exception as openrouter_error:
+        print(f"[OpenRouter] {openrouter_error}")
+        print(f"❌ Falha total: {openrouter_error}")
+        raise Exception(
+            "Nenhuma API de IA disponível."
+        ) from (openrouter_error if last_error is None else last_error)
