@@ -15,6 +15,22 @@ from scripts.video.subtitle_generator import get_subtitle_ffmpeg_filter
 from scripts.core.emotional_timeline import EmotionalTimeline
 
 
+def _run_ffmpeg(cmd: list, *, context: str = "") -> None:
+    """Executa FFmpeg e imprime stderr completo nos logs em caso de falha."""
+
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+    except subprocess.CalledProcessError as error:
+        stderr = error.stderr.decode("utf-8", errors="replace") if error.stderr else ""
+        label = f" ({context})" if context else ""
+        print(f"❌ FFmpeg falhou{label}:")
+        if stderr.strip():
+            print(stderr)
+        else:
+            print(f"  código de saída: {error.returncode}")
+        raise
+
+
 def _resolve_folder(result):
 
     product = result.get("produto", {})
@@ -223,7 +239,7 @@ def _render_legacy_concat(result, folder, width, height, output):
 
     cmd.extend(["-shortest", "-movflags", "+faststart", str(output)])
 
-    subprocess.run(cmd, check=True)
+    _run_ffmpeg(cmd, context="concat legado")
     return output
 
 
@@ -406,12 +422,22 @@ def render_video_project(result):
         return None
 
     if not result_path:
+        print(
+            "❌ Render abortado — vídeo final não gerado "
+            "(sem mídia, FFmpeg falhou ou mux retornou falso; veja logs acima)."
+        )
+        return None
+
+    if not output.exists():
+        print(f"❌ Arquivo de saída ausente após render: {output}")
         return None
 
     time.sleep(1)
 
     update_project_status(folder, output)
 
-    print(f"🎬 Vídeo final criado: {output}")
+    resolved = output.resolve()
+    print(f"🎬 Vídeo final criado: {resolved}")
+    print(f"PIPELINE_OUTPUT_VIDEO={resolved}")
 
     return output

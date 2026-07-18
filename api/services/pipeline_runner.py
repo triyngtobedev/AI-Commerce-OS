@@ -23,7 +23,8 @@ MAIN_PY = PROJECT_ROOT / "main.py"
 # main.py não expõe --output-dir; o path final vem do log de render_video_project:
 # scripts/video/renderer.py → "🎬 Vídeo final criado: {output}"
 FINAL_VIDEO_LOG_PATTERN = re.compile(
-    r"🎬 Vídeo final criado:\s+(?P<path>.+\.(?:mp4|webm))",
+    r"(?:🎬 Vídeo final criado:\s+|PIPELINE_OUTPUT_VIDEO=)"
+    r"(?P<path>.+\.(?:mp4|webm))",
     re.IGNORECASE,
 )
 
@@ -48,7 +49,7 @@ def build_cli_args(request: PipelineRunRequest) -> list[str]:
         args.extend(["--privacy", request.privacy])
     if request.max_videos is not None:
         args.extend(["--max-videos", str(request.max_videos)])
-    if request.force:
+    if request.force or request.topic:
         args.append("--force")
 
     return args
@@ -85,14 +86,17 @@ async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> 
         stdout = stdout_bytes.decode("utf-8", errors="replace")
         stderr = stderr_bytes.decode("utf-8", errors="replace")
 
+        _emit_subprocess_logs(job_id, stdout, stderr)
+
         if process.returncode == 0:
             try:
                 output_path = _resolve_output_path(stdout, request)
             except ValueError as exc:
+                diagnostic = _failure_diagnostic(stdout, stderr)
                 job_store.update_job_status(
                     job_id,
                     JobStatus.FAILED,
-                    error_message=str(exc)[:4000],
+                    error_message=f"{exc}\n\n{diagnostic}"[:4000],
                 )
             else:
                 job_store.update_job_status(
@@ -125,6 +129,40 @@ def _stderr_tail(stderr: str, lines: int = 20) -> str:
     if not stderr.strip():
         return ""
     return "\n".join(stderr.strip().splitlines()[-lines:])
+
+
+def _stdout_tail(stdout: str, lines: int = 40) -> str:
+    """Retorna as últimas N linhas do stdout para diagnóstico."""
+    if not stdout.strip():
+        return ""
+    return "\n".join(stdout.strip().splitlines()[-lines:])
+
+
+def _emit_subprocess_logs(job_id: UUID, stdout: str, stderr: str) -> None:
+    """Replica stdout/stderr do pipeline nos logs do Railway (uvicorn stdout)."""
+    prefix = f"[pipeline {job_id}]"
+    if stdout.strip():
+        print(f"{prefix} --- stdout ---", flush=True)
+        print(stdout, flush=True)
+    if stderr.strip():
+        print(f"{prefix} --- stderr ---", flush=True)
+        print(stderr, flush=True)
+
+
+def _failure_diagnostic(stdout: str, stderr: str) -> str:
+    """Monta trecho de log útil quando o subprocess termina 0 sem vídeo final."""
+    parts: list[str] = []
+    out_tail = _stdout_tail(stdout)
+    err_tail = _stderr_tail(stderr, lines=40)
+    if out_tail:
+        parts.append("--- stdout (últimas linhas) ---")
+        parts.append(out_tail)
+    if err_tail:
+        parts.append("--- stderr (últimas linhas) ---")
+        parts.append(err_tail)
+    if not parts:
+        parts.append("(subprocess sem stdout/stderr)")
+    return "\n".join(parts)
 
 
 def _resolve_output_path(stdout: str, request: PipelineRunRequest) -> str:
@@ -166,6 +204,7 @@ def _resolve_output_path(stdout: str, request: PipelineRunRequest) -> str:
     raise ValueError(
         "Não foi possível determinar o vídeo final. "
         "Formato esperado no stdout: '🎬 Vídeo final criado: <caminho>.mp4' "
+        "ou 'PIPELINE_OUTPUT_VIDEO=<caminho>.mp4' "
         "(scripts/video/renderer.py::render_video_project). "
         "Fallback: nenhum video_final.mp4 encontrado em output/."
     )

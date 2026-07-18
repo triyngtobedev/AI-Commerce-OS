@@ -349,7 +349,13 @@ def _render_card_clip(
     try:
         subprocess.run(cmd, check=True, capture_output=True)
         return output_path.exists()
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as error:
+        stderr = error.stderr.decode("utf-8", errors="replace") if error.stderr else ""
+        print("❌ FFmpeg falhou (intro card):")
+        if stderr.strip():
+            print(stderr)
+        else:
+            print(f"  código de saída: {error.returncode}")
         return False
 
 
@@ -986,7 +992,8 @@ def mux_video_audio_subtitles(
         raise
     except subprocess.CalledProcessError as error:
         stderr = error.stderr.decode("utf-8", errors="replace") if error.stderr else ""
-        print(f"❌ Erro no mux final: {stderr[:300]}")
+        print(f"❌ Erro no mux final:")
+        print(stderr if stderr.strip() else f"  código de saída: {error.returncode}")
         return False
 
 
