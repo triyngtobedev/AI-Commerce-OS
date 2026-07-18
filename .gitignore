@@ -1,4 +1,5 @@
 .env
+.env.youtube
 infra/.env.n8n
 node_modules/
 *.log
