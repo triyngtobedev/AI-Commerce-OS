@@ -29,15 +29,20 @@ class SubtitleStyle:
 @dataclass(frozen=True)
 class RenderStyle:
     transition_seconds: float = 0.7
-    crossfade_seconds: float = 0.45
-    ken_burns_zoom_max: float = 1.14
-    color_grade: str = "eq=contrast=1.08:brightness=-0.03:saturation=1.08"
-    vignette: str = "vignette=PI/4.5"
+    crossfade_seconds: float = 0.3
+    ken_burns_zoom_max: float = 1.04
+    color_grade: str = (
+        "eq=contrast=1.15:brightness=-0.02:saturation=0.80,"
+        "colorbalance=rs=-0.03:gs=0:bs=0.05"
+    )
+    vignette: str = "vignette=angle=PI/3:mode=forward"
     opening_fade_seconds: float = 0.8
     closing_fade_seconds: float = 2.0
     intro_seconds: float = 2.0
     outro_seconds: float = 2.5
     film_grain: str = "noise=alls=8:allf=t+u"
+    bgm_volume: float = 0.10
+    bgm_tension_volume: float = 0.15
 
 
 @dataclass(frozen=True)
@@ -83,6 +88,8 @@ def _build_config(platform_id: str) -> BrandEngineConfig:
             intro_seconds=kit.overlay.intro_seconds,
             outro_seconds=kit.overlay.outro_seconds,
             film_grain=cinematic.film_grain,
+            bgm_volume=cinematic.bgm_volume,
+            bgm_tension_volume=cinematic.bgm_tension_volume,
         ),
         show_watermark=True,
         show_intro=True,

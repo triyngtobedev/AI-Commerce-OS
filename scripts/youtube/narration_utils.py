@@ -66,6 +66,10 @@ BANNED_PHRASES = [
     r"Imagine que\b",
     r"Junte-se a nós",
     r"Neste vídeo iremos",
+    r"Neste vídeo\b",
+    r"Hoje vamos falar",
+    r"Hoje vamos ver",
+    r"Vamos falar sobre",
     r"grandes perguntas da humanidade",
     r"histórias incríveis sobre",
     r"Descubra a história fascinante",
@@ -76,7 +80,29 @@ BANNED_PHRASES = [
     r"\bem virtude de\b",
     r"\bconsoante\b",
     r"\bnotadamente\b",
+    r"\bfascinante\b",
+    r"\bincrível\b",
+    r"\bsurpreendente\b",
+    r"\bimpressionante\b",
+    r"\bextraordinário\b",
 ]
+
+HOOK_BANNED_STARTS = [
+    r"^Hoje vamos",
+    r"^Neste vídeo",
+    r"^Vamos falar",
+    r"^Vamos ver",
+    r"^Imagine",
+    r"^Neste episódio",
+    r"^Bem-vind",
+    r"^Olá",
+    r"^Você não vai acreditar",
+]
+
+DARK5_ITEM_KEYS = ["fato_5", "fato_4", "fato_3", "fato_2", "fato_1"]
+
+MIN_DURATION_SECONDS = 480
+MAX_DURATION_SECONDS = 900
 
 FORMAL_WORDS = [
     "outrossim", "destarte", "consoante", "notadamente",
@@ -90,6 +116,12 @@ SCENE_HOOK_PHRASES = [
     "E aqui a história fica",
     "Mas o próximo",
     "Ainda não acabou",
+    "E agora",
+    "número um",
+    "número 1",
+    "item ",
+    "Seguindo a contagem",
+    "verdadeiro impacto",
 ]
 
 MAX_WORDS_PER_SENTENCE = 12
@@ -217,14 +249,74 @@ def validate_sentence_length(
     return warnings
 
 
+def validate_hook_in_media_res(script: dict) -> list[str]:
+    """Verifica se o hook começa in media res (sem introdução genérica)."""
+
+    import re
+
+    hook = (script.get("hook") or "").strip()
+    if not hook:
+        return ["hook: seção ausente"]
+
+    first_sentence = re.split(r"(?<=[.!?…])\s+", hook)[0].strip()
+    lower = first_sentence.lower()
+
+    for pattern in HOOK_BANNED_STARTS:
+        if re.search(pattern, lower, re.IGNORECASE):
+            return [
+                f"hook: começa com introdução genérica "
+                f"(proibido in media res): \"{first_sentence[:50]}...\""
+            ]
+
+    return []
+
+
+def validate_wtf_moments(script: dict) -> list[str]:
+    """Verifica se cada item Dark5 tem um momento perturbador ([PAUSA] ou detalhe chocante)."""
+
+    import re
+
+    if not any(script.get(key) for key in DARK5_ITEM_KEYS):
+        return []
+
+    warnings = []
+    shock_patterns = [
+        r"\[PAUSA\]",
+        r"\b(mort[oa]s?|cadáver|sangue|desaparec|impossível|nunca|ninguém sabe)\b",
+        r"\b(secret[oa]|escondid[oa]|proibid[oa]|censurad[oa])\b",
+    ]
+
+    for key in DARK5_ITEM_KEYS:
+        text = (script.get(key) or "").strip()
+        if not text:
+            continue
+
+        has_moment = any(
+            re.search(pattern, text, re.IGNORECASE)
+            for pattern in shock_patterns
+        )
+        if not has_moment:
+            warnings.append(
+                f"{key}: sem 'wtf moment' detectado "
+                f"(use [PAUSA] + detalhe perturbador)"
+            )
+
+    return warnings
+
+
 def validate_scene_hooks(script: dict) -> list[str]:
     """Verifica se seções narrativas terminam com gancho de retenção."""
 
     warnings = []
     sections = _script_sections_for(script)
 
+    hook_required = {
+        key for key in sections
+        if key not in ("hook", "contexto", "revelacao", "encerramento")
+    }
+
     for key in sections:
-        if key == "encerramento":
+        if key not in hook_required:
             continue
 
         text = (script.get(key) or "").strip()

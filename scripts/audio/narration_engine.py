@@ -33,33 +33,33 @@ from scripts.creative.script_parser import parse_script_sections
 VOICE_PRESETS = {
     "documentario_narrado": {
         "voice": "pt-BR-AntonioNeural",
-        "rate": "-4%",
-        "pitch": "-3Hz",
+        "rate": "-15%",
+        "pitch": "-5Hz",
     },
     "misterio_nao_resolvido": {
         "voice": "pt-BR-AntonioNeural",
-        "rate": "-8%",
-        "pitch": "-5Hz",
+        "rate": "-15%",
+        "pitch": "-6Hz",
     },
     "fato_surpreendente": {
         "voice": "pt-BR-FabioNeural",
-        "rate": "-2%",
-        "pitch": "+0Hz",
+        "rate": "-12%",
+        "pitch": "-3Hz",
     },
     "revelacao_historica": {
         "voice": "pt-BR-DonatoNeural",
-        "rate": "-5%",
-        "pitch": "-2Hz",
+        "rate": "-15%",
+        "pitch": "-4Hz",
     },
     "cronologia_epica": {
         "voice": "pt-BR-AntonioNeural",
-        "rate": "-3%",
-        "pitch": "-1Hz",
+        "rate": "-14%",
+        "pitch": "-3Hz",
     },
     "impacto_historico": {
         "voice": "pt-BR-ThalitaNeural",
-        "rate": "-4%",
-        "pitch": "-2Hz",
+        "rate": "-15%",
+        "pitch": "-4Hz",
     },
 }
 

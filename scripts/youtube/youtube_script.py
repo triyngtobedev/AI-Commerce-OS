@@ -15,6 +15,8 @@ from scripts.youtube.narration_utils import (
     validate_narration,
     validate_sentence_length,
     validate_scene_hooks,
+    validate_hook_in_media_res,
+    validate_wtf_moments,
     stitch_script_to_narration,
     clean_script_phrases,
     detect_banned_phrases,
@@ -196,6 +198,12 @@ Estratégia completa:
 
     for warning in validate_scene_hooks(script):
         print(f"⚠️ Gancho: {warning}")
+
+    for warning in validate_hook_in_media_res(script):
+        print(f"⚠️ Hook: {warning}")
+
+    for warning in validate_wtf_moments(script):
+        print(f"⚠️ WTF moment: {warning}")
 
     target_seconds = YOUTUBE_DARK.target_duration_seconds
     estimated_duration = estimate_duration_seconds(narration)
