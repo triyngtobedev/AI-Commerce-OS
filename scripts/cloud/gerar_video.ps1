@@ -2,6 +2,7 @@
 #
 # Uso:
 #   .\scripts\cloud\gerar_video.ps1 -Topic "A verdade sobre a Biblioteca de Alexandria"
+#   .\scripts\cloud\gerar_video.ps1 -Topic "Tunguska" -Template lofi_dark
 #   .\scripts\cloud\gerar_video.ps1 -Topic "Emus vs Austrália" -Production
 
 param(
@@ -11,6 +12,9 @@ param(
     [switch]$Production,
 
     [string]$Platform = "youtube_dark",
+
+    [ValidateSet("documentario", "dark5", "lofi_dark")]
+    [string]$Template = "",
 
     [string]$OutputDir = ""
 )
