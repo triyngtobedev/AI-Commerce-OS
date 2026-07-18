@@ -1,18 +1,32 @@
 [
     {
+        "product_id": "mini-aspirador",
         "nome": "Mini Aspirador Portátil",
         "categoria": "Casa",
         "visualizacoes": 150000,
         "curtidas": 12000,
         "comentarios": 850,
-        "preco_estimado": 79.90
+        "preco_estimado": 79.90,
+        "image_url": "https://images.pexels.com/photos/38325/vacuum-cleaner-carpet-cleaner-housework-housekeeping-38325.jpeg?auto=compress&cs=tinysrgb&w=800&h=512&fit=crop"
     },
     {
+        "product_id": "luminaria-led",
         "nome": "Luminária LED Inteligente",
         "categoria": "Tecnologia",
         "visualizacoes": 90000,
         "curtidas": 7000,
         "comentarios": 400,
-        "preco_estimado": 59.90
+        "preco_estimado": 59.90,
+        "image_url": "https://images.pexels.com/photos/29744511/pexels-photo-29744511.jpeg?auto=compress&cs=tinysrgb&w=800&h=512&fit=crop"
+    },
+    {
+        "product_id": "suporte-celular",
+        "nome": "Suporte Magnético Veicular para Celular",
+        "categoria": "Automotivo",
+        "visualizacoes": 85000,
+        "curtidas": 6200,
+        "comentarios": 310,
+        "preco_estimado": 39.90,
+        "image_url": "https://images.pexels.com/photos/971325/pexels-photo-971325.jpeg?auto=compress&cs=tinysrgb&w=800&h=512&fit=crop"
     }
 ]

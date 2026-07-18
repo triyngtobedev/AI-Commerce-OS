@@ -8,6 +8,7 @@ from scripts.youtube.narration_utils import (
     estimate_duration_seconds,
     validate_narration,
     MIN_NARRATION_WORDS,
+    TARGET_NARRATION_WORDS,
 )
 
 
@@ -57,7 +58,7 @@ class TestNarrationUtils(unittest.TestCase):
         self.assertTrue(len(warnings) > 0)
 
     def test_validate_long_narration_ok(self):
-        text = " ".join(["palavra"] * 1100)
+        text = " ".join(["palavra"] * TARGET_NARRATION_WORDS)
         warnings = validate_narration(text)
         self.assertEqual(len(warnings), 0)
 

@@ -2,7 +2,7 @@ import os
 from google import genai
 
 
-def generate(prompt):
+def generate(prompt, model="gemini-2.5-flash"):
 
     api_key = os.getenv("GEMINI_API_KEY")
 
@@ -12,7 +12,7 @@ def generate(prompt):
     client = genai.Client(api_key=api_key)
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model=model,
         contents=prompt
     )
 

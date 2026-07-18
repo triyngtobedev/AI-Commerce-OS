@@ -434,7 +434,8 @@ class BrandKit:
         )
 
     def lower_third_filter(self, text: str, duration: float) -> str:
-        safe = text.replace("'", "\\'").replace(":", "\\:")[:50]
+        # Apóstrofo vira U+2019 — \' quebra aspas simples do drawtext no FFmpeg
+        safe = text.replace("'", "\u2019").replace(":", "\\:")[:50]
         fade = min(0.6, duration * 0.15)
         show = max(0.5, duration - fade * 2)
         accent = self.colors.accent
@@ -445,7 +446,7 @@ class BrandKit:
             "fontsize=26:"
             "x=60:y=h-120:"
             "box=1:boxcolor=0x080818@0.75:boxborderw=8:"
-            f"enable='between(t,{fade:.2f},{show:.2f})'"
+            f"enable='between(t\\,{fade:.2f}\\,{show:.2f})'"
         )
 
 

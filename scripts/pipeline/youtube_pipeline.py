@@ -300,20 +300,6 @@ def run_youtube_pipeline(
             )
 
 
-            queries = generate_asset_queries(
-                scenes,
-                platform=YOUTUBE_DARK.id,
-                timeline=emotional_timeline,
-            )
-
-
-            run_media_pipeline(
-                topic,
-                scenes,
-                queries,
-            )
-
-
             output_dir = content_output_dir(
                 topic,
                 platform=YOUTUBE_DARK.id,
@@ -352,6 +338,20 @@ def run_youtube_pipeline(
             )
 
             scenes = apply_effect_hints_to_scenes(scenes, emotional_timeline)
+
+
+            queries = generate_asset_queries(
+                scenes,
+                platform=YOUTUBE_DARK.id,
+                timeline=emotional_timeline,
+            )
+
+
+            run_media_pipeline(
+                topic,
+                scenes,
+                queries,
+            )
 
 
             subtitles = generate_subtitles({

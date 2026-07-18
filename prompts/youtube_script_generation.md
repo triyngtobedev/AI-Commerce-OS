@@ -18,20 +18,21 @@ Retorne APENAS JSON:
 
 ```json
 {
-  "hook": "Abertura impactante (15-20 segundos, ~40-60 palavras)",
-  "contexto": "Contexto histórico necessário (1-2 min, ~150-200 palavras)",
-  "desenvolvimento": "Narrativa principal com fatos, datas e detalhes (3-5 min, ~400-550 palavras)",
-  "revelacao": "Momento de virada ou fato mais surpreendente (1-2 min, ~150-200 palavras)",
-  "consequencias": "Impacto histórico e relevância atual (1-2 min, ~120-180 palavras)",
-  "encerramento": "Fechamento memorável + CTA de inscrição (30 seg, ~50-80 palavras)"
+  "hook": "Abertura impactante (15-20 segundos, ~50-80 palavras)",
+  "contexto": "Contexto histórico necessário (1-2 min, ~200-250 palavras)",
+  "desenvolvimento": "Narrativa principal com fatos, datas e detalhes (4-6 min, ~500-700 palavras, mínimo 200-250 por bloco narrativo)",
+  "revelacao": "Momento de virada ou fato mais surpreendente (1-2 min, ~200-250 palavras)",
+  "consequencias": "Impacto histórico e relevância atual (1-2 min, ~200-250 palavras)",
+  "encerramento": "Fechamento memorável + CTA de inscrição (30-45 seg, ~60-100 palavras)"
 }
 ```
 
 ## Meta de duração
 
-- **Total obrigatório: 900 a 1100 palavras** (narração completa)
-- Ritmo de fala: ~150 palavras por minuto → alvo de **6 a 8 minutos** de áudio
+- **Total obrigatório: 1600 a 1800 palavras** (narração completa)
+- Ritmo de fala: ~150 palavras por minuto → alvo de **8 minutos** de áudio (480 segundos)
 - Se uma seção ficar curta, **expanda com detalhes, cenas visuais e tensão narrativa**
+- Seções de desenvolvimento: **200-250 palavras cada** — nunca resuma em parágrafos curtos
 
 ## Técnicas de retenção (YouTube)
 

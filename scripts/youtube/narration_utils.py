@@ -36,8 +36,8 @@ BANNED_PHRASES = [
     r"inscreva-se e ative o sininho para mais",
 ]
 
-MIN_NARRATION_WORDS = 750
-TARGET_NARRATION_WORDS = 1000
+MIN_NARRATION_WORDS = 1600
+TARGET_NARRATION_WORDS = 1700
 WORDS_PER_MINUTE = 150
 
 
@@ -173,9 +173,7 @@ def validate_narration(
             f"~{target_seconds_est}s)"
         )
 
-    target_min_words = int(
-        (target_seconds / 60) * WORDS_PER_MINUTE * 0.85
-    )
+    target_min_words = int(TARGET_NARRATION_WORDS * 0.9)
 
     if words < target_min_words:
         warnings.append(

@@ -286,6 +286,88 @@ def generate_scene_subtitles(
     return srt_content, ass_content
 
 
+def _build_chunks_from_words(
+    words: list[dict],
+    max_words: int,
+    max_chars: int,
+) -> list[tuple[str, float, float]]:
+    """
+    Agrupa palavras (com timestamps reais) em blocos de legenda.
+    Quebra em pontuação forte ou nos limites de palavras/caracteres.
+    Retorna (texto_formatado, start_real, end_real) por bloco.
+    """
+
+    chunks: list[tuple[str, float, float]] = []
+    current: list[dict] = []
+
+    for word in words:
+        current.append(word)
+        text = " ".join(item["word"] for item in current)
+        ends_sentence = text.rstrip()[-1:] in ".!?…"
+
+        if ends_sentence or len(current) >= max_words or len(text) >= max_chars:
+            chunks.append((
+                _split_into_lines(text, max_chars=max_chars),
+                current[0]["start"],
+                current[-1]["end"],
+            ))
+            current = []
+
+    if current:
+        text = " ".join(item["word"] for item in current)
+        chunks.append((
+            _split_into_lines(text, max_chars=max_chars),
+            current[0]["start"],
+            current[-1]["end"],
+        ))
+
+    return chunks
+
+
+def generate_subtitles_from_words(
+    words: list[dict],
+    style: Optional[dict] = None,
+    *,
+    timing_offset: float = 0.0,
+) -> tuple[str, str]:
+    """
+    Gera SRT e ASS a partir de palavras com timestamps reais (Whisper).
+    Os tempos são ancorados na fala real, eliminando o atraso acumulado.
+    """
+
+    style = style or get_subtitle_style()
+    max_words = style.get("max_words_per_block", 5)
+    max_chars = style.get("max_chars", 58)
+    offset = max(0.0, float(timing_offset))
+
+    srt_lines = []
+    ass_events = []
+
+    chunks = _build_chunks_from_words(words, max_words, max_chars)
+
+    for index, (chunk, start, end) in enumerate(chunks, start=1):
+        start_t = start + offset
+        end_t = max(start_t + 0.3, end + offset)
+
+        srt_lines.append(f"{index}")
+        srt_lines.append(
+            f"{_format_srt_time(start_t)} --> {_format_srt_time(end_t)}"
+        )
+        srt_lines.append(chunk)
+        srt_lines.append("")
+
+        keywords = _extract_keywords(chunk)
+        ass_text = _emphasize_keywords(chunk.replace("\n", "\\N"), keywords)
+        ass_events.append(
+            f"Dialogue: 0,{_format_ass_time(start_t)},"
+            f"{_format_ass_time(end_t)},Default,,0,0,0,,{ass_text}"
+        )
+
+    srt_content = "\n".join(srt_lines)
+    ass_content = _build_ass_header(style) + "\n".join(ass_events)
+    return srt_content, ass_content
+
+
 def _format_ass_time(seconds: float) -> str:
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
@@ -327,12 +409,43 @@ def write_subtitles(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     style = get_subtitle_style(platform)
-    srt_content, ass_content = generate_scene_subtitles(
-        scenes,
-        style=style,
-        timing_offset=timing_offset,
-        audio_duration=audio_duration,
-    )
+
+    srt_content = None
+    ass_content = None
+
+    # Preferir timestamps reais via transcrição do áudio final (Whisper local).
+    # Ancorar as legendas na fala real elimina o atraso acumulado da estimativa.
+    audio_path = output_dir / "assets" / "audio" / "narracao.mp3"
+    if audio_path.exists():
+        from scripts.video.whisper_aligner import transcribe_words
+
+        words = transcribe_words(audio_path)
+        if words:
+            srt_content, ass_content = generate_subtitles_from_words(
+                words,
+                style=style,
+                timing_offset=timing_offset,
+            )
+            if audio_duration and audio_duration > 0:
+                ok, reason = validate_srt_timing(
+                    srt_content,
+                    audio_duration,
+                    timing_offset=max(0.0, float(timing_offset)),
+                )
+                if not ok:
+                    print(f"  ⚠️ Validação SRT (Whisper): {reason}")
+            print(
+                f"  🗣️ Legendas alinhadas por transcrição real: {len(words)} palavras"
+            )
+
+    # Fallback: distribuição estimada por cena (comportamento anterior).
+    if srt_content is None:
+        srt_content, ass_content = generate_scene_subtitles(
+            scenes,
+            style=style,
+            timing_offset=timing_offset,
+            audio_duration=audio_duration,
+        )
 
     srt_path = output_dir / f"{basename}.srt"
     ass_path = output_dir / f"{basename}.ass"

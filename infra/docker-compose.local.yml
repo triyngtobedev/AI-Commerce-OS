@@ -1,0 +1,39 @@
+# Docker Compose — n8n local (sem domínio, sem nginx, sem SSL)
+#
+# Uso:
+#   cd infra
+#   copy .env.n8n.example .env.n8n   # ou use o .env.n8n já gerado
+#   docker compose -f docker-compose.local.yml up -d
+#   docker compose -f docker-compose.local.yml ps
+#
+# Acesse: http://localhost:5678
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    env_file:
+      - .env.n8n
+    environment:
+      # Overrides HTTP — env_file cuida de auth, encryption e timezone
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_SECURE_COOKIE=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      # FastAPI no host (Docker Desktop Windows)
+      - PIPELINE_API_BASE_URL=http://host.docker.internal:8000
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "127.0.0.1:5678:5678"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  n8n_data:
+    name: n8n_data

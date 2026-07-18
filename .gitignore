@@ -1,9 +1,15 @@
 .env
+infra/.env.n8n
 node_modules/
 *.log
 .vscode/settings.json
 __pycache__/
 *.pyc
+.pytest_cache/
+venv/
 output/
 cache/
+debug/
+.tmp_validation/
 database/metrics.json
+database/pipeline_jobs.db

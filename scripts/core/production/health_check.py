@@ -14,11 +14,10 @@ from typing import Any, Dict, List, Optional
 
 from scripts.core.brand_validation import validate_brand_asset
 from scripts.core.production.logger import get_logger
+from scripts.core.brand_engine import should_show_intro, should_show_outro, get_render_style
 from scripts.video.scene_timeline import resolve_scene_media, extract_scenes
 from scripts.video.media_probe import probe_duration
-
-
-MAX_AV_SYNC_DELTA = 1.0
+from scripts.video.scene_renderer import MAX_AV_SYNC_DELTA
 
 
 @dataclass
@@ -310,13 +309,20 @@ def run_health_check(
     if resolved_video and resolved_audio:
         video_duration = float(probe.get("format", {}).get("duration", 0)) if probe else probe_duration(resolved_video)
         audio_probe_duration = probe_duration(resolved_audio)
-        av_delta = abs(video_duration - audio_probe_duration)
+        platform = result.get("platform", "youtube_dark")
+        intro = get_render_style(platform).intro_seconds if should_show_intro(platform) else 0.0
+        outro = get_render_style(platform).outro_seconds if should_show_outro(platform) else 0.0
+        expected_video = intro + audio_probe_duration + outro
+        av_delta = abs(video_duration - expected_video)
+        content_delta = abs((video_duration - intro - outro) - audio_probe_duration)
         report.add(
             "audio_video_sync",
             av_delta <= MAX_AV_SYNC_DELTA,
             (
                 f"Áudio/vídeo: vídeo={video_duration:.1f}s, "
-                f"áudio={audio_probe_duration:.1f}s, delta={av_delta:.2f}s"
+                f"esperado={expected_video:.1f}s "
+                f"(intro={intro:.1f}s + áudio={audio_probe_duration:.1f}s + outro={outro:.1f}s), "
+                f"delta={av_delta:.2f}s, delta_conteúdo={content_delta:.2f}s"
             ),
         )
 

@@ -1,0 +1,627 @@
+{
+  "name": "02 — Scene Generation Orchestrator (Replicate → HF Router)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scene-generation",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 520],
+      "webhookId": "scene-generation-webhook",
+      "notes": "Recebe pedido do Python: scene_id, job_id, prompt, callback_url, metadata."
+    },
+    {
+      "parameters": {
+        "content": "## Orquestrador Free Tier (YouTube Dark)\n\nAlinhado ao `video_generator.py`:\n\n1. **Replicate LTX** (trial / créditos free)\n2. **HF Router → fal.ai Wan2.2** (~US$ 0,10/mês HF)\n\nPadrão n8n: POST → Wait → Poll → IF succeeded.\n\nCredenciais:\n- `Replicate API Token` → Authorization: Token …\n- `Hugging Face API Token` → Authorization: Bearer …\n- `Pipeline API Key` → X-API-Key\n\n⚠️ Kling Web (Playwright) não roda no n8n — fica no Python quando n8n falha.",
+        "height": 280,
+        "width": 460
+      },
+      "id": "sticky-note-main",
+      "name": "Nota — Orquestrador Free",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [120, 120]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "scene_id",
+              "name": "scene_id",
+              "value": "={{ $json.body.scene_id }}",
+              "type": "string"
+            },
+            {
+              "id": "job_id",
+              "name": "job_id",
+              "value": "={{ $json.body.job_id }}",
+              "type": "string"
+            },
+            {
+              "id": "prompt",
+              "name": "prompt",
+              "value": "={{ $json.body.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "callback_url",
+              "name": "callback_url",
+              "value": "={{ $json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "metadata",
+              "name": "metadata",
+              "value": "={{ $json.body.metadata || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "aspect_ratio",
+              "name": "aspect_ratio",
+              "value": "={{ $json.body.metadata?.aspect_ratio || '16:9' }}",
+              "type": "string"
+            },
+            {
+              "id": "negative_prompt",
+              "name": "negative_prompt",
+              "value": "={{ $json.body.metadata?.negative_prompt || 'blurry, distorted, low quality, watermark, overexposed, shaky camera, text overlay, cartoon' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-normalize",
+      "name": "Set — Normalizar Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [480, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.replicate.com/v1/predictions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"version\": \"8c47da666861d081eeb4d1261853087de23923a268a69b63febdf5dc1dee08e4\",\n  \"input\": {\n    \"prompt\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.prompt) }},\n    \"negative_prompt\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.negative_prompt) }},\n    \"length\": 97,\n    \"target_size\": 832,\n    \"aspect_ratio\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.aspect_ratio) }},\n    \"steps\": 45,\n    \"cfg\": 8.5\n  }\n}",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-replicate-create",
+      "name": "HTTP — Replicate Create",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 520],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLICATE_CREDENTIAL_ID",
+          "name": "Replicate API Token"
+        }
+      },
+      "notes": "Inicia prediction LTX-Video (lightricks/ltx-video)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "rep-has-id",
+              "leftValue": "={{ $json.id || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-replicate-created",
+      "name": "IF Replicate Created?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 520],
+      "notes": "Se Create falhar (401/402), cai direto no HF Router."
+    },
+    {
+      "parameters": {
+        "amount": 20,
+        "unit": "seconds"
+      },
+      "id": "wait-replicate-initial",
+      "name": "Wait — Replicate 20s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [960, 520],
+      "webhookId": "wait-replicate-initial-hook"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.replicate.com/v1/predictions/{{ $('HTTP — Replicate Create').item.json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-replicate-poll",
+      "name": "HTTP — Replicate Poll",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 520],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLICATE_CREDENTIAL_ID",
+          "name": "Replicate API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "rep-succeeded",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "succeeded",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-replicate-succeeded",
+      "name": "IF Replicate Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1440, 520]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "rep-failed",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "failed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "rep-canceled",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "canceled",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "if-replicate-failed",
+      "name": "IF Replicate Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1680, 680]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-replicate-loop",
+      "name": "Wait — Replicate Loop 30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1680, 860],
+      "webhookId": "wait-replicate-loop-hook"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "provider",
+              "name": "provider_used",
+              "value": "replicate",
+              "type": "string"
+            },
+            {
+              "id": "video_path",
+              "name": "video_path",
+              "value": "={{ Array.isArray($json.output) ? $json.output[0] : ($json.output || '') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-replicate-result",
+      "name": "Set — Resultado Replicate",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1680, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://router.huggingface.co/fal-ai/fal-ai/wan/v2.2-5b/text-to-video",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.prompt) }},\n  \"num_frames\": 49,\n  \"aspect_ratio\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.aspect_ratio) }}\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-hf-t2v",
+      "name": "HTTP — HF Router T2V",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1920, 680],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "HF_CREDENTIAL_ID",
+          "name": "Hugging Face API Token"
+        }
+      },
+      "notes": "Fallback free HF Router (fal.ai Wan2.2). Crédito mensal limitado."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "hf-url",
+              "leftValue": "={{ $json.video?.url || $json.url || $json.output?.video?.url || (Array.isArray($json.output) ? $json.output[0] : $json.output) || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-hf-ok",
+      "name": "IF HF OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2160, 680]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "provider",
+              "name": "provider_used",
+              "value": "falai_hf",
+              "type": "string"
+            },
+            {
+              "id": "video_path",
+              "name": "video_path",
+              "value": "={{ $json.video?.url || $json.url || $json.output?.video?.url || (Array.isArray($json.output) ? $json.output[0] : $json.output) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-hf-result",
+      "name": "Set — Resultado HF",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2400, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Set — Normalizar Payload').item.json.callback_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"scene_id\": \"{{ $('Set — Normalizar Payload').item.json.scene_id }}\",\n  \"job_id\": \"{{ $('Set — Normalizar Payload').item.json.job_id }}\",\n  \"video_path\": \"{{ $json.video_path }}\",\n  \"provider_used\": \"{{ $json.provider_used }}\",\n  \"status\": \"completed\"\n}",
+        "options": {}
+      },
+      "id": "http-callback-success",
+      "name": "Callback — Sucesso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2640, 520],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PIPELINE_API_CREDENTIAL_ID",
+          "name": "Pipeline API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Set — Normalizar Payload').item.json.callback_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"scene_id\": \"{{ $('Set — Normalizar Payload').item.json.scene_id }}\",\n  \"job_id\": \"{{ $('Set — Normalizar Payload').item.json.job_id }}\",\n  \"video_path\": null,\n  \"provider_used\": null,\n  \"status\": \"failed\",\n  \"error_message\": \"All free providers failed (Replicate, HF Router). Python may retry Kling Web locally.\"\n}",
+        "options": {}
+      },
+      "id": "http-callback-error",
+      "name": "Callback — Erro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2400, 820],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PIPELINE_API_CREDENTIAL_ID",
+          "name": "Pipeline API Key"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set — Normalizar Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set — Normalizar Payload": {
+      "main": [
+        [
+          {
+            "node": "HTTP — Replicate Create",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP — Replicate Create": {
+      "main": [
+        [
+          {
+            "node": "IF Replicate Created?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Replicate Created?": {
+      "main": [
+        [
+          {
+            "node": "Wait — Replicate 20s",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP — HF Router T2V",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait — Replicate 20s": {
+      "main": [
+        [
+          {
+            "node": "HTTP — Replicate Poll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP — Replicate Poll": {
+      "main": [
+        [
+          {
+            "node": "IF Replicate Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Replicate Succeeded?": {
+      "main": [
+        [
+          {
+            "node": "Set — Resultado Replicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Replicate Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Replicate Failed?": {
+      "main": [
+        [
+          {
+            "node": "HTTP — HF Router T2V",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait — Replicate Loop 30s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait — Replicate Loop 30s": {
+      "main": [
+        [
+          {
+            "node": "HTTP — Replicate Poll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP — HF Router T2V": {
+      "main": [
+        [
+          {
+            "node": "IF HF OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF HF OK?": {
+      "main": [
+        [
+          {
+            "node": "Set — Resultado HF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Callback — Erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set — Resultado Replicate": {
+      "main": [
+        [
+          {
+            "node": "Callback — Sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set — Resultado HF": {
+      "main": [
+        [
+          {
+            "node": "Callback — Sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ai-commerce-os"
+    },
+    {
+      "name": "scene-orchestrator"
+    },
+    {
+      "name": "free-tier"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Orquestrador free tier: Replicate LTX (poll loop) → HF Router fal.ai Wan2.2 → callback FastAPI."
+  }
+}

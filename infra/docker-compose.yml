@@ -1,0 +1,90 @@
+# Docker Compose — n8n + Nginx reverse proxy (Oracle Cloud ARM64 / Ampere A1)
+#
+# Uso (produção — VM + domínio + SSL):
+#   cd infra
+#   cp .env.n8n.example .env.n8n   # edite com seus valores
+#   docker compose up -d
+#
+# Uso local (PC, sem domínio):
+#   cd infra
+#   docker compose -f docker-compose.local.yml up -d
+#
+# n8n escuta apenas em 127.0.0.1:5678; acesso externo via Nginx (80/443).
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    env_file:
+      - .env.n8n
+    environment:
+      # Garante que webhooks usem o domínio público (definido em .env.n8n)
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      - N8N_SECURE_COOKIE=true
+      # Desabilita telemetria opcional em produção
+      - N8N_DIAGNOSTICS_ENABLED=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      # Exposto SOMENTE para localhost — Nginx faz proxy externo
+      - "127.0.0.1:5678:5678"
+    networks:
+      - n8n-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx:
+    image: nginx:alpine
+    container_name: n8n-nginx
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Configuração do reverse proxy
+      - ./nginx/n8n.conf:/etc/nginx/conf.d/default.conf:ro
+      # Certificados Let's Encrypt (gerados pelo Certbot na VM host)
+      - certbot_conf:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    networks:
+      - n8n-network
+
+  # Serviço auxiliar para renovação de certificados (executar manualmente ou via cron)
+  certbot:
+    image: certbot/certbot:latest
+    container_name: n8n-certbot
+    profiles:
+      - certbot
+    volumes:
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # Exemplo de uso:
+    #   docker compose --profile certbot run --rm certbot certonly \
+    #     --webroot -w /var/www/certbot -d n8n.seudominio.com
+
+volumes:
+  n8n_data:
+    name: n8n_data
+  certbot_conf:
+    name: n8n_certbot_conf
+  certbot_www:
+    name: n8n_certbot_www
+
+networks:
+  n8n-network:
+    name: n8n-network
+    driver: bridge

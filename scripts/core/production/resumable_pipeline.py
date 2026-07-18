@@ -22,6 +22,16 @@ from scripts.core.production.manifest import generate_production_manifest
 from scripts.core.production.monetization_audit import run_monetization_audit
 from scripts.core.production.performance_audit import generate_performance_report
 from scripts.core.production.pipeline_state import STAGE_ORDER, PipelineState
+
+# Fase 1.5: áudio e sync antes da seleção/download de mídia.
+YOUTUBE_STAGE_ORDER = list(STAGE_ORDER)
+_media_idx = YOUTUBE_STAGE_ORDER.index("media")
+_audio_idx = YOUTUBE_STAGE_ORDER.index("audio")
+if _media_idx < _audio_idx:
+    YOUTUBE_STAGE_ORDER[_media_idx], YOUTUBE_STAGE_ORDER[_audio_idx] = (
+        YOUTUBE_STAGE_ORDER[_audio_idx],
+        YOUTUBE_STAGE_ORDER[_media_idx],
+    )
 from scripts.core.production.stage_cache import StageCache
 from scripts.utils.slug import content_output_dir
 
@@ -221,9 +231,6 @@ def _stage_timeline(ctx: StageContext) -> dict:
             caption = ctx.state.load_artifact("caption.json")
             if caption:
                 ctx.data["caption"] = caption
-            queries = ctx.state.load_artifact("asset_queries.json")
-            if queries:
-                ctx.data["queries"] = queries
             return loaded
 
     content = generate_youtube_content(
@@ -245,24 +252,17 @@ def _stage_timeline(ctx: StageContext) -> dict:
     emotional_timeline = apply_visual_intents(emotional_timeline)
 
     scenes = generate_youtube_scenes(topic, content, ctx.data["strategy"])
-    queries = generate_asset_queries(
-        scenes,
-        platform=YOUTUBE_DARK.id,
-        timeline=emotional_timeline,
-    )
 
     ctx.state.save_artifact("content.json", content)
     ctx.state.save_artifact("caption.json", caption)
     ctx.state.save_artifact("emotional_timeline.json", _serialize_timeline(emotional_timeline))
     ctx.state.save_artifact("scenes.json", scenes)
-    ctx.state.save_artifact("asset_queries.json", queries)
 
     ctx.data.update({
         "content": content,
         "caption": caption,
         "emotional_timeline": emotional_timeline,
         "scenes": scenes,
-        "queries": queries,
     })
     ctx.cache.record("timeline", cache_input, artifacts)
     return scenes
@@ -270,7 +270,26 @@ def _stage_timeline(ctx: StageContext) -> dict:
 
 def _stage_media(ctx: StageContext) -> str:
     topic = ctx.data["topic"]
-    cache_input = {"queries": ctx.data.get("queries")}
+    scenes = ctx.data["scenes"]
+    emotional_timeline = _deserialize_timeline(ctx.data.get("emotional_timeline"))
+
+    queries = generate_asset_queries(
+        scenes,
+        platform=YOUTUBE_DARK.id,
+        timeline=emotional_timeline,
+    )
+    ctx.data["queries"] = queries
+    ctx.state.save_artifact("asset_queries.json", queries)
+
+    cache_input = {
+        "queries": queries,
+        "scenes_synced": bool(scenes.get("synced")),
+        "audio_duration": scenes.get("audio_duration"),
+        "scene_durations": [
+            c.get("duration_seconds")
+            for c in scenes.get("cenas", [])
+        ],
+    }
     media_marker = ctx.output_dir / "assets" / "media_search.json"
     artifacts = [media_marker] if media_marker.exists() else [ctx.output_dir / "assets"]
 
@@ -278,7 +297,7 @@ def _stage_media(ctx: StageContext) -> str:
         mode = ctx.state.load_artifact("media_mode.json") or {"mode": "cached"}
         return mode.get("mode", "cached")
 
-    mode = run_media_pipeline(topic, ctx.data["scenes"], ctx.data["queries"])
+    mode = run_media_pipeline(topic, scenes, queries)
     ctx.state.save_artifact("media_mode.json", {"mode": mode})
     ctx.state.add_provider(mode)
     ctx.providers_used.append(mode)
@@ -293,6 +312,12 @@ def _stage_audio(ctx: StageContext) -> str:
 
     if ctx.cache.is_valid("audio", cache_input, [audio_path]):
         ctx.data["audio"] = str(audio_path)
+        synced_scenes = ctx.state.load_artifact("scenes.json")
+        if synced_scenes:
+            ctx.data["scenes"] = synced_scenes
+        synced_timeline = ctx.state.load_artifact("emotional_timeline.json")
+        if synced_timeline:
+            ctx.data["emotional_timeline"] = _deserialize_timeline(synced_timeline)
         return str(audio_path)
 
     audio = create_audio({
@@ -531,6 +556,37 @@ STAGE_RUNNERS = {
 }
 
 
+def _get_resume_stage(ctx: StageContext) -> Optional[str]:
+    """Primeira etapa não concluída na ordem YouTube (áudio antes de mídia)."""
+
+    for stage in YOUTUBE_STAGE_ORDER:
+        if not ctx.state.is_completed(stage):
+            return stage
+    return None
+
+
+def _normalize_legacy_stage_state(ctx: StageContext):
+    """
+    Compatibilidade com execuções anteriores que rodavam media antes de audio.
+
+    Se mídia foi concluída sem sync de áudio, invalida media para reprocessar
+    com duration_seconds real.
+    """
+
+    completed = ctx.state.completed_steps
+    if "media" not in completed:
+        return
+
+    scenes = ctx.state.load_artifact("scenes.json") or {}
+    synced = bool(scenes.get("synced") or scenes.get("audio_duration"))
+
+    if "audio" not in completed or not synced:
+        remaining = [stage for stage in completed if stage != "media"]
+        ctx.state._data["completed_steps"] = remaining
+        ctx.state.save()
+        ctx.cache.invalidate_from("media", YOUTUBE_STAGE_ORDER)
+
+
 def run_resumable_youtube_pipeline(
     topic: dict,
     *,
@@ -560,7 +616,7 @@ def run_resumable_youtube_pipeline(
         ctx.state.save()
 
         had_stage_cache = bool(ctx.cache._data.get("stages"))
-        ctx.cache.invalidate_from("collect", STAGE_ORDER)
+        ctx.cache.invalidate_from("collect", YOUTUBE_STAGE_ORDER)
         main_logger.info(
             f"Reprocessando tema existente: {topic.get('nome', '')} "
             f"— output: {output_dir}, "
@@ -577,7 +633,9 @@ def run_resumable_youtube_pipeline(
             f"({vis_ctx['reason']})"
         )
 
-    resume_from = ctx.state.get_resume_stage()
+    _normalize_legacy_stage_state(ctx)
+
+    resume_from = _get_resume_stage(ctx)
     if resume_from:
         main_logger.info(f"Retomando pipeline a partir da etapa: {resume_from}")
 
@@ -585,7 +643,7 @@ def run_resumable_youtube_pipeline(
     perf_report: dict = {}
 
     try:
-        for stage in STAGE_ORDER:
+        for stage in YOUTUBE_STAGE_ORDER:
             if ctx.state.should_skip(stage):
                 main_logger.info(f"Etapa '{stage}' já concluída — pulando")
                 _restore_stage_data(ctx, stage)
@@ -648,8 +706,9 @@ def _restore_stage_data(ctx: StageContext, stage: str):
         "analysis": ["analysis"],
         "strategy": ["strategy"],
         "script": ["script"],
-        "timeline": ["content", "caption", "scenes", "queries", "emotional_timeline"],
-        "audio": ["audio"],
+        "timeline": ["content", "caption", "scenes", "emotional_timeline"],
+        "audio": ["audio", "scenes", "emotional_timeline"],
+        "media": ["queries"],
         "render": ["pipeline_result"],
         "export": ["export_folder"],
     }

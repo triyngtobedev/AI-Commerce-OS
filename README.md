@@ -154,6 +154,10 @@ AI-Commerce-OS/
 │   └── youtube_oauth.md             # Guia OAuth do YouTube
 │
 ├── output/                          # Artefatos gerados (gitignored)
+├── src/
+│   ├── video_generator.py           # Geração de vídeo IA (fallback automático)
+│   ├── video_upscaler.py            # Upscale pós-geração (Real-ESRGAN / ffmpeg)
+│   └── prompt_builder.py            # Templates de prompt e-commerce
 └── cache/                           # Cache de respostas IA (gitignored)
 ```
 
@@ -240,6 +244,78 @@ AZURE_SPEECH_REGION=
 | `YOUTUBE_PUBLISH_ENABLED` | Habilita/desabilita publicação globalmente |
 | `AZURE_SPEECH_KEY` | Chave Azure Cognitive Services Speech (TTS com SSML) |
 | `AZURE_SPEECH_REGION` | Região Azure (ex.: `eastus`, `brazilsouth`) |
+
+### Geração de vídeo IA (VideoGenerator)
+
+Ordem de fallback automático: **fal.ai (HF Router)** → **Replicate** → **Kling Web (Playwright)**.
+
+```env
+# Mínimo para primeiro vídeo real (menor fricção):
+HF_API_TOKEN=hf_...          # huggingface.co/settings/tokens
+                             # Permissão: "Make calls to Inference Providers"
+                             # Crédito free: US$ 0,10/mês
+
+# Fallbacks opcionais:
+REPLICATE_API_TOKEN=r8_...   # replicate.com — trial com créditos iniciais
+KLING_EMAIL=seu@email.com    # Kling web — 66 créditos/dia
+KLING_PASSWORD=suasenha
+
+VIDEO_OUTPUT_DIR=./output/videos
+VIDEO_TIMEOUT=300
+```
+
+**Teste rápido** (gera `./output/videos/test_real.mp4`):
+
+```bash
+python -m src.video_generator \
+  --prompt "sneaker product shot, studio lighting, slow zoom" \
+  --output ./output/videos/test_real.mp4
+```
+
+**Upscale pós-geração** (480p → 960p): o pipeline aplica automaticamente após geração IA. Requer **ffmpeg** no PATH; **realesrgan-ncnn-vulkan** é opcional (melhor qualidade).
+
+Instalação do Real-ESRGAN (opcional):
+
+```bash
+# Windows — baixe o release em:
+# https://github.com/xinntao/Real-ESRGAN/releases
+# Extraia e adicione realesrgan-ncnn-vulkan.exe ao PATH
+
+# Linux (exemplo)
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+unzip realesrgan-ncnn-vulkan-*.zip
+export PATH="$PATH:/caminho/para/realesrgan-ncnn-vulkan"
+```
+
+Sem Real-ESRGAN, o upscale usa filtro Lanczos do ffmpeg (qualidade inferior, mas funcional).
+
+**Kling Web (Playwright — fallback gratuito):**
+
+```bash
+pip install playwright
+python -m playwright install chromium
+```
+
+Fluxo automatizado: `kling.ai/app/video/new` → One-click Sign In → Continue with email → Generate.
+
+Debug visual (salva screenshots em `debug/`):
+
+```bash
+# Windows PowerShell
+$env:KLING_DEBUG="1"
+$env:PLAYWRIGHT_BROWSERS_PATH="$env:USERPROFILE\AppData\Local\ms-playwright"
+python -m src.video_generator --prompt "test" --output ./output/videos/test_real.mp4
+
+# Browser visível (validação manual)
+$env:KLING_HEADFUL="1"
+```
+
+Validação de tokens e webhook n8n:
+
+```bash
+python scripts/validate_tokens.py
+python scripts/test_n8n_scene_webhook.py
+```
 
 ---
 
@@ -353,6 +429,8 @@ python -m unittest scripts.youtube.test_youtube_pipeline_e2e -v
 
 ### Produção de Vídeo
 - Geração de cenas, queries de mídia e download automático (Pexels)
+- **VideoGenerator** com fallback fal.ai → Replicate → Kling Web para cenas IA
+- Upscale automático 480p → 960p (`src/video_upscaler.py`)
 - Narração Azure Speech SDK (SSML por seção) com fallback Edge-TTS e gTTS
 - Sincronização cena-a-cena via scene timeline
 - Legendas SRT e renderização FFmpeg

@@ -2,16 +2,14 @@
 Visual Media Engine — busca e geração de mídia por cena.
 
 Cadeia de fallback por cena (youtube_dark):
-  1. Wikimedia Commons — imagens de arquivo/domínio público
-  2. Pixabay — vídeo/foto stock HD
-  3. Pexels — vídeo/foto stock (fallback legado)
-  4. Pollinations IA — imagem gratuita (primário IA)
-  5. Hugging Face SDXL — imagem (fallback se HF_TOKEN configurado)
-  6. Pollinations IA — vídeo (se POLLINATIONS_API_KEY configurada)
-  7. Pollinations IA — segunda tentativa de imagem com prompt alternativo
+  1. Stock — Wikimedia (prioridade histórica) → Pixabay → Pexels
+  2. Replicate T2V — prompts EN + Visual Director (fal.ai → Replicate → Kling Web)
+  3. Pollinations IA — bloqueado em hook/revelação/encerramento
+  4. Hugging Face SDXL — imagem (se HF_TOKEN configurado)
+  5. Placeholder ilustrativo — se tudo falhar
 
-Cenas documentais (contexto, desenvolvimento, revelacao, consequencias)
-com preferir_imagem=True pulam busca de vídeo e usam foto + Ken Burns.
+Cenas documentais (preferir_imagem=True) priorizam foto stock, mas
+ainda tentam Replicate T2V antes de cair em Pollinations.
 """
 
 from __future__ import annotations
@@ -20,6 +18,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from scripts.video.pexels_provider import search_pexels
 from scripts.video.pixabay_provider import search_pixabay
@@ -28,6 +27,14 @@ from scripts.video.media_providers.pollinations_provider import (
     generate_pollinations_image,
     generate_pollinations_video,
 )
+from src.prompt_builder import get_best_movement, build_scene_video_prompt
+from src.video_generator import (
+    VideoGenerator,
+    falai_is_configured,
+    replicate_is_configured,
+    kling_web_is_configured,
+)
+from src.video_upscaler import upscale_video_ffmpeg
 from scripts.video.media_providers.huggingface.adapter import (
     generate_hf_image,
     hf_is_configured,
@@ -43,6 +50,12 @@ from scripts.video.media_providers.relevance import (
     score_video,
 )
 from scripts.core.visual_intent_engine import resolve_visual_intent
+from scripts.video.query_localizer import (
+    is_critical_scene,
+    localize_search_query,
+    should_prioritize_wikimedia,
+    wikimedia_query_variants,
+)
 from scripts.video.media_downloader import (
     download_file,
     select_photo_url,
@@ -125,27 +138,32 @@ def _upscale_image(path: Path, width: int = 1920, height: int = 1080) -> bool:
     return False
 
 
-def _enrich_search_query(busca: str, tipo: str, fallback: str = "") -> list[str]:
+def _enrich_search_query(
+    busca: str,
+    tipo: str,
+    fallback: str = "",
+    tematica: str = "",
+    atmosfera: str = "",
+) -> list[str]:
     """
-    Gera variações de busca cinematográficas baseadas na cena.
-    Retorna queries em ordem de prioridade (sem duplicatas).
+    Monta queries em 3 níveis + fallback legado (sem duplicatas).
+    1. Específica (busca)  2. Temática  3. Atmosfera/emotion  4. Fallback
     """
 
-    queries = []
-    base = _truncate_query(busca.strip())
-    if base:
-        queries.append(base)
+    queries: list[str] = []
+
+    for candidate in (busca, tematica, atmosfera, fallback):
+        cleaned = _truncate_query(localize_search_query((candidate or "").strip()))
+        if cleaned and cleaned not in queries:
+            queries.append(cleaned)
 
     suffix = _CINEMATIC_SUFFIX.get(tipo, "documentary cinematic")
-    if base:
-        enriched = _truncate_query(f"{base} {suffix}")
-        if enriched not in queries:
+    if busca.strip():
+        enriched = _truncate_query(
+            localize_search_query(f"{busca.strip()} {suffix}", append_documentary=False)
+        )
+        if enriched and enriched not in queries:
             queries.append(enriched)
-
-    if fallback:
-        fallback_query = _truncate_query(fallback.strip())
-        if fallback_query and fallback_query not in queries:
-            queries.append(fallback_query)
 
     return [q for q in queries if q]
 
@@ -171,29 +189,74 @@ def _merge_media(target: dict, source: dict) -> None:
         target.setdefault("photos", []).append(photo)
 
 
-def _search_providers_chain(query: str, *, photos_only: bool = False) -> tuple[dict, str]:
+def _search_providers_chain(
+    query: str,
+    *,
+    photos_only: bool = False,
+    skip_wikimedia: bool = False,
+) -> tuple[dict, str]:
     """Busca Wikimedia → Pixabay → Pexels até encontrar mídia."""
 
-    query = _truncate_query(query)
+    query = _truncate_query(localize_search_query(query))
 
-    for provider_name, search_fn in (
+    providers: tuple[tuple[str, Any], ...] = (
         ("wikimedia", search_wikimedia),
         ("pixabay", search_pixabay),
         ("pexels", search_pexels),
-    ):
+    )
+    if skip_wikimedia:
+        providers = providers[1:]
+
+    for provider_name, search_fn in providers:
         media = search_fn(query)
         if photos_only:
             media = {"videos": [], "photos": media.get("photos", [])}
         if _has_media(media):
             return media, provider_name
+        if provider_name == "pexels":
+            print(f"[Pexels] Nenhum resultado para: {query}")
 
     return {"videos": [], "photos": []}, "none"
 
 
-def _search_all_providers(query: str, *, photos_only: bool = False) -> tuple[dict, str]:
-    """Alias legado — cadeia ordenada de provedores."""
+def _search_wikimedia_priority(
+    query: str,
+    query_item: dict | None,
+    *,
+    photos_only: bool = False,
+) -> tuple[dict, str]:
+    """Passa extra no Wikimedia com variações antes de stock genérico."""
+    for variant in wikimedia_query_variants(query, query_item):
+        media = search_wikimedia(variant)
+        if photos_only:
+            media = {"videos": [], "photos": media.get("photos", [])}
+        if media.get("photos"):
+            return media, "wikimedia"
+    return {"videos": [], "photos": []}, "none"
 
-    return _search_providers_chain(query, photos_only=photos_only)
+
+def _search_all_providers(
+    query: str,
+    *,
+    photos_only: bool = False,
+    query_item: dict | None = None,
+) -> tuple[dict, str]:
+    """Cadeia ordenada de provedores com prioridade Wikimedia em cenas históricas."""
+
+    if should_prioritize_wikimedia(query_item):
+        media, source = _search_wikimedia_priority(
+            query,
+            query_item,
+            photos_only=photos_only,
+        )
+        if _has_media(media):
+            return media, source
+
+    return _search_providers_chain(
+        query,
+        photos_only=photos_only,
+        skip_wikimedia=should_prioritize_wikimedia(query_item),
+    )
 
 
 def _download_scene_video(video: dict, path: Path) -> bool:
@@ -395,13 +458,19 @@ def _try_ai_image(
     suffix: str = "",
     *,
     allow_upscale: bool = True,
+    allow_pollinations: bool = True,
 ) -> tuple[bool, str]:
-    ai_prompt = _truncate_query(f"{prompt}, documentary cinematic scene{suffix}", max_len=120)
+    ai_prompt = _truncate_query(
+        f"{localize_search_query(prompt)}, documentary cinematic scene{suffix}",
+        max_len=120,
+    )
     provider = ""
-    generated = generate_pollinations_image(ai_prompt, scene_image)
-    if generated:
-        provider = "pollinations"
-    elif _try_hf_image(ai_prompt, scene_image):
+    generated = False
+    if allow_pollinations:
+        generated = generate_pollinations_image(ai_prompt, scene_image)
+        if generated:
+            provider = "pollinations"
+    if not generated and _try_hf_image(ai_prompt, scene_image):
         generated = True
         provider = "huggingface"
     if not generated:
@@ -465,10 +534,16 @@ def _try_local_reuse(
     return False
 
 
-def _generate_placeholder_image(prompt: str, scene_image: Path, scene_num: int) -> bool:
+def _generate_placeholder_image(
+    prompt: str,
+    scene_image: Path,
+    scene_num: int,
+    *,
+    allow_pollinations: bool = True,
+) -> bool:
     """Gera imagem ilustrativa mínima quando todos os provedores falham."""
 
-    label = _truncate_query(prompt or f"scene {scene_num}", max_len=40)
+    label = _truncate_query(localize_search_query(prompt or f"scene {scene_num}"), max_len=40)
     safe_label = label.replace(":", "\\:").replace("'", "\\'")
     cmd = [
         "ffmpeg", "-y",
@@ -486,28 +561,214 @@ def _generate_placeholder_image(prompt: str, scene_image: Path, scene_num: int) 
         subprocess.run(cmd, check=True, capture_output=True)
         return scene_image.exists()
     except subprocess.CalledProcessError:
+        if not allow_pollinations:
+            return False
         saved, _ = _try_ai_image(
             f"{prompt}, atmospheric documentary illustration",
             scene_image,
             allow_upscale=True,
+            allow_pollinations=True,
         )
         return saved
 
 
-def _try_ai_video(prompt: str, scene_video: Path) -> bool:
-    ai_prompt = f"{prompt}, documentary cinematic footage"
+def _ai_video_configured() -> bool:
+    """True se alguma API de vídeo IA está configurada."""
+    return falai_is_configured() or replicate_is_configured() or kling_web_is_configured()
+
+
+def _try_ai_video(
+    prompt: str,
+    scene_video: Path,
+    *,
+    image_url: str | None = None,
+    product_name: str | None = None,
+    category: str | None = None,
+    material: str | None = None,
+    scene_description: str = "",
+    scene_tipo: str = "",
+    emotion: str = "",
+    platform: str = "youtube_dark",
+    visual_direction: dict | None = None,
+    allow_pollinations: bool = True,
+) -> tuple[bool, str]:
+    """
+    Gera vídeo IA via VideoGenerator (fal.ai → Replicate → Kling Web).
+    Com image_url: fluxo I2V e-commerce otimizado (Replicate LTX + upscale 2x).
+    Sem image_url: T2V documental YouTube Dark via build_scene_video_prompt.
+    Pollinations só entra como último recurso em cenas não críticas.
+    """
+    localized_prompt = localize_search_query(prompt)
+    localized_description = localize_search_query(scene_description or prompt)
+
+    if image_url and replicate_is_configured() and product_name:
+        try:
+            generator = VideoGenerator(output_dir=scene_video.parent)
+            movement = get_best_movement(category or "")
+            result = generator.generate_i2v_ecommerce(
+                product_name=product_name,
+                image_url=image_url,
+                material=material,
+                movement=movement,
+                download=True,
+                upscale=True,
+            )
+            local_path = result.get("local_path")
+            if local_path and Path(local_path).exists():
+                src = Path(local_path)
+                if src.resolve() != scene_video.resolve():
+                    shutil.copy2(src, scene_video)
+
+                valid, reason = validate_video_file(scene_video, min_duration=2.0)
+                if not valid:
+                    print(f"  ⚠️ Vídeo I2V rejeitado ({reason})")
+                    if scene_video.exists():
+                        scene_video.unlink()
+                else:
+                    return True, "replicate_i2v"
+        except Exception as error:
+            print(f"  ⚠️ I2V e-commerce falhou: {error}")
+
+    if not image_url and _ai_video_configured():
+        if replicate_is_configured():
+            print(f"[Replicate] tentando T2V: {localized_prompt[:72]}")
+        else:
+            print(f"[VideoGenerator] tentando T2V via API configurada...")
+
+        try:
+            generator = VideoGenerator(output_dir=scene_video.parent)
+            result = generator.generate_youtube_scene(
+                scene_description=localized_description,
+                scene_query=localized_prompt,
+                scene_tipo=scene_tipo,
+                emotion=emotion,
+                visual_direction=visual_direction,
+                download=True,
+            )
+            local_path = result.get("local_path")
+            if local_path and Path(local_path).exists():
+                src = Path(local_path)
+                output_path = scene_video
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                if src.resolve() != output_path.resolve():
+                    shutil.copy2(src, output_path)
+
+                valid, reason = validate_video_file(output_path, min_duration=2.0)
+                if not valid:
+                    print(f"  ⚠️ Vídeo T2V rejeitado ({reason})")
+                    if output_path.exists():
+                        output_path.unlink()
+                else:
+                    try:
+                        upscaled = upscale_video_ffmpeg(str(output_path), scale=2)
+                        upscaled_path = Path(upscaled)
+                        if upscaled_path.exists() and upscaled_path != output_path:
+                            upscaled_path.replace(output_path)
+                    except Exception as error:
+                        print(f"  ⚠️ Upscale de vídeo ignorado: {error}")
+                    return True, result.get("api_used", "replicate")
+        except Exception as error:
+            print(f"  ⚠️ T2V documental falhou: {error}")
+
+        # Fallback completo (fal.ai → Replicate → Kling Web) com prompt enriquecido.
+        try:
+            prompt_bundle = build_scene_video_prompt(
+                scene_description=localized_description,
+                scene_query=localized_prompt,
+                platform=platform,
+                scene_tipo=scene_tipo,
+                emotion=emotion,
+                visual_direction=visual_direction,
+            )
+            generator = VideoGenerator(output_dir=scene_video.parent)
+            result = generator.generate(
+                prompt=prompt_bundle["prompt"],
+                download=True,
+            )
+            local_path = result.get("local_path")
+            if local_path and Path(local_path).exists():
+                src = Path(local_path)
+                if src.resolve() != scene_video.resolve():
+                    shutil.copy2(src, scene_video)
+                valid, reason = validate_video_file(scene_video, min_duration=2.0)
+                if valid:
+                    try:
+                        upscaled = upscale_video_ffmpeg(str(scene_video), scale=2)
+                        upscaled_path = Path(upscaled)
+                        if upscaled_path.exists() and upscaled_path != scene_video:
+                            upscaled_path.replace(scene_video)
+                    except Exception as upscale_error:
+                        print(f"  ⚠️ Upscale de vídeo ignorado: {upscale_error}")
+                    return True, result.get("api_used", "video_generator")
+                if scene_video.exists():
+                    scene_video.unlink()
+        except Exception as error:
+            print(f"  ⚠️ Fallback T2V (fal/Kling) falhou: {error}")
+
+        if not allow_pollinations and replicate_is_configured():
+            print("[Replicate] falhou — Pollinations bloqueado em cena crítica")
+
+    ai_prompt = f"{localized_prompt}, documentary cinematic footage"
+
+    if _ai_video_configured() and image_url:
+        try:
+            prompt_bundle = build_scene_video_prompt(
+                scene_description=localized_description,
+                scene_query=localized_prompt,
+                platform=platform,
+                scene_tipo=scene_tipo,
+                emotion=emotion,
+                visual_direction=visual_direction,
+            )
+            generator = VideoGenerator(output_dir=scene_video.parent)
+            result = generator.generate(
+                prompt=prompt_bundle["prompt"],
+                image_url=image_url,
+                product_name=product_name,
+                download=True,
+            )
+            local_path = result.get("local_path")
+            if local_path and Path(local_path).exists():
+                src = Path(local_path)
+                if src.resolve() != scene_video.resolve():
+                    shutil.copy2(src, scene_video)
+
+                valid, reason = validate_video_file(scene_video, min_duration=2.0)
+                if not valid:
+                    print(f"  ⚠️ Vídeo IA rejeitado ({reason})")
+                    if scene_video.exists():
+                        scene_video.unlink()
+                else:
+                    try:
+                        upscaled = upscale_video_ffmpeg(str(scene_video), scale=2)
+                        upscaled_path = Path(upscaled)
+                        if upscaled_path.exists() and upscaled_path != scene_video:
+                            upscaled_path.replace(scene_video)
+                    except Exception as error:
+                        print(f"  ⚠️ Upscale de vídeo ignorado: {error}")
+
+                    api_used = result.get("api_used", "video_generator")
+                    return True, api_used
+        except Exception as error:
+            print(f"  ⚠️ VideoGenerator falhou: {error}")
+
+    if not allow_pollinations:
+        print(f"  ⚠️ Pollinations bloqueado em cena crítica ({scene_tipo or 'unknown'})")
+        return False, "none"
+
+    print(f"[Pollinations] tentando vídeo (último recurso)...")
     generated = generate_pollinations_video(ai_prompt, scene_video)
     if not generated:
-        return False
+        return False, "none"
 
     valid, reason = validate_video_file(scene_video, min_duration=2.0)
     if not valid:
         print(f"  ⚠️ Vídeo IA rejeitado ({reason})")
         if scene_video.exists():
             scene_video.unlink()
-        return False
+        return False, "none"
 
-    return True
+    return True, "pollinations"
 
 
 def _resolve_scene_media(
@@ -519,13 +780,19 @@ def _resolve_scene_media(
     saved_assets: list[Path] | None = None,
     recent_selections: list | None = None,
     rejections: RejectionLog | None = None,
+    subject: dict | None = None,
 ) -> dict:
     """Resolve mídia para uma cena com fallback completo."""
 
     busca = query_item.get("busca", "")
     fallback = query_item.get("busca_fallback", "")
+    tematica = query_item.get("busca_tematica", "")
+    atmosfera = query_item.get("busca_atmosfera", "")
     tipo = query_item.get("tipo", "")
     preferir_imagem = query_item.get("preferir_imagem", False)
+    visual_direction = query_item.get("visual_direction")
+    critical_scene = is_critical_scene(tipo)
+    allow_pollinations = not critical_scene
 
     result = {
         "scene": scene_num,
@@ -538,15 +805,19 @@ def _resolve_scene_media(
         "saved": False,
         "quality_score": 0.0,
         "preferir_imagem": preferir_imagem,
+        "critical_scene": critical_scene,
     }
 
-    search_queries = _enrich_search_query(busca, tipo, fallback)
+    search_queries = _enrich_search_query(
+        busca, tipo, fallback, tematica=tematica, atmosfera=atmosfera
+    )
 
     media_by_query: dict[str, tuple[dict, str]] = {}
     for query in search_queries:
         media_by_query[query] = _search_all_providers(
             query,
             photos_only=preferir_imagem,
+            query_item=query_item,
         )
 
     stock_video_found = False
@@ -640,7 +911,54 @@ def _resolve_scene_media(
                 print(f"🖼️ Cena {scene_num} ({tipo}): imagem stock — {source}")
                 return result
 
-    ai_saved, ai_provider = _try_ai_image(busca, scene_image, allow_upscale=True)
+    # Stock falhou — Replicate T2V antes de Pollinations (mesmo com preferir_imagem).
+    if not stock_video_found and not result.get("saved"):
+        print(
+            f"  ⚠️ Cena {scene_num}: stock sem mídia adequada — "
+            f"acionando Replicate T2V"
+        )
+        image_url = None
+        product_name = None
+        category = None
+        material = None
+        if subject:
+            image_url = subject.get("image_url") or subject.get("imagem_url")
+            product_name = subject.get("nome") or subject.get("name")
+            category = subject.get("categoria") or subject.get("category")
+            material = subject.get("material")
+
+        platform = (subject or {}).get("_output_platform", "youtube_dark")
+        ai_video_saved, ai_video_provider = _try_ai_video(
+            busca,
+            scene_video,
+            image_url=image_url,
+            product_name=product_name,
+            category=category,
+            material=material,
+            scene_description=query_item.get("visual_goal", busca),
+            scene_tipo=tipo,
+            emotion=query_item.get("emotion", ""),
+            platform=platform,
+            visual_direction=visual_direction,
+            allow_pollinations=allow_pollinations,
+        )
+        if ai_video_saved:
+            result.update({
+                "saved": True,
+                "media_type": "ai_video",
+                "source": f"{ai_video_provider}:video",
+                "provedor": ai_video_provider,
+            })
+            label = ai_video_provider if ai_video_provider != "pollinations" else "Pollinations"
+            print(f"🤖 Cena {scene_num} ({tipo}): vídeo {label}")
+            return result
+
+    ai_saved, ai_provider = _try_ai_image(
+        busca,
+        scene_image,
+        allow_upscale=True,
+        allow_pollinations=allow_pollinations,
+    )
     if ai_saved:
         result.update({
             "saved": True,
@@ -652,13 +970,12 @@ def _resolve_scene_media(
         print(f"🤖 Cena {scene_num} ({tipo}): imagem {label}")
         return result
 
-    if not preferir_imagem and _try_ai_video(busca, scene_video):
-        result.update({"saved": True, "media_type": "ai_video", "source": "pollinations:video", "provedor": "pollinations"})
-        print(f"🤖 Cena {scene_num} ({tipo}): vídeo Pollinations")
-        return result
-
     ai_retry_saved, ai_retry_provider = _try_ai_image(
-        f"{busca}, {tipo}", scene_image, ", atmospheric wide shot", allow_upscale=True
+        f"{busca}, {tipo}",
+        scene_image,
+        ", atmospheric wide shot",
+        allow_upscale=True,
+        allow_pollinations=allow_pollinations,
     )
     if ai_retry_saved:
         result.update({
@@ -670,7 +987,12 @@ def _resolve_scene_media(
         print(f"🤖 Cena {scene_num} ({tipo}): imagem IA (retry)")
         return result
 
-    if _generate_placeholder_image(busca, scene_image, scene_num):
+    if _generate_placeholder_image(
+        busca,
+        scene_image,
+        scene_num,
+        allow_pollinations=allow_pollinations,
+    ):
         result.update({
             "saved": True,
             "media_type": "placeholder",
@@ -716,6 +1038,7 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
             saved_assets=saved_assets,
             recent_selections=recent_selections[-2:],
             rejections=rejections,
+            subject=subject,
         )
 
         # Assinatura de diversidade é transiente: alimenta o histórico e é

@@ -28,6 +28,32 @@ TRANSITION_SECONDS = 0.4
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?…])\s+")
 
+# Movimentos de câmera (do vocabulário já suportado pelo scene_renderer)
+# usados para alternar o Ken Burns entre subcenas que compartilham a mesma
+# imagem — evita a sensação de slide estático em seções longas divididas.
+_SPLIT_MOTION_CYCLE = [
+    "zoom_in_center",
+    "pan_right",
+    "zoom_out_center",
+    "pan_left",
+    "drift_up",
+    "parallax_right",
+]
+
+
+def _vary_split_motion(base_motion: str, part_idx: int) -> str:
+    """
+    Alterna o movimento entre subcenas da mesma imagem.
+    A primeira subcena mantém o movimento original da cena; as seguintes
+    rotacionam por movimentos distintos para dar dinamismo sem nova mídia.
+    """
+
+    if part_idx == 0:
+        return base_motion
+
+    alternatives = [m for m in _SPLIT_MOTION_CYCLE if m != base_motion]
+    return alternatives[(part_idx - 1) % len(alternatives)]
+
 
 def extract_scenes(cenas_data) -> list:
     """Normaliza estrutura de cenas do pipeline."""
@@ -186,6 +212,12 @@ def split_long_scenes(
             new_scene["media_index"] = scene.get("media_index", index)
             new_scene["split_part"] = part_idx + 1
             new_scene["split_total"] = parts
+
+            # A mesma imagem é reutilizada nas subcenas; variar o movimento
+            # evita que ela pareça um slide parado por dezenas de segundos.
+            base_motion = scene.get("scene_motion") or scene.get("camera_motion", "")
+            if base_motion:
+                new_scene["scene_motion"] = _vary_split_motion(base_motion, part_idx)
             if parts > 1:
                 base_tipo = scene.get("tipo", "")
                 new_scene["tipo"] = f"{base_tipo}_p{part_idx + 1}" if part_idx else base_tipo

@@ -5,13 +5,17 @@ Evita reprocessar temas já gerados ou publicados,
 mantendo o cache válido apenas para o mesmo tema.
 """
 
+import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from scripts.core.platform_config import YOUTUBE_DARK
 from scripts.metrics.metrics_tracker import get_processed_subject_names
 from scripts.utils.slug import slugify, content_output_dir
-from scripts.youtube.topic_scorer import calculate_topic_score, rank_topics
+from scripts.youtube.topic_scorer import calculate_topic_score
+
+SCORE_JITTER = 0.05
+SIMILAR_SCORE_THRESHOLD = 10
 
 PROCESSED_STATUSES = {
     "produced",
@@ -35,6 +39,61 @@ def _topic_slug(topic: Dict[str, Any], platform: str) -> str:
         topic,
         platform=platform,
     ).name
+
+
+def _topic_title(topic: Dict[str, Any]) -> str:
+    return str(topic.get("nome") or topic.get("titulo") or "")
+
+
+def _score_with_jitter(base_score: float) -> float:
+    return base_score * (
+        1.0 + random.uniform(-SCORE_JITTER, SCORE_JITTER)
+    )
+
+
+def _pick_diverse_topics(
+    ranked: List[Dict[str, Any]],
+    max_videos: int,
+) -> List[Dict[str, Any]]:
+    """
+    Escolhe temas com diversidade: jitter no score e sorteio entre
+    candidatos com pontuação similar (top-3 quando diferença < 10 pts).
+    """
+
+    selected: List[Dict[str, Any]] = []
+    remaining = list(ranked)
+
+    while len(selected) < max_videos and remaining:
+        top_n = min(3, len(remaining))
+        top_score = remaining[0]["score"]
+
+        similar = [
+            item
+            for item in remaining[:top_n]
+            if top_score - item["score"] < SIMILAR_SCORE_THRESHOLD
+        ]
+
+        if len(similar) > 1:
+            chosen = random.choice(similar)
+            candidates_sorted = similar
+        else:
+            chosen = remaining[0]
+            candidates_sorted = remaining[:top_n]
+
+        print(
+            f"🎲 Temas candidatos: "
+            f"{[_topic_title(item['produto']) for item in candidates_sorted]}"
+        )
+        print(
+            f"✅ Tema selecionado: {_topic_title(chosen['produto'])}"
+        )
+
+        selected.append(chosen["produto"])
+        remaining = [
+            item for item in remaining if item is not chosen
+        ]
+
+    return selected
 
 
 def _output_dir_has_artifacts(path: Path) -> bool:
@@ -190,17 +249,21 @@ def select_next_topics(
     for topic in available:
         topic["_output_platform"] = platform
 
+        base_score = calculate_topic_score(topic)
+
         scored.append({
             "produto": topic,
-            "score": calculate_topic_score(topic),
+            "score": base_score,
+            "score_jittered": _score_with_jitter(base_score),
         })
 
-    ranked = rank_topics(scored)
+    ranked = sorted(
+        scored,
+        key=lambda item: item["score_jittered"],
+        reverse=True,
+    )
 
-    selected = [
-        item["produto"]
-        for item in ranked[:max_videos]
-    ]
+    selected = _pick_diverse_topics(ranked, max_videos)
 
     print(
         f"✅ {len(selected)} tema(s) novo(s) selecionado(s) "

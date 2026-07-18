@@ -356,8 +356,15 @@ def _upload_thumbnail(
         print("🖼️ Thumbnail enviada.")
 
     except Exception as error:
-        _log("THUMBNAIL", f"FALHA — {error}")
-        print(f"⚠️ Erro ao enviar thumbnail: {error}")
+        error_text = str(error)
+        _log("THUMBNAIL", f"FALHA — {error_text}")
+        if "403" in error_text or "Forbidden" in error_text:
+            print(
+                "⚠️ Thumbnail não enviada — "
+                "verifique o canal em youtube.com/verify"
+            )
+        else:
+            print(f"⚠️ Erro ao enviar thumbnail: {error}")
 
 
 def upload_from_folder(

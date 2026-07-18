@@ -132,6 +132,23 @@ Certifique-se de autorizar com a conta Google que possui o canal YouTube.
 pip install google-api-python-client google-auth-oauthlib
 ```
 
+## Thumbnails customizados
+
+Para habilitar thumbnails customizados, o canal precisa ser verificado no YouTube:
+
+1. Acesse [youtube.com/verify](https://www.youtube.com/verify)
+2. Verifique o número de telefone da conta
+3. Aguarde até 24 horas
+4. Thumbnails customizados são liberados automaticamente após a verificação
+
+Enquanto o canal não estiver verificado, o upload de vídeo continua normalmente, mas a API retorna **403 Forbidden** ao enviar a thumbnail. O pipeline captura esse erro silenciosamente e registra no log:
+
+```
+⚠️ Thumbnail não enviada — verifique o canal em youtube.com/verify
+```
+
+A thumbnail gerada localmente (`thumbnail.jpg`) permanece disponível na pasta de output para upload manual via YouTube Studio.
+
 ## Escopos OAuth utilizados
 
 - `youtube.upload` — publicação de vídeos e thumbnails

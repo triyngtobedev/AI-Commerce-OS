@@ -27,7 +27,7 @@ from scripts.video.subtitle_generator import get_subtitle_ffmpeg_filter
 from scripts.youtube.brand_overlay import lower_third_filter
 
 
-MAX_AV_SYNC_DELTA = 1.0
+MAX_AV_SYNC_DELTA = 0.5
 
 
 class RenderSyncError(RuntimeError):
@@ -61,22 +61,48 @@ def _validate_scene_coverage(scenes: list, clip_count: int) -> None:
         )
 
 
+def compute_expected_video_duration(
+    platform: str,
+    scenes: list,
+    *,
+    synced: bool = True,
+    narration_duration: float | None = None,
+) -> float:
+    """
+    Duração alvo do trilho de vídeo: intro + cenas sincronizadas + outro.
+
+    Deve coincidir com a duração do áudio de narração na porção central
+    (intro/outro são padding visual de marca).
+    """
+
+    intro = 0.0
+    outro = 0.0
+    if should_show_intro(platform):
+        intro = get_render_style(platform).intro_seconds
+    if should_show_outro(platform):
+        outro = get_render_style(platform).outro_seconds
+
+    if narration_duration is not None and narration_duration > 0:
+        content = narration_duration
+    else:
+        content = sum(_scene_duration(scene, synced) for scene in scenes)
+
+    return intro + content + outro
+
+
 def validate_av_sync(
     video_path: Path,
     audio_path: Path | None,
     *,
     audio_offset: float = 0.0,
+    outro_seconds: float = 0.0,
     max_delta: float = MAX_AV_SYNC_DELTA,
-    max_tail: float = 12.0,
 ) -> float:
     """
-    Valida a sincronia entre vídeo e narração.
+    Valida sincronia entre vídeo final e narração.
 
-    A narração ocupa [audio_offset, audio_offset + audio_duration] no vídeo
-    final (audio_offset = duração da intro). O vídeo pode ser mais longo por
-    conta do cartão de encerramento, mas não pode terminar antes da narração
-    (drift negativo) nem ser muito mais longo que ela (drift positivo).
-    Retorna a diferença entre o fim do vídeo e o fim da narração.
+    O vídeo deve terminar em audio_offset + audio_duration + outro_seconds
+    (intro antes da narração, outro depois). Retorna o delta absoluto.
     """
 
     video_duration = probe_duration(video_path)
@@ -86,6 +112,8 @@ def validate_av_sync(
         return 0.0
 
     narration_end = audio_offset + audio_duration
+    expected_video = narration_end + outro_seconds
+    delta = abs(video_duration - expected_video)
 
     if video_duration + max_delta < narration_end:
         raise RenderSyncError(
@@ -93,14 +121,15 @@ def validate_av_sync(
             f"fim da narração={narration_end:.2f}s (offset={audio_offset:.2f}s)"
         )
 
-    if video_duration > narration_end + max_tail:
+    if delta > max_delta:
         raise RenderSyncError(
-            f"Vídeo muito mais longo que a narração (possível dessincronia): "
-            f"vídeo={video_duration:.2f}s vs narração_fim={narration_end:.2f}s "
-            f"(tail máx {max_tail:.1f}s)"
+            f"Dessincronia áudio/vídeo: vídeo={video_duration:.2f}s, "
+            f"esperado={expected_video:.2f}s "
+            f"(offset={audio_offset:.2f}s + áudio={audio_duration:.2f}s + "
+            f"outro={outro_seconds:.2f}s), delta={delta:.2f}s"
         )
 
-    return abs(video_duration - narration_end)
+    return delta
 
 
 def _fade_filter(duration: float, fade: float) -> str:
@@ -220,50 +249,63 @@ def _video_motion_filter(
     scene_index: int,
     motion: str = "pan_left",
 ) -> str:
-    """Pan/zoom/parallax em vídeos — movimento constante, nunca estático."""
+    """Pan/zoom/parallax em vídeos — movimento constante, nunca estático.
 
+    Seguro para qualquer resolução de entrada: normaliza primeiro para
+    `width x height` antes de aplicar o crop dinâmico.
+    """
+
+    safe_duration = max(duration, 1.0)
+
+    # Normaliza o vídeo de entrada para o tamanho-alvo com overscale de 1.18
+    # ANTES de qualquer crop — garante que iw/ih sejam sempre maiores que width/height
     overscale = 1.18
     sw = int(width * overscale)
     sh = int(height * overscale)
-    safe_duration = max(duration, 1.0)
+    normalize = (
+        f"scale={sw}:{sh}:force_original_aspect_ratio=increase,"
+        f"crop={sw}:{sh}"
+    )
+
+    # Offsets de crop dentro do frame já normalizado (sw x sh)
+    # iw={sw}, ih={sh} agora — sempre maiores que width/height
+    dx = sw - width   # pixels disponíveis horizontalmente
+    dy = sh - height  # pixels disponíveis verticalmente
 
     if motion in ("pan_left", "zoom_in_center", "parallax_left"):
         crop = (
             f"crop={width}:{height}:"
-            f"'(iw-{width})*t/{safe_duration}':"
-            f"'(ih-{height})*(0.35+0.3*t/{safe_duration})'"
+            f"'{dx}*t/{safe_duration}':"
+            f"'{dy}*(0.35+0.3*t/{safe_duration})'"
         )
     elif motion in ("pan_right", "zoom_out_center", "parallax_right"):
         crop = (
             f"crop={width}:{height}:"
-            f"'(iw-{width})*(1-t/{safe_duration})':"
-            f"'(ih-{height})*(0.65-0.3*t/{safe_duration})'"
+            f"'{dx}*(1-t/{safe_duration})':"
+            f"'{dy}*(0.65-0.3*t/{safe_duration})'"
         )
     elif motion in ("drift_up",):
         crop = (
             f"crop={width}:{height}:"
-            f"'(iw-{width})/2':'(ih-{height})*(1-t/{safe_duration})'"
+            f"'{dx}/2':"
+            f"'{dy}*(1-t/{safe_duration})'"
         )
     elif motion in ("drift_down",):
         crop = (
             f"crop={width}:{height}:"
-            f"'(iw-{width})/2':'(ih-{height})*t/{safe_duration}'"
+            f"'{dx}/2':"
+            f"'{dy}*t/{safe_duration}'"
         )
     else:
         motions = [
-            f"crop={width}:{height}:'(iw-{width})*t/{safe_duration}':'(ih-{height})*(0.35+0.3*t/{safe_duration})'",
-            f"crop={width}:{height}:'(iw-{width})*(1-t/{safe_duration})':'(ih-{height})*(0.65-0.3*t/{safe_duration})'",
-            f"crop={width}:{height}:'(iw-{width})/2':'(ih-{height})*t/{safe_duration}'",
-            f"crop={width}:{height}:'(iw-{width})/2':'(ih-{height})*(1-t/{safe_duration})'",
+            f"crop={width}:{height}:'{dx}*t/{safe_duration}':'{dy}*(0.35+0.3*t/{safe_duration})'",
+            f"crop={width}:{height}:'{dx}*(1-t/{safe_duration})':'{dy}*(0.65-0.3*t/{safe_duration})'",
+            f"crop={width}:{height}:'{dx}/2':'{dy}*t/{safe_duration}'",
+            f"crop={width}:{height}:'{dx}/2':'{dy}*(1-t/{safe_duration})'",
         ]
         crop = motions[scene_index % len(motions)]
 
-    return (
-        f"scale={sw}:{sh}:force_original_aspect_ratio=increase,"
-        f"crop={sw}:{sh},"
-        f"{crop},"
-        "setsar=1,fps=30"
-    )
+    return f"{normalize},{crop},setsar=1,fps=30"
 
 
 def _cinematic_grade(render_style) -> str:
@@ -309,6 +351,29 @@ def _render_card_clip(
         return output_path.exists()
     except subprocess.CalledProcessError:
         return False
+
+
+def _video_needs_upscale(media_path: Path, target_width: int, target_height: int) -> bool:
+    """Retorna True se o vídeo é menor que o target em qualquer dimensão."""
+    import json
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=width,height",
+                "-of", "json",
+                str(media_path),
+            ],
+            capture_output=True, text=True, timeout=10,
+        )
+        data = json.loads(result.stdout)
+        stream = (data.get("streams") or [{}])[0]
+        w = stream.get("width", 0)
+        h = stream.get("height", 0)
+        return (w > 0 and w < target_width) or (h > 0 and h < target_height)
+    except Exception:
+        return False  # seguro: assume que não precisa
 
 
 def render_scene_clip(
@@ -378,6 +443,12 @@ def render_scene_clip(
 
     else:
         source_duration = probe_duration(media_path)
+
+        # Verifica se o vídeo precisa de pre-upscale antes do motion filter
+        # Vídeos do Replicate chegam em 1024x576 — precisam ser escalados
+        # para pelo menos o target antes das expressões de crop dinâmico
+        _source_needs_upscale = _video_needs_upscale(media_path, width, height)
+
         needs_loop = source_duration > 0 and source_duration < duration - 0.5
 
         base_vf = _video_motion_filter(width, height, duration, scene_index, motion)
@@ -415,7 +486,15 @@ def render_scene_clip(
 
     except subprocess.CalledProcessError as error:
         stderr = error.stderr.decode("utf-8", errors="replace") if error.stderr else ""
-        print(f"❌ Erro renderizando cena ({media_path.name}): {stderr[:200]}")
+        print(f"❌ Erro renderizando cena ({media_path.name}):")
+        if stderr:
+            # Imprime as últimas 800 chars — onde o erro real aparece
+            print(stderr[-800:])
+        else:
+            print(f"  código de saída: {error.returncode}")
+        # Loga comando completo para debug
+        safe_cmd = " ".join(str(c) for c in cmd)
+        print(f"  CMD: {safe_cmd[:400]}")
         return False
 
 
@@ -586,6 +665,27 @@ def _concat_with_variable_crossfade(
     return _run_ffmpeg(cmd, context="crossfade variável", output_path=output_path)
 
 
+def _trim_video_duration(
+    input_path: Path,
+    output_path: Path,
+    duration: float,
+) -> bool:
+    """Recorta trilho de vídeo para duração exata (corrige drift de xfade/fps)."""
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(input_path.resolve()),
+        "-t", f"{duration:.3f}",
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "21",
+        "-pix_fmt", "yuv420p",
+        "-an",
+        str(output_path),
+    ]
+    return _run_ffmpeg(cmd, context="trim duração", output_path=output_path)
+
+
 def render_scenes_video(
     result: dict,
     width: int,
@@ -685,9 +785,11 @@ def render_scenes_video(
         outro_card = temp_dir / "outro_card.jpg"
         outro_clip = temp_dir / "outro.mp4"
         if kit.render_outro_card(outro_card, topic=topic):
+            # Outro é o último clip — sem transição xfade depois dele,
+            # portanto não recebe compensação de crossfade.
             if _render_card_clip(
                 outro_card,
-                config.render.outro_seconds + kit.crossfade_for_scene("encerramento"),
+                config.render.outro_seconds,
                 outro_clip,
                 width,
                 height,
@@ -712,6 +814,19 @@ def render_scenes_video(
         height=height,
     ):
         return None
+
+    narration_duration = float(cenas_meta.get("audio_duration") or 0)
+    expected = compute_expected_video_duration(
+        platform,
+        scenes,
+        synced=synced,
+        narration_duration=narration_duration if narration_duration > 0 else None,
+    )
+    actual = probe_duration(video_only)
+    if expected > 0 and abs(actual - expected) > 0.05:
+        trimmed = temp_dir / "video_track_trimmed.mp4"
+        if _trim_video_duration(video_only, trimmed, expected):
+            video_only = trimmed
 
     return video_only
 
@@ -750,14 +865,16 @@ def mux_video_audio_subtitles(
     has_audio = audio_path and audio_path.exists() and audio_path.stat().st_size > 0
     has_soundtrack = soundtrack_path and soundtrack_path.exists() and soundtrack_path.stat().st_size > 0
     audio_delay = _audio_delay(platform) if has_audio else 0.0
+    outro_seconds = (
+        render_style.outro_seconds if should_show_outro(platform) else 0.0
+    )
     closing = render_style.closing_fade_seconds
     fade_start = 0.0
 
-    # A narração começa após a intro (audio_delay) e o vídeo cobre
-    # intro + cenas + outro. O alvo abrange o vídeo inteiro para nunca
-    # truncar a narração nem congelar o último frame com tpad/clone.
     if has_audio and audio_duration > 0:
-        target_duration = max(video_duration, audio_delay + audio_duration)
+        target_duration = audio_delay + audio_duration + outro_seconds
+        if video_duration > target_duration + 0.05:
+            target_duration = video_duration
     else:
         target_duration = video_duration
 
@@ -853,7 +970,12 @@ def mux_video_audio_subtitles(
             return False
 
         if has_audio:
-            validate_av_sync(output_path, audio_path, audio_offset=audio_delay)
+            validate_av_sync(
+                output_path,
+                audio_path,
+                audio_offset=audio_delay,
+                outro_seconds=outro_seconds,
+            )
 
         return True
 

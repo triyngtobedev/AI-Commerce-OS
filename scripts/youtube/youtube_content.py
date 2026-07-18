@@ -61,29 +61,22 @@ def generate_youtube_content(
     )
 
     gancho = strategy.get("gancho", "")
+    hook_summary = (script.get("hook", "") or gancho)[:300]
+    keywords = topic.get("keywords", [])
+    angulo = strategy.get("angulo", "")
+    publico = analysis.get("publico_alvo", "") if isinstance(analysis, dict) else ""
 
     full_prompt = f"""
 TASK: YOUTUBE_CONTENT_GENERATION
 
 {prompt}
 
-## Gancho da estratégia (use no título e thumbnail)
-"{gancho}"
-
-Tema:
-{topic}
-
-Análise:
-{analysis}
-
-Oportunidade:
-{opportunity}
-
-Roteiro (referência — NÃO reescreva como narração):
-{script}
-
-Estratégia:
-{strategy}
+Tema: {topic_name}
+Resumo em 3 linhas: {hook_summary}
+Gancho (título/thumbnail): "{gancho}"
+Ângulo: {angulo}
+Público-alvo: {publico}
+Keywords: {", ".join(keywords) if keywords else "história, documentário"}
 """
 
 

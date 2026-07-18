@@ -16,8 +16,19 @@ from scripts.youtube.narration_utils import (
     stitch_script_to_narration,
     clean_script_phrases,
     detect_banned_phrases,
+    estimate_duration_seconds,
     MIN_NARRATION_WORDS,
+    WORDS_PER_MINUTE,
 )
+
+WORDS_PER_SECTION_EXPANSION = 200
+
+SECTIONS_TO_EXPAND = [
+    "desenvolvimento",
+    "contexto",
+    "revelacao",
+    "consequencias",
+]
 from scripts.utils.prompt_loader import load_prompt
 from scripts.utils.json_parser import parse_json
 from scripts.utils.ai_cache import load_cache, save_cache
@@ -82,8 +93,20 @@ TASK: YOUTUBE_SCRIPT_GENERATION
 ## Parâmetros de produção
 - Duração alvo: {duracao} ({YOUTUBE_DARK.target_duration_seconds} segundos)
 - Mínimo de palavras: {MIN_NARRATION_WORDS}
+- Meta de palavras: entre 1600 e 1800 palavras no total
 - Tom de narração: {tom}
 - Ângulo criativo: {angulo_label}
+
+## Metas por seção (OBRIGATÓRIO)
+- hook: 50-80 palavras
+- contexto: 200-250 palavras
+- desenvolvimento: 500-700 palavras (mínimo 200-250 por parágrafo narrativo)
+- revelacao: 200-250 palavras
+- consequencias: 200-250 palavras
+- encerramento: 60-100 palavras
+
+IMPORTANTE: o roteiro DEVE ter entre 1600 e 1800 palavras no total.
+Seções de desenvolvimento precisam de 200-250 palavras cada — NÃO resuma.
 
 ## Gancho obrigatório (use como base do hook)
 "{gancho}"
@@ -104,7 +127,7 @@ Estratégia completa:
 
     response = ask_ai(
         full_prompt,
-        "script",
+        "script_generation",
     )
 
 
@@ -130,12 +153,31 @@ Estratégia completa:
     for warning in validate_narration(narration):
         print(f"⚠️ Roteiro: {warning}")
 
-    if count_words(narration) < MIN_NARRATION_WORDS:
-        script = _expand_script_if_short(
-            script, topic, strategy, full_prompt, narration
+    target_seconds = YOUTUBE_DARK.target_duration_seconds
+    estimated_duration = estimate_duration_seconds(narration)
+
+    if estimated_duration < target_seconds:
+        target_words = int((target_seconds / 60) * WORDS_PER_MINUTE)
+        print(
+            f"📝 Roteiro curto: {estimated_duration}s "
+            f"(alvo: {target_seconds}s) — expandindo..."
         )
+        try:
+            script = expand_script_in_sections(
+                script, topic, strategy, target_words
+            )
+        except Exception as e:
+            print(
+                f"⚠️ Expansão falhou ({e}) — continuando com roteiro atual"
+            )
         narration = stitch_script_to_narration(script)
         word_count = count_words(narration)
+        estimated_duration = estimate_duration_seconds(narration)
+    else:
+        print(
+            f"✅ Roteiro atinge duração alvo: {estimated_duration}s "
+            f"(alvo: {target_seconds}s) — sem expansão"
+        )
 
     script = enrich_script_with_emotions(script)
 
@@ -165,11 +207,14 @@ Estratégia completa:
     return directed_script
 
 
-def _rewrite_banned_script(script, topic, strategy, original_prompt, banned):
+def _rewrite_banned_script(script, topic, strategy, _original_prompt, banned):
     """Reescreve seções com frases genéricas via IA."""
 
+    tom = strategy.get("tom_narracao", YOUTUBE_DARK.narration_style)
+    topic_name = topic.get("nome", "")
+
     rewrite_prompt = f"""
-{original_prompt}
+TASK: REWRITE_SCRIPT_BANNED_PHRASES
 
 O roteiro abaixo contém frases GENÉRICAS PROIBIDAS que prejudicam retenção:
 {banned}
@@ -181,13 +226,16 @@ REESCREVA o JSON completo eliminando:
 - CTAs robóticos
 - Encerramentos artificiais
 
+Tom: {tom}
+Tema: {topic_name}
+
 Mantenha fatos, datas e tensão narrativa. Hook deve prender em 5 segundos.
 
 Roteiro atual:
 {script}
 """
 
-    response = ask_ai(rewrite_prompt, "script")
+    response = ask_ai(rewrite_prompt, "script_rewrite")
     rewritten = parse_json(response)
 
     if isinstance(rewritten, dict):
@@ -196,36 +244,91 @@ Roteiro atual:
     return script
 
 
-def _expand_script_if_short(script, topic, strategy, original_prompt, narration):
-    """
-    Solicita expansão do roteiro quando abaixo do mínimo de palavras.
-    """
+def expand_single_section(
+    section_key,
+    section_text,
+    topic,
+    strategy,
+    additional_words=WORDS_PER_SECTION_EXPANSION,
+):
+    """Expande uma única seção do roteiro com prompt curto (menor contexto)."""
 
-    current_words = count_words(narration)
-    needed = MIN_NARRATION_WORDS - current_words
+    topic_name = topic.get("nome", "")
+    tom = strategy.get("tom_narracao", YOUTUBE_DARK.narration_style)
 
-    print(
-        f"📝 Expandindo roteiro (+{needed} palavras necessárias)..."
-    )
+    prompt = f"""
+TASK: EXPAND_SCRIPT_SECTION
 
-    expand_prompt = f"""
-{original_prompt}
+Expanda APENAS a seção "{section_key}" do roteiro documentário sobre "{topic_name}".
+Adicione aproximadamente {additional_words} palavras de conteúdo narrativo.
+Tom: {tom}
+NÃO resuma — adicione detalhes, tensão e curiosidade.
 
-O roteiro abaixo tem apenas {current_words} palavras.
-EXPANDA para pelo menos {MIN_NARRATION_WORDS} palavras mantendo o JSON.
-Adicione detalhes narrativos, tensão e curiosidade — NÃO resuma.
+Retorne SOMENTE JSON válido:
+{{"{section_key}": "texto expandido da seção"}}
 
-Roteiro atual:
-{script}
+Texto atual ({section_key}):
+{section_text}
 """
 
-    response = ask_ai(expand_prompt, "script")
-    expanded = parse_json(response)
+    response = ask_ai(prompt, "script_expansion")
+    parsed = parse_json(response)
 
-    if isinstance(expanded, dict) and count_words(
-        stitch_script_to_narration(expanded)
-    ) > current_words:
-        return expanded
+    if isinstance(parsed, dict) and parsed.get(section_key):
+        return parsed[section_key]
+
+    return section_text
+
+
+def expand_script_in_sections(script, topic, strategy, target_words):
+    """
+    Expande o roteiro seção por seção em vez de uma única chamada grande.
+    Cada iteração adiciona ~150-200 palavras a uma seção específica.
+    """
+
+    script = dict(script)
+    current_words = count_words(stitch_script_to_narration(script))
+    needed = target_words - current_words
+
+    print(
+        f"📝 Expandindo roteiro por seções (+{needed} palavras necessárias)..."
+    )
+
+    while count_words(stitch_script_to_narration(script)) < target_words:
+        made_progress = False
+
+        for section in SECTIONS_TO_EXPAND:
+            total = count_words(stitch_script_to_narration(script))
+            if total >= target_words:
+                break
+
+            words_to_add = min(WORDS_PER_SECTION_EXPANSION, target_words - total)
+
+            print(
+                f"📝 Expandindo seção '{section}' (+~{words_to_add} palavras)..."
+            )
+
+            old_text = script.get(section) or ""
+
+            try:
+                new_text = expand_single_section(
+                    section,
+                    old_text,
+                    topic,
+                    strategy,
+                    words_to_add,
+                )
+            except Exception as e:
+                print(f"⚠️ Falha ao expandir '{section}': {e}")
+                continue
+
+            if count_words(new_text) > count_words(old_text):
+                script[section] = new_text
+                made_progress = True
+
+        if not made_progress:
+            print("⚠️ Expansão por seções estagnou — usando roteiro parcial")
+            break
 
     return script
 

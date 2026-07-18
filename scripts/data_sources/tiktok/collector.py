@@ -39,6 +39,24 @@ def collect_products():
     return products
 
 
+def get_product_by_id(product_id: str) -> dict | None:
+    """Retorna produto do catálogo pelo ``product_id``."""
+    for product in collect_products():
+        if product.get("product_id") == product_id:
+            return product
+    return None
+
+
+def list_catalog_products(*, limit: int | None = None, require_image: bool = True) -> list[dict]:
+    """Lista produtos do catálogo, opcionalmente filtrando por ``image_url``."""
+    products = collect_products()
+    if require_image:
+        products = [p for p in products if p.get("image_url")]
+    if limit is not None:
+        products = products[:limit]
+    return products
+
+
 
 if __name__ == "__main__":
 

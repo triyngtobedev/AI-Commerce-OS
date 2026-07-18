@@ -1,0 +1,390 @@
+{
+  "name": "01 — Pipeline Trigger (Schedule → FastAPI)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300],
+      "notes": "Dispara a cada 6 horas. Ajuste o intervalo conforme necessidade de produção."
+    },
+    {
+      "parameters": {
+        "content": "## Etapa 1 — Trigger periódico\n\nEste workflow é o **alimentador** do sistema.\n\nA cada 6h (configurável), aciona o pipeline Python via FastAPI.\n\nConfigure credencial **Pipeline API Key** no nó HTTP Request.",
+        "height": 200,
+        "width": 380
+      },
+      "id": "sticky-note-1",
+      "name": "Nota — Trigger",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PIPELINE_API_BASE_URL }}/api/v1/pipeline/run",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"platform\": \"youtube_dark\",\n  \"production\": true,\n  \"research\": true,\n  \"upload\": false,\n  \"max_videos\": 1,\n  \"language\": \"pt-BR\",\n  \"metadata\": {\n    \"triggered_by\": \"n8n_schedule\",\n    \"workflow\": \"01_pipeline_trigger\"\n  }\n}",
+        "options": {}
+      },
+      "id": "http-run-pipeline",
+      "name": "POST Pipeline Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PIPELINE_API_CREDENTIAL_ID",
+          "name": "Pipeline API Key"
+        }
+      },
+      "notes": "Envia POST para /api/v1/pipeline/run. Retorna job_id imediatamente (status: queued)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-job-id",
+              "leftValue": "={{ $json.job_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-job-id",
+      "name": "IF job_id OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 300],
+      "notes": "Verifica se a API retornou job_id com sucesso antes de iniciar polling."
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-30s",
+      "name": "Wait 30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [960, 220],
+      "notes": "Aguarda 30s antes do primeiro poll — pipeline precisa de tempo para iniciar."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.PIPELINE_API_BASE_URL }}/api/v1/pipeline/status/{{ $('POST Pipeline Run').item.json.job_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "http-poll-status",
+      "name": "GET Pipeline Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 220],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PIPELINE_API_CREDENTIAL_ID",
+          "name": "Pipeline API Key"
+        }
+      },
+      "notes": "Polling do status do job. Repita enquanto status for queued ou running."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-completed",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-completed",
+      "name": "IF completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1440, 220],
+      "notes": "Se completed → notifica sucesso. Se running/queued → volta ao Wait."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-failed",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "failed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-failed",
+      "name": "IF failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1440, 420],
+      "notes": "Se failed → notifica erro com error_message."
+    },
+    {
+      "parameters": {
+        "amount": 60,
+        "unit": "seconds"
+      },
+      "id": "wait-poll-loop",
+      "name": "Wait 60s (poll loop)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1680, 340],
+      "notes": "Loop de polling — aguarda 60s e consulta status novamente."
+    },
+    {
+      "parameters": {
+        "content": "## Notificação (opcional)\n\nConfigure credencial Slack ou Telegram.\nPlaceholder — substitua pelo nó de notificação desejado.",
+        "height": 160,
+        "width": 320
+      },
+      "id": "sticky-note-notify",
+      "name": "Nota — Notificação",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1660, 60]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "C0000000000"
+        },
+        "text": "=✅ Pipeline concluído!\n\nJob ID: {{ $('POST Pipeline Run').item.json.job_id }}\nOutput: {{ $json.output_path }}\nStatus: {{ $json.status }}",
+        "otherOptions": {}
+      },
+      "id": "slack-success",
+      "name": "Slack — Sucesso (opcional)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1680, 120],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "SLACK_CREDENTIAL_ID",
+          "name": "Slack OAuth2"
+        }
+      },
+      "notes": "PLACEHOLDER — configure credencial Slack ou substitua por Telegram/Email."
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "C0000000000"
+        },
+        "text": "=❌ Pipeline falhou!\n\nJob ID: {{ $('POST Pipeline Run').item.json.job_id }}\nErro: {{ $json.error_message }}\nStatus: {{ $json.status }}",
+        "otherOptions": {}
+      },
+      "id": "slack-error",
+      "name": "Slack — Erro (opcional)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1680, 520],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "SLACK_CREDENTIAL_ID",
+          "name": "Slack OAuth2"
+        }
+      },
+      "notes": "PLACEHOLDER — notificação de falha."
+    },
+    {
+      "parameters": {
+        "content": "## Erro no POST\n\njob_id não retornado — verifique API Key, URL da FastAPI e logs.",
+        "height": 120,
+        "width": 280
+      },
+      "id": "sticky-note-error-post",
+      "name": "Nota — Erro POST",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [700, 480]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "POST Pipeline Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST Pipeline Run": {
+      "main": [
+        [
+          {
+            "node": "IF job_id OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF job_id OK?": {
+      "main": [
+        [
+          {
+            "node": "Wait 30s",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Wait 30s": {
+      "main": [
+        [
+          {
+            "node": "GET Pipeline Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Pipeline Status": {
+      "main": [
+        [
+          {
+            "node": "IF completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF completed?": {
+      "main": [
+        [
+          {
+            "node": "Slack — Sucesso (opcional)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF failed?": {
+      "main": [
+        [
+          {
+            "node": "Slack — Erro (opcional)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 60s (poll loop)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 60s (poll loop)": {
+      "main": [
+        [
+          {
+            "node": "GET Pipeline Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ai-commerce-os"
+    },
+    {
+      "name": "pipeline-trigger"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Workflow alimentador: dispara pipeline Python via FastAPI em schedule de 6h com polling de status."
+  }
+}

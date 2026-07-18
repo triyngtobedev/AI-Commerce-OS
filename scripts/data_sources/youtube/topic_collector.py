@@ -6,6 +6,7 @@ Futuramente pode integrar com APIs de tendências.
 """
 
 import json
+import os
 from pathlib import Path
 
 from scripts.core.content_subject import normalize_subject
@@ -19,6 +20,11 @@ def collect_topics():
 
     Retorna lista de sujeitos normalizados (content_type=topic).
     """
+
+    override = os.getenv("PIPELINE_TOPIC_OVERRIDE")
+    if override:
+        print(f"🔥 Tema injetado pelo n8n: {override}")
+        return [normalize_subject({"nome": override, "categoria": "historia"}, content_type="topic")]
 
     if not TOPICS_FILE.exists():
 

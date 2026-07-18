@@ -68,7 +68,7 @@ Oportunidade:
 
     response = ask_ai(
         full_prompt,
-        "script",
+        "strategy",
     )
 
 
