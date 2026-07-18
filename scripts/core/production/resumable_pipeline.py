@@ -67,7 +67,8 @@ from scripts.publisher.youtube_publish_config import (
     resolve_upload_settings,
     resolve_upload_visibility,
 )
-from scripts.publisher.youtube_uploader import UPLOAD_STATUS, upload_from_folder
+from scripts.publisher.youtube_uploader import UPLOAD_STATUS
+from scripts.youtube.uploader import upload_video_folder
 from scripts.metrics.metrics_tracker import record_production
 
 from scripts.core.emotional_timeline import build_emotional_timeline
@@ -527,7 +528,11 @@ def _stage_upload(
             "missing": auth_status.missing,
         }
 
-    return upload_from_folder(folder, privacy_status=privacy_status)
+    return upload_video_folder(
+        folder,
+        privacy_status=privacy_status,
+        job_id=os.getenv("PIPELINE_JOB_ID"),
+    )
 
 
 def _stage_manifest(ctx: StageContext, upload_result: dict, perf_report: dict) -> Path:
@@ -647,11 +652,11 @@ def run_resumable_youtube_pipeline(
     should_upload, upload_context = resolve_upload_settings(cli_upload=auto_upload)
 
     if production_mode:
-        should_upload = True
         privacy_status, vis_ctx = resolve_upload_visibility(cli_privacy=privacy_status)
         main_logger.info(
-            f"Modo produção ativo — visibilidade: {privacy_status} "
-            f"({vis_ctx['reason']})"
+            f"Modo produção ativo — upload={'sim' if should_upload else 'não'} "
+            f"({upload_context.get('reason', '')}), "
+            f"visibilidade: {privacy_status} ({vis_ctx['reason']})"
         )
 
     _normalize_legacy_stage_state(ctx)

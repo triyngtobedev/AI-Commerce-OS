@@ -1,0 +1,126 @@
+{
+  "name": "03 — Relatório Semanal Analytics",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": 0,
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "schedule-weekly",
+      "name": "Schedule — Domingo 9h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300],
+      "notes": "Todo domingo às 9h (America/Sao_Paulo). Gera relatório semanal de vídeos."
+    },
+    {
+      "parameters": {
+        "content": "## Relatório Semanal\n\n1. Sincroniza métricas do YouTube Analytics\n2. Gera relatório Markdown em `reports/relatorio_YYYY-MM-DD.md`\n3. (Opcional) Envia por email\n\nRequer credenciais YouTube OAuth no Railway.",
+        "height": 180,
+        "width": 400
+      },
+      "id": "sticky-note",
+      "name": "Nota — Relatório",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PIPELINE_API_BASE_URL }}/api/v1/analytics/report?days=7&sync_first=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "http-generate-report",
+      "name": "POST Gerar Relatório",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PIPELINE_API_CREDENTIAL_ID",
+          "name": "Pipeline API Key"
+        }
+      },
+      "notes": "Chama Railway para sincronizar métricas e gerar reports/relatorio_YYYY-MM-DD.md"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "C0000000000"
+        },
+        "text": "=📊 Relatório semanal gerado!\n\nArquivo: {{ $json.report_path }}\n\n---\n{{ $json.content }}",
+        "otherOptions": {}
+      },
+      "id": "slack-report",
+      "name": "Slack — Relatório (opcional)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [720, 300],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "SLACK_CREDENTIAL_ID",
+          "name": "Slack OAuth2"
+        }
+      },
+      "notes": "PLACEHOLDER — substitua por nó Email (SMTP) ou Telegram. Conteúdo completo em $json.content."
+    }
+  ],
+  "connections": {
+    "Schedule — Domingo 9h": {
+      "main": [
+        [
+          {
+            "node": "POST Gerar Relatório",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST Gerar Relatório": {
+      "main": [
+        [
+          {
+            "node": "Slack — Relatório (opcional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ai-commerce-os"
+    },
+    {
+      "name": "analytics-report"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Relatório semanal de desempenho dos vídeos YouTube — domingo 9h."
+  }
+}

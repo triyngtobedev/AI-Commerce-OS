@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 from api import __version__
 from api.config import get_pipeline_api_key
 from api.models.schemas import HealthResponse
-from api.routers import pipeline, scenes
+from api.routers import analytics, pipeline, scenes, youtube
 
 load_dotenv()
 
@@ -171,3 +171,5 @@ async def health_check() -> HealthResponse:
 # Registra routers sob prefixo /api/v1
 app.include_router(pipeline.router, prefix="/api/v1")
 app.include_router(scenes.router, prefix="/api/v1")
+app.include_router(youtube.router, prefix="/api/v1")
+app.include_router(analytics.router, prefix="/api/v1")
