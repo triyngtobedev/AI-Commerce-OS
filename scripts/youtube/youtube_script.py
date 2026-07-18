@@ -53,6 +53,8 @@ from scripts.utils.json_parser import parse_json
 from scripts.utils.prompt_loader import load_prompt, load_script_prompt
 from scripts.utils.ai_cache import load_cache, save_cache
 
+CACHE_PREFIX = "youtube"
+
 
 def generate_youtube_script(
     topic,
