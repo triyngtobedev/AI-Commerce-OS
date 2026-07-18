@@ -55,6 +55,7 @@ class JobStore:
                         status TEXT NOT NULL,
                         output_path TEXT,
                         error_message TEXT,
+                        stdout_tail TEXT,
                         metadata TEXT,
                         scenes TEXT,
                         created_at TEXT NOT NULL,
@@ -62,6 +63,10 @@ class JobStore:
                     );
                     """
                 )
+                try:
+                    conn.execute("ALTER TABLE jobs ADD COLUMN stdout_tail TEXT")
+                except sqlite3.OperationalError:
+                    pass
                 conn.commit()
             finally:
                 conn.close()
@@ -96,6 +101,7 @@ class JobStore:
         status: JobStatus,
         output_path: Optional[str] = None,
         error_message: Optional[str] = None,
+        stdout_tail: Optional[str] = None,
     ) -> None:
         """Atualiza status geral do job de pipeline."""
         now = _utcnow().isoformat()
@@ -106,10 +112,19 @@ class JobStore:
                     """
                     UPDATE jobs
                     SET status = ?, output_path = COALESCE(?, output_path),
-                        error_message = COALESCE(?, error_message), updated_at = ?
+                        error_message = COALESCE(?, error_message),
+                        stdout_tail = COALESCE(?, stdout_tail),
+                        updated_at = ?
                     WHERE job_id = ?
                     """,
-                    (status.value, output_path, error_message, now, str(job_id)),
+                    (
+                        status.value,
+                        output_path,
+                        error_message,
+                        stdout_tail,
+                        now,
+                        str(job_id),
+                    ),
                 )
                 conn.commit()
             finally:
@@ -211,6 +226,7 @@ class JobStore:
             "status": JobStatus(row["status"]),
             "output_path": row["output_path"],
             "error_message": row["error_message"],
+            "stdout_tail": row["stdout_tail"] if "stdout_tail" in row.keys() else None,
             "metadata": json.loads(row["metadata"] or "{}"),
             "scenes": scenes,
             "created_at": datetime.fromisoformat(row["created_at"]),
