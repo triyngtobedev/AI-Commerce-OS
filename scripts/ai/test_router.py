@@ -1,4 +1,4 @@
-"""Testes do fallback Gemini → Groq → OpenRouter."""
+"""Testes do fallback Gemini → OpenRouter → Groq."""
 
 import importlib
 import os
@@ -16,11 +16,17 @@ router = importlib.import_module("scripts.ai.router")
 
 class TestAiRouterFallback(unittest.TestCase):
     @patch.object(router, "time")
-    @patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-openrouter-key"})
+    @patch.dict(
+        "os.environ",
+        {
+            "OPENROUTER_API_KEY": "test-openrouter-key",
+            "AI_PROVIDER_ORDER": "gemini,openrouter,groq",
+        },
+    )
     @patch.object(router, "openrouter_generate")
     @patch.object(router, "_groq_complete")
     @patch.object(router, "gemini_generate")
-    def test_fallback_to_openrouter_when_gemini_and_groq_fail(
+    def test_fallback_to_openrouter_before_groq(
         self, mock_gemini, mock_groq, mock_openrouter, _mock_time
     ):
         mock_gemini.side_effect = Exception("Gemini quota exceeded")
@@ -31,10 +37,17 @@ class TestAiRouterFallback(unittest.TestCase):
 
         self.assertEqual(result, "Resposta do OpenRouter")
         mock_gemini.assert_called_once()
-        self.assertEqual(mock_groq.call_count, 3)
         mock_openrouter.assert_called_once_with("test prompt")
+        mock_groq.assert_not_called()
 
-    @patch.dict("os.environ", {"OPENROUTER_API_KEY": ""}, clear=False)
+    @patch.dict(
+        "os.environ",
+        {
+            "OPENROUTER_API_KEY": "",
+            "AI_PROVIDER_ORDER": "gemini,openrouter,groq",
+        },
+        clear=False,
+    )
     @patch.object(router, "_groq_complete")
     @patch.object(router, "gemini_generate")
     def test_raises_when_all_providers_fail(self, mock_gemini, mock_groq):
@@ -46,7 +59,13 @@ class TestAiRouterFallback(unittest.TestCase):
 
         self.assertIn("Nenhuma API de IA disponível", str(ctx.exception))
 
-    @patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-openrouter-key"})
+    @patch.dict(
+        "os.environ",
+        {
+            "OPENROUTER_API_KEY": "test-openrouter-key",
+            "AI_PROVIDER_ORDER": "gemini,openrouter,groq",
+        },
+    )
     @patch.object(router, "openrouter_generate")
     @patch.object(router, "_groq_complete")
     @patch.object(router, "gemini_generate")
@@ -60,6 +79,29 @@ class TestAiRouterFallback(unittest.TestCase):
         self.assertEqual(result, "Resposta do Gemini")
         mock_groq.assert_not_called()
         mock_openrouter.assert_not_called()
+
+    @patch.dict(
+        "os.environ",
+        {
+            "OPENROUTER_API_KEY": "test-openrouter-key",
+            "AI_PROVIDER_ORDER": "gemini,groq,openrouter",
+        },
+    )
+    @patch.object(router, "openrouter_generate")
+    @patch.object(router, "_groq_complete")
+    @patch.object(router, "gemini_generate")
+    def test_legacy_order_falls_back_to_openrouter_after_groq(
+        self, mock_gemini, mock_groq, mock_openrouter
+    ):
+        mock_gemini.side_effect = Exception("Gemini down")
+        mock_groq.side_effect = Exception("Groq down")
+        mock_openrouter.return_value = "Resposta do OpenRouter"
+
+        result = router.ask_ai("test prompt", "analysis")
+
+        self.assertEqual(result, "Resposta do OpenRouter")
+        self.assertEqual(mock_groq.call_count, 3)
+        mock_openrouter.assert_called_once_with("test prompt")
 
 
 if __name__ == "__main__":

@@ -56,10 +56,21 @@ Seu PC **não roda FFmpeg, Whisper nem renderização**.
 |----------|-------------|---------|
 | `PIPELINE_API_KEY` | Sim | gere uma senha longa (veja passo 3) |
 | `GEMINI_API_KEY` | Sim | sua chave Google AI |
-| `PEXELS_API_KEY` | Sim | sua chave Pexels |
+| `GROQ_API_KEY` | Recomendado | console.groq.com |
+| `OPENROUTER_API_KEY` | Recomendado | openrouter.ai/keys — modelos `:free` sem cota diária |
+| `PEXELS_API_KEY` | Sim | pexels.com/api — footage lofi_dark |
+| `AI_PROVIDER_ORDER` | Opcional | `gemini,openrouter,groq` (padrão). Amanhã: `gemini,groq,openrouter` |
 | `WHISPER_MODEL_SIZE` | Recomendado | `tiny` |
 | `AZURE_SPEECH_KEY` | Opcional | ou deixe Edge-TTS gratuito |
 | `AZURE_SPEECH_REGION` | Opcional | ex: `brazilsouth` |
+
+**PEXELS no Railway:** copie o valor de `PEXELS_API_KEY` do seu `.env` local (obtenha em [pexels.com/api](https://www.pexels.com/api/)) → Railway → serviço → **Variables** → **New Variable** → nome `PEXELS_API_KEY`, valor colado → **Deploy**. Nos Deploy Logs deve aparecer `PEXELS_API_KEY presente: True`.
+
+**OpenRouter no Railway:** mesma chave do `.env` local → variable `OPENROUTER_API_KEY`. Teste local:
+
+```powershell
+python scripts/ai/test_openrouter.py
+```
 
 3. Aguarde o deploy ficar **Active** (verde) — leva ~5–10 min na primeira vez.
 

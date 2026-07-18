@@ -24,7 +24,17 @@ GEMINI_MODEL_LITE = "gemini-2.0-flash-lite"
 
 PRIMARY_GEMINI_CONTEXTS = {"script_generation"}
 
+# Ordem padrão: OpenRouter antes do Groq enquanto cotas free esgotam rápido.
+# Amanhã, volte para gemini,groq,openrouter via AI_PROVIDER_ORDER no Railway.
+DEFAULT_PROVIDER_ORDER = "gemini,openrouter,groq"
+
 _gemini_daily_quota_exhausted = False
+
+
+def _provider_order() -> list[str]:
+    raw = os.getenv("AI_PROVIDER_ORDER", DEFAULT_PROVIDER_ORDER)
+    order = [part.strip().lower() for part in raw.split(",") if part.strip()]
+    return order or DEFAULT_PROVIDER_ORDER.split(",")
 
 
 def _gemini_model_for(context_type: str) -> str:
@@ -48,7 +58,7 @@ def _is_rate_limit_error(error: Exception) -> bool:
 
 
 def _is_daily_quota_exhausted(error: Exception) -> bool:
-    """Quota diária zerada — retry imediato no Groq, sem esperar 60s."""
+    """Quota diária zerada — pula Gemini nas próximas chamadas, sem esperar 60s."""
     return "limit: 0" in str(error).lower()
 
 
@@ -90,37 +100,8 @@ def _groq_complete(prompt: str, model: str) -> str:
     return content
 
 
-def _openrouter_complete(prompt: str) -> str:
-    if not os.getenv("OPENROUTER_API_KEY", "").strip():
-        raise Exception("OPENROUTER_API_KEY não configurada")
-
-    print("[OpenRouter] Tentando fallback OpenRouter...")
-    return openrouter_generate(prompt)
-
-
-def ask_ai(prompt, context_type):
-    global _gemini_daily_quota_exhausted
-    gemini_model = _gemini_model_for(context_type)
-
-    if not _gemini_daily_quota_exhausted:
-        print("[AI Router] Tentando: gemini")
-        try:
-            return gemini_generate(prompt, model=gemini_model)
-        except Exception as gemini_error:
-            print(
-                f"⚠️ Gemini indisponível ({gemini_model}, {gemini_error}), tentando Groq..."
-            )
-            if _is_daily_quota_exhausted(gemini_error):
-                print("[Gemini] Quota diária zerada — pulando Gemini nas próximas chamadas")
-                _gemini_daily_quota_exhausted = True
-            elif _is_rate_limit_error(gemini_error):
-                print("[Gemini] Quota/rate limit detectado — aguardando 60s...")
-                time.sleep(60)
-    else:
-        print("[AI Router] Gemini quota esgotada — usando Groq direto")
-
-    # 2. Tenta Groq com fallback de modelos
-    last_error = None
+def _try_groq(prompt: str) -> str:
+    last_error: Exception | None = None
 
     for model in GROQ_MODELS_FALLBACK:
         print(f"[AI Router] Tentando: groq/{model}")
@@ -143,14 +124,76 @@ def ask_ai(prompt, context_type):
 
             print(f"[Groq/{model}] Falha — tentando próximo modelo...")
 
-    # 3. Tenta OpenRouter
+    raise last_error or Exception("Groq indisponível")
+
+
+def _openrouter_complete(prompt: str) -> str:
+    if not os.getenv("OPENROUTER_API_KEY", "").strip():
+        raise Exception("OPENROUTER_API_KEY não configurada")
+
+    print("[OpenRouter] Tentando fallback OpenRouter...")
+    return openrouter_generate(prompt)
+
+
+def _try_openrouter(prompt: str) -> str:
     print("[AI Router] Tentando: openrouter")
-    print("⚠️ Groq indisponível, tentando OpenRouter...")
+    print("⚠️ Provedor anterior indisponível, tentando OpenRouter...")
+    return _openrouter_complete(prompt)
+
+
+def _try_gemini(prompt: str, context_type: str) -> str:
+    global _gemini_daily_quota_exhausted
+    gemini_model = _gemini_model_for(context_type)
+
+    if _gemini_daily_quota_exhausted:
+        print("[AI Router] Gemini quota esgotada — pulando Gemini")
+        raise Exception("Gemini quota diária esgotada")
+
+    print("[AI Router] Tentando: gemini")
     try:
-        return _openrouter_complete(prompt)
-    except Exception as openrouter_error:
-        print(f"[OpenRouter] {openrouter_error}")
-        print(f"❌ Falha total: {openrouter_error}")
-        raise Exception(
-            "Nenhuma API de IA disponível."
-        ) from (openrouter_error if last_error is None else last_error)
+        return gemini_generate(prompt, model=gemini_model)
+    except Exception as gemini_error:
+        print(
+            f"⚠️ Gemini indisponível ({gemini_model}, {gemini_error}), "
+            "tentando próximo provider..."
+        )
+        if _is_daily_quota_exhausted(gemini_error):
+            print("[Gemini] Quota diária zerada — pulando Gemini nas próximas chamadas")
+            _gemini_daily_quota_exhausted = True
+        elif _is_rate_limit_error(gemini_error):
+            print("[Gemini] Quota/rate limit detectado — aguardando 60s...")
+            time.sleep(60)
+        raise gemini_error
+
+
+_PROVIDER_HANDLERS = {
+    "gemini": lambda prompt, context_type: _try_gemini(prompt, context_type),
+    "openrouter": lambda prompt, _context_type: _try_openrouter(prompt),
+    "groq": lambda prompt, _context_type: _try_groq(prompt),
+}
+
+
+def ask_ai(prompt, context_type):
+    order = _provider_order()
+    print(f"[AI Router] Ordem de fallback: {' → '.join(order)}")
+    last_error: Exception | None = None
+
+    for provider in order:
+        handler = _PROVIDER_HANDLERS.get(provider)
+        if handler is None:
+            print(f"[AI Router] Provider desconhecido ignorado: {provider}")
+            continue
+
+        try:
+            return handler(prompt, context_type)
+        except Exception as error:
+            last_error = error
+            if provider == "openrouter":
+                print(f"[OpenRouter] {error}")
+            elif provider == "groq":
+                print("⚠️ Groq indisponível, tentando próximo provider...")
+
+    print(f"❌ Falha total: {last_error}")
+    raise Exception(
+        "Nenhuma API de IA disponível."
+    ) from last_error

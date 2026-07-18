@@ -61,7 +61,7 @@ O projeto é organizado em **engines modulares** orquestradas por pipelines espe
 
 | Engine | Módulo | Responsabilidade |
 |---|---|---|
-| **AI Router** | `scripts/ai/router.py` | Roteamento Gemini → Groq → OpenRouter (fallback) |
+| **AI Router** | `scripts/ai/router.py` | Roteamento Gemini → OpenRouter → Groq (configurável via `AI_PROVIDER_ORDER`) |
 | **Analyst** | `scripts/ai/analysts/` | Análise de produtos/temas com IA |
 | **Scoring** | `scripts/scoring/` | Pontuação e ranking |
 | **Opportunity** | `scripts/affiliate/`, `scripts/youtube/topic_opportunity.py` | Avaliação de oportunidade comercial |
@@ -289,7 +289,8 @@ PIPELINE_API_KEY=              # mesma chave no Railway e no PC
 |---|---|
 | `GEMINI_API_KEY` | API Google Gemini (provider principal) |
 | `GROQ_API_KEY` | API Groq (fallback automático) |
-| `OPENROUTER_API_KEY` | API OpenRouter (fallback final — modelo free) |
+| `OPENROUTER_API_KEY` | API OpenRouter (fallback — modelos `:free`, sem cota diária) |
+| `AI_PROVIDER_ORDER` | Ordem de fallback LLM (padrão `gemini,openrouter,groq`) |
 | `PEXELS_API_KEY` | Busca de vídeos/imagens stock (Pexels) |
 | `PIXABAY_API_KEY` | Fallback de mídia stock gratuito (YouTube Dark) |
 | `CONTENT_MODE` | `stock` usa Pexels/Pixabay; `persona` gera imagens IA por cena via Pollinations.ai (gratuito) + Ken Burns |
