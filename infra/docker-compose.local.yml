@@ -21,10 +21,8 @@ services:
       - N8N_PROTOCOL=http
       - N8N_SECURE_COOKIE=false
       - N8N_DIAGNOSTICS_ENABLED=false
-      # URL da API do pipeline — Railway em produção, localhost em dev
-      - PIPELINE_API_BASE_URL=${PIPELINE_API_BASE_URL:-http://host.docker.internal:8000}
-      # Chave X-API-Key enviada nos workflows (mesma do Railway)
-      - PIPELINE_API_KEY=${PIPELINE_API_KEY}
+      # PIPELINE_API_BASE_URL e PIPELINE_API_KEY vêm do env_file (.env.n8n)
+      # Não usar ${PIPELINE_API_KEY} aqui — o Docker Compose lê do host e sobrescreve com vazio
     volumes:
       - n8n_data:/home/node/.n8n
     ports:
