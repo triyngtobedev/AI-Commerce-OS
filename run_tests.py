@@ -32,9 +32,28 @@ DEFAULT_MODULES = (
 def _run_named_tests(modules: list[str]) -> int:
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
+    errors: list[str] = []
 
     for module_name in modules:
-        suite.addTests(loader.loadTestsFromName(module_name))
+        try:
+            suite.addTests(loader.loadTestsFromName(module_name))
+        except Exception as exc:
+            errors.append(f"{module_name}: {exc}")
+
+    if errors:
+        print("Falha ao carregar testes:\n", file=sys.stderr)
+        for message in errors:
+            print(f"  - {message}", file=sys.stderr)
+        print(
+            f"\nRaiz do repo: {ROOT}\n"
+            "Execute a partir da raiz:\n"
+            f"  cd {ROOT}\n"
+            "  python run_tests.py\n"
+            "Ou de infra/:\n"
+            "  .\\run_tests.ps1\n",
+            file=sys.stderr,
+        )
+        return 1
 
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return 0 if result.wasSuccessful() else 1
