@@ -66,6 +66,7 @@ async def security_middleware(request: Request, call_next: Callable):
     """
     path = request.url.path
     public_paths = {
+        "/health",
         "/api/v1/health",
         "/api/docs",
         "/api/redoc",
@@ -92,9 +93,10 @@ async def security_middleware(request: Request, call_next: Callable):
     return await call_next(request)
 
 
+@app.get("/health", response_model=HealthResponse, tags=["health"])
 @app.get("/api/v1/health", response_model=HealthResponse, tags=["health"])
 async def health_check() -> HealthResponse:
-    """Health check simples — usado por n8n e monitoramento."""
+    """Health check simples — usado por Railway, n8n e monitoramento."""
     return HealthResponse(status="ok", version=__version__)
 
 

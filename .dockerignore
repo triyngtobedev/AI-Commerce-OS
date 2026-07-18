@@ -1,0 +1,17 @@
+# Reduz tamanho do contexto Docker
+.git
+.gitignore
+__pycache__
+*.pyc
+.pytest_cache
+.env
+output/
+cache/
+debug/
+downloads/
+*.mp4
+*.mp3
+node_modules/
+.cursor/
+agent-tools/
+analysis/

@@ -1,0 +1,14 @@
+# Railway.app — deploy zero SSH (conecta GitHub, sobe Docker automaticamente)
+# Docs: docs/deploy-railway.md
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Bind explícito em $PORT (Railway injeta automaticamente)
+startCommand = "/bin/sh scripts/cloud/entrypoint.sh"
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
