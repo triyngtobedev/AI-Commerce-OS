@@ -372,6 +372,15 @@
         "url": "={{ $('Set — Normalizar Payload').item.json.callback_url }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "minhasenha123456segura"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"scene_id\": \"{{ $('Set — Normalizar Payload').item.json.scene_id }}\",\n  \"job_id\": \"{{ $('Set — Normalizar Payload').item.json.job_id }}\",\n  \"video_path\": \"{{ $json.video_path }}\",\n  \"provider_used\": \"{{ $json.provider_used }}\",\n  \"status\": \"completed\"\n}",
@@ -389,6 +398,15 @@
         "url": "={{ $('Set — Normalizar Payload').item.json.callback_url }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "minhasenha123456segura"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"scene_id\": \"{{ $('Set — Normalizar Payload').item.json.scene_id }}\",\n  \"job_id\": \"{{ $('Set — Normalizar Payload').item.json.job_id }}\",\n  \"video_path\": null,\n  \"provider_used\": null,\n  \"status\": \"failed\",\n  \"error_message\": \"All free providers failed (Replicate, HF Router). Python may retry Kling Web locally.\"\n}",
