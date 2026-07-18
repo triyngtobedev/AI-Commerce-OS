@@ -25,22 +25,24 @@ load_dotenv()
 PIXABAY_MUSIC_URL = "https://pixabay.com/api/"
 
 _EMOTION_TO_QUERY: dict[str, str] = {
-    "mystery": "dark ambient tension documentary",
-    "impact": "epic cinematic dramatic",
-    "calm": "soft ambient documentary",
-    "warning": "suspense tension rising",
-    "sad": "melancholy piano ambient",
-    "neutral": "documentary background ambient",
+    "mystery": "dark ambient minor piano 60 bpm documentary",
+    "impact": "cinematic dark tension drums minor",
+    "calm": "dark ambient drone minimal",
+    "warning": "suspense dark rising tension minor key",
+    "sad": "melancholy dark piano ambient minor",
+    "neutral": "dark ambient background documentary minor",
 }
 
 _EMOTION_TO_PROCEDURAL: dict[str, dict[str, Any]] = {
-    "mystery": {"base_freq": 55, "noise": "brown", "volume": 0.08},
-    "impact": {"base_freq": 80, "noise": "pink", "volume": 0.10},
-    "calm": {"base_freq": 110, "noise": "pink", "volume": 0.06},
-    "warning": {"base_freq": 65, "noise": "brown", "volume": 0.09},
-    "sad": {"base_freq": 90, "noise": "pink", "volume": 0.07},
-    "neutral": {"base_freq": 100, "noise": "pink", "volume": 0.07},
+    "mystery": {"base_freq": 55, "noise": "brown", "volume": 0.10},
+    "impact": {"base_freq": 65, "noise": "pink", "volume": 0.12},
+    "calm": {"base_freq": 70, "noise": "brown", "volume": 0.08},
+    "warning": {"base_freq": 58, "noise": "brown", "volume": 0.11},
+    "sad": {"base_freq": 82, "noise": "pink", "volume": 0.09},
+    "neutral": {"base_freq": 62, "noise": "brown", "volume": 0.10},
 }
+
+BGM_TARGET_VOLUME = 0.10
 
 
 def _dominant_emotion(timeline: EmotionalTimeline | dict | None) -> str:
@@ -148,6 +150,42 @@ def _generate_procedural_soundtrack(
         return False
 
 
+def normalize_soundtrack_volume(
+    input_path: Path,
+    output_path: Path | None = None,
+    target_volume: float = BGM_TARGET_VOLUME,
+) -> Path:
+    """Normaliza volume da trilha para mixagem consistente (~8-12%)."""
+
+    input_path = Path(input_path)
+    output_path = Path(output_path or input_path)
+    temp_path = output_path.with_suffix(".normalized.mp3")
+
+    filter_chain = (
+        f"volume={target_volume * 2.5:.2f},"
+        "loudnorm=I=-28:TP=-4:LRA=9:print_format=none"
+    )
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(input_path),
+        "-af", filter_chain,
+        "-c:a", "libmp3lame",
+        "-b:a", "128k",
+        str(temp_path),
+    ]
+
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, timeout=120)
+        if temp_path.exists() and temp_path.stat().st_size > 500:
+            temp_path.replace(output_path)
+            return output_path
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        pass
+
+    return input_path
+
+
 def generate_soundtrack(
     output_path: Path,
     *,
@@ -174,10 +212,12 @@ def generate_soundtrack(
 
     music_url = _search_pixabay_music(query, audio_duration)
     if music_url and _download_music(music_url, output_path):
+        normalize_soundtrack_volume(output_path)
         print(f"🎵 Trilha Pixabay ({emotion}): {output_path.name}")
         return output_path
 
     if _generate_procedural_soundtrack(emotion, audio_duration, output_path):
+        normalize_soundtrack_volume(output_path)
         print(f"🎵 Trilha procedural ({emotion}): {output_path.name}")
         return output_path
 

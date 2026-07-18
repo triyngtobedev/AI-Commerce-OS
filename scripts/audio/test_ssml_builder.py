@@ -63,15 +63,22 @@ class TestSSMLBuilder(unittest.TestCase):
         self.assertIn("&lt;teste&gt;", ssml)
         ET.fromstring(ssml)
 
-    def test_build_ssml_emphasis_on_numbers(self):
+    def test_build_ssml_contains_pause_break(self):
+        script = {
+            "hook": "Algo aconteceu. [PAUSA] Ninguém esperava.",
+            "contexto": "",
+            "desenvolvimento": "",
+            "revelacao": "",
+            "consequencias": "",
+            "encerramento": "",
+        }
         ssml = build_ssml(
-            {"hook": "Em 1908 houve 3 explosões.", "contexto": "", "desenvolvimento": "",
-             "revelacao": "", "consequencias": "", "encerramento": ""},
+            script,
             voice="pt-BR-AntonioNeural",
-            base_rate="-4%",
-            base_pitch="-3Hz",
+            base_rate="-15%",
+            base_pitch="-5Hz",
         )
-        self.assertIn("<emphasis", ssml)
+        self.assertIn('<break time="1000ms"/>', ssml)
 
 
 if __name__ == "__main__":

@@ -32,7 +32,16 @@ class TestNarrationDarkRules(unittest.TestCase):
     def test_detects_missing_hooks(self):
         script = {
             "hook": "Fato surpreendente sobre emus.",
-            "contexto": "A Austrália enfrentou uma guerra estranha.",
+            "desenvolvimento": "A Austrália enfrentou uma guerra estranha. E isso não é o pior.",
+            "encerramento": "Inscreva-se no canal.",
+        }
+        warnings = validate_scene_hooks(script)
+        self.assertEqual(warnings, [])
+
+    def test_detects_missing_hooks_in_narrative_sections(self):
+        script = {
+            "hook": "Fato surpreendente sobre emus.",
+            "desenvolvimento": "A Austrália enfrentou uma guerra estranha.",
             "encerramento": "Inscreva-se no canal.",
         }
         warnings = validate_scene_hooks(script)

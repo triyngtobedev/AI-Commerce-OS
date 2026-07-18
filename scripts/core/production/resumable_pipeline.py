@@ -18,6 +18,10 @@ from scripts.core.platform_config import YOUTUBE_DARK
 from scripts.core.production.cleanup import cleanup_temp_files
 from scripts.core.production.health_check import run_health_check
 from scripts.core.production.quality_score import run_quality_score
+from scripts.core.production.quality_checklist import (
+    run_post_render_checklist,
+    run_pre_render_checklist,
+)
 from scripts.core.production.logger import get_logger
 from scripts.core.production.manifest import generate_production_manifest
 from scripts.core.production.monetization_audit import run_monetization_audit
@@ -388,6 +392,20 @@ def _stage_render(ctx: StageContext) -> Optional[str]:
     if soundtrack:
         ctx.data["soundtrack"] = str(soundtrack)
 
+    checklist = run_pre_render_checklist(
+        ctx.data["script"],
+        audio_duration=audio_duration,
+        platform=YOUTUBE_DARK.id,
+    )
+    ctx.data["pre_render_checklist"] = checklist.to_dict()
+    ctx.state.save_artifact("quality_checklist_pre.json", checklist.to_dict())
+
+    if not checklist.passed:
+        raise RuntimeError(
+            f"Quality Checklist reprovado (pré-render): "
+            f"{'; '.join(checklist.failures[:5])}"
+        )
+
     subtitles = generate_subtitles({"produto": topic, "cenas": ctx.data["scenes"]})
     chapters = build_chapters(content, ctx.data["scenes"])
 
@@ -478,6 +496,15 @@ def _stage_validate(ctx: StageContext, *, block_upload: bool = True) -> dict:
 
     quality = run_quality_score(folder, pr.to_dict())
     ctx.data["quality_report"] = quality
+
+    checklist = run_post_render_checklist(folder, pr.to_dict(), platform=YOUTUBE_DARK.id)
+    ctx.data["post_render_checklist"] = checklist.to_dict()
+
+    if block_upload and not checklist.passed:
+        raise RuntimeError(
+            f"Quality Checklist reprovado (pós-render): "
+            f"{'; '.join(checklist.failures[:5])}"
+        )
 
     if block_upload and not quality.passed:
         raise RuntimeError(

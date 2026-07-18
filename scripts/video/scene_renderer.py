@@ -308,6 +308,30 @@ def _video_motion_filter(
     return f"{normalize},{crop},setsar=1,fps=30"
 
 
+def _render_white_flash_clip(
+    output_path: Path,
+    width: int,
+    height: int,
+    frames: int = 2,
+    fps: int = 30,
+) -> bool:
+    """Flash branco rápido (2 frames) antes de revelação do item #1."""
+
+    duration = frames / fps
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "lavfi",
+        "-i", f"color=c=white:s={width}x{height}:d={duration:.4f}:r={fps}",
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-crf", "18",
+        "-pix_fmt", "yuv420p",
+        "-an",
+        str(output_path),
+    ]
+    return _run_ffmpeg(cmd, context="white flash", output_path=output_path)
+
+
 def _cinematic_grade(render_style) -> str:
     filters = [render_style.color_grade]
     if render_style.vignette:
@@ -764,6 +788,12 @@ def render_scenes_video(
 
         clip_out = temp_dir / f"scene_{i + 1:02d}.mp4"
 
+        if scene_type == "fato_1":
+            flash_clip = temp_dir / f"flash_before_{i + 1:02d}.mp4"
+            if _render_white_flash_clip(flash_clip, width, height):
+                clip_paths.append(flash_clip)
+                scene_types.append("flash")
+
         # Renderiza com duração estendida pelo crossfade da própria cena.
         # Como o xfade sobrepõe (e portanto encurta) cada transição, essa
         # compensação garante que a soma pós-crossfade seja exatamente a
@@ -924,13 +954,17 @@ def mux_video_audio_subtitles(
         "-pix_fmt", "yuv420p",
     ])
 
+    render_style = get_render_style(platform)
+    bgm_volume = getattr(render_style, "bgm_volume", 0.10)
+
     if has_audio and has_soundtrack:
         af = (
-            f"[{soundtrack_index}:a]volume=0.18,afade=t=in:st=0:d={opening},"
+            f"[{soundtrack_index}:a]volume={bgm_volume:.2f},afade=t=in:st=0:d={opening},"
             f"afade=t=out:st={max(0.0, target_duration - closing):.2f}:d={closing}[bgm];"
             f"[{narration_index}:a]afade=t=in:st=0:d={opening},"
             f"afade=t=out:st={max(0.0, audio_duration - closing):.2f}:d={closing}[voice];"
-            f"[bgm][voice]amix=inputs=2:duration=first:dropout_transition=2:weights=0.35 1.0[aout]"
+            f"[bgm][voice]amix=inputs=2:duration=first:dropout_transition=2:"
+            f"weights=0.35 1.0[aout]"
         )
         cmd.extend([
             "-filter_complex", af,

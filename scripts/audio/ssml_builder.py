@@ -38,13 +38,25 @@ SECTION_PROSODY: Dict[str, Dict[str, str]] = {
     "revelacao": {"rate": "-8%", "pitch": "-4Hz"},
     "consequencias": {"rate": "-5%", "pitch": "-2Hz"},
     "encerramento": {"rate": "+1%", "pitch": "+0Hz"},
+    "fato_1": {"rate": "-12%", "pitch": "-5Hz"},
+    "fato_2": {"rate": "-10%", "pitch": "-4Hz"},
+    "fato_3": {"rate": "-8%", "pitch": "-3Hz"},
+    "fato_4": {"rate": "-6%", "pitch": "-2Hz"},
+    "fato_5": {"rate": "-5%", "pitch": "-2Hz"},
     "problema": {"rate": "-2%", "pitch": "-1Hz"},
     "teste": {"rate": "-3%", "pitch": "-1Hz"},
     "resultado": {"rate": "-6%", "pitch": "-3Hz"},
     "cta": {"rate": "+3%", "pitch": "+2Hz"},
 }
 
-EMPHASIS_SECTIONS = {"hook", "revelacao"}
+EMPHASIS_SECTIONS = {"hook", "revelacao", "fato_1"}
+
+_PAUSE_MARKER = re.compile(r"\s*\[PAUSA\]\s*", re.IGNORECASE)
+_KEYWORD_EMPHASIS = re.compile(
+    r"\b(mort[oa]s?|cadáver|desaparec|impossível|nunca|segredo|proibid[oa]|"
+    r"sangue|sombra|silêncio|escuro|gelo|fogo|explod|grit)\b",
+    re.IGNORECASE,
+)
 
 _NUMBER_PATTERN = re.compile(r"\b(\d{1,3}(?:\.\d{3})+|\d+)\b")
 _DATE_PATTERN = re.compile(
@@ -101,6 +113,19 @@ def _emphasize_first_sentence(text: str, level: str = "moderate") -> str:
     return f'<emphasis level="{level}">{first}</emphasis>{rest}'
 
 
+def _emphasize_keywords(text: str, level: str = "moderate") -> str:
+    def _wrap(match: re.Match) -> str:
+        return f'<emphasis level="{level}">{match.group(0)}</emphasis>'
+
+    return _KEYWORD_EMPHASIS.sub(_wrap, text)
+
+
+def _split_pause_markers(text: str, pause_ms: int = 1000) -> list[str]:
+    """Divide texto nos marcadores [PAUSA] do roteiro."""
+
+    return [part.strip() for part in _PAUSE_MARKER.split(text) if part.strip()]
+
+
 def _prepare_section_text(
     section_key: str,
     raw_text: str,
@@ -108,11 +133,19 @@ def _prepare_section_text(
     intensity: float = 0.5,
 ) -> str:
     mapper = get_emotion_mapper()
-    prepared = prepare_text_for_tts(raw_text)
-    escaped = escape_ssml(prepared)
+    parts = _split_pause_markers(raw_text, pause_ms=1000)
+    break_tag = '<break time="1000ms"/>'
+
+    prepared_parts = []
+    for part in parts:
+        prepared = prepare_text_for_tts(part)
+        prepared_parts.append(escape_ssml(prepared))
+
+    escaped = break_tag.join(prepared_parts)
     emphasis = mapper.emphasis_level(emotion)
 
     escaped = _emphasize_numbers_and_dates(escaped, emphasis)
+    escaped = _emphasize_keywords(escaped, emphasis)
     escaped = _emphasize_exclamations(escaped, emphasis)
 
     if section_key in EMPHASIS_SECTIONS or intensity > 0.7:
@@ -188,9 +221,13 @@ def build_ssml_from_sections(
 
         body_parts.append(_emotion_ssml_block(content, emotion, rate, pitch, intensity))
 
+        trailing_pause = pause_after
+        if trailing_pause <= 0 and _PAUSE_MARKER.search(text):
+            trailing_pause = 1.0
+
         if index < len(sections) - 1:
-            if pause_after > 0:
-                body_parts.append(f'<break time="{int(pause_after * 1000)}ms"/>')
+            if trailing_pause > 0:
+                body_parts.append(f'<break time="{int(trailing_pause * 1000)}ms"/>')
             else:
                 body_parts.append(f'<break time="{mapper.break_after(emotion)}"/>')
 

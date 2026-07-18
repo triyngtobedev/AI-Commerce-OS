@@ -64,14 +64,19 @@ class VideoOverlayStyle:
 @dataclass(frozen=True)
 class CinematicStyle:
     transition_seconds: float = 0.7
-    crossfade_seconds: float = 0.45
-    ken_burns_zoom_max: float = 1.22
-    color_grade: str = "eq=contrast=1.08:brightness=-0.03:saturation=1.08"
-    vignette: str = "vignette=PI/4.5"
+    crossfade_seconds: float = 0.3
+    ken_burns_zoom_max: float = 1.04
+    color_grade: str = (
+        "eq=contrast=1.15:brightness=-0.02:saturation=0.80,"
+        "colorbalance=rs=-0.03:gs=0:bs=0.05"
+    )
+    vignette: str = "vignette=angle=PI/3:mode=forward"
     opening_fade_seconds: float = 0.8
     closing_fade_seconds: float = 2.0
     scene_fade_seconds: float = 0.5
     film_grain: str = "noise=alls=8:allf=t+u"
+    bgm_volume: float = 0.10
+    bgm_tension_volume: float = 0.15
 
 
 SCENE_MOTION: dict[str, str] = {
@@ -86,9 +91,10 @@ SCENE_MOTION: dict[str, str] = {
 }
 
 SCENE_CROSSFADE: dict[str, float] = {
-    "hook": 0.35,
-    "revelacao": 0.55,
-    "encerramento": 0.6,
+    "hook": 0.3,
+    "revelacao": 0.35,
+    "fato_1": 0.35,
+    "encerramento": 0.4,
 }
 
 
@@ -277,6 +283,88 @@ class BrandKit:
 
         return lines[: self.thumbnail.hook_max_lines]
 
+    def _draw_face_placeholder(self, draw, panel_w: int, height: int):
+        """Silhueta de rosto humano — placeholder quando não há foto real."""
+
+        cx = panel_w // 2
+        cy = height // 2 - 40
+        head_r = 72
+        draw.ellipse(
+            [cx - head_r, cy - head_r, cx + head_r, cy + head_r],
+            fill=(35, 38, 48),
+            outline=self.colors.accent,
+            width=2,
+        )
+        draw.ellipse(
+            [cx - 18, cy - 20, cx - 6, cy - 8],
+            fill=(60, 65, 78),
+        )
+        draw.ellipse(
+            [cx + 6, cy - 20, cx + 18, cy - 8],
+            fill=(60, 65, 78),
+        )
+        draw.arc(
+            [cx - 28, cy + 8, cx + 28, cy + 38],
+            start=10,
+            end=170,
+            fill=(60, 65, 78),
+            width=3,
+        )
+
+    def _draw_hook_line(
+        self,
+        draw,
+        line: str,
+        y: int,
+        hook_font,
+        *,
+        accent_last_word: bool = False,
+    ) -> int:
+        """Desenha linha do hook com outline preto grosso e palavra de contraste."""
+
+        words = line.split()
+        if accent_last_word and len(words) > 1:
+            normal_text = " ".join(words[:-1])
+            accent_word = words[-1]
+            x = 48
+
+            if normal_text:
+                for dx, dy in [(5, 5), (4, 4), (3, 3), (2, 2)]:
+                    draw.text(
+                        (x + dx, y + dy),
+                        normal_text,
+                        fill=self.colors.shadow,
+                        font=hook_font,
+                    )
+                draw.text((x, y), normal_text, fill=self.colors.text, font=hook_font)
+                bbox = draw.textbbox((0, 0), normal_text + " ", font=hook_font)
+                x += bbox[2] - bbox[0]
+
+            accent_color = (255, 34, 34)
+            for dx, dy in [(5, 5), (4, 4), (3, 3), (2, 2)]:
+                draw.text(
+                    (x + dx, y + dy),
+                    accent_word,
+                    fill=self.colors.shadow,
+                    font=hook_font,
+                )
+            draw.text((x, y), accent_word, fill=accent_color, font=hook_font)
+            line_text = line
+        else:
+            for dx, dy in [(5, 5), (4, 4), (3, 3), (2, 2)]:
+                draw.text((48 + dx, y + dy), line, fill=self.colors.shadow, font=hook_font)
+            draw.text((48, y), line, fill=self.colors.text, font=hook_font)
+            line_text = line
+
+        bbox = draw.textbbox((0, 0), line_text, font=hook_font)
+        text_h = bbox[3] - bbox[1]
+        accent_y = y + text_h + 8
+        draw.rectangle(
+            [(48, accent_y), (48 + min(400, len(line_text) * 22), accent_y + 4)],
+            fill=self.colors.accent,
+        )
+        return text_h + 36
+
     def compose_thumbnail(
         self,
         hero_image_path: Path,
@@ -306,12 +394,26 @@ class BrandKit:
         hero = ImageEnhance.Contrast(hero).enhance(style.contrast_boost)
         hero = ImageEnhance.Color(hero).enhance(style.saturation_boost)
 
+        dark_overlay = Image.new("RGBA", (w, h), (0, 0, 0, int(255 * 0.40)))
+        hero = Image.alpha_composite(hero.convert("RGBA"), dark_overlay).convert("RGB")
+
         panel_w = int(w * style.text_panel_ratio)
         canvas = Image.new("RGB", (w, h), self.colors.panel)
         hero_crop = hero.crop((panel_w, 0, w, h))
         canvas.paste(hero_crop, (panel_w, 0))
 
         draw = ImageDraw.Draw(canvas)
+
+        panel_overlay = Image.new("RGBA", (panel_w, h), (0, 0, 0, int(255 * 0.55)))
+        canvas.paste(
+            Image.alpha_composite(
+                canvas.crop((0, 0, panel_w, h)).convert("RGBA"),
+                panel_overlay,
+            ).convert("RGB"),
+            (0, 0),
+        )
+        draw = ImageDraw.Draw(canvas)
+        self._draw_face_placeholder(draw, panel_w, h)
 
         blend_w = 80
         blend_x = panel_w - blend_w
@@ -334,21 +436,14 @@ class BrandKit:
         lines = self.wrap_hook_text(hook_text)
         y = 140
 
-        for line in lines:
-            bbox = draw.textbbox((0, 0), line, font=hook_font)
-            text_h = bbox[3] - bbox[1]
-
-            for dx, dy in [(4, 4), (3, 3), (2, 2)]:
-                draw.text((48 + dx, y + dy), line, fill=self.colors.shadow, font=hook_font)
-
-            draw.text((48, y), line, fill=self.colors.text, font=hook_font)
-
-            accent_y = y + text_h + 8
-            draw.rectangle(
-                [(48, accent_y), (48 + min(panel_w - 96, len(line) * 22), accent_y + 4)],
-                fill=self.colors.accent,
+        for index, line in enumerate(lines):
+            y += self._draw_hook_line(
+                draw,
+                line,
+                y,
+                hook_font,
+                accent_last_word=(index == len(lines) - 1),
             )
-            y += text_h + 36
 
         if topic:
             draw.text(
