@@ -104,6 +104,10 @@ def _poll_status(
             )
 
         response = requests.get(url, headers=_api_headers(api_key), timeout=30)
+        if response.status_code == 404:
+            raise RuntimeError(
+                "O servidor foi reiniciado durante o job. Tente novamente."
+            )
         response.raise_for_status()
         data = response.json()
         status = data["status"]
