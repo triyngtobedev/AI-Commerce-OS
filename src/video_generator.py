@@ -1,17 +1,25 @@
 """
-VideoGenerator — geração de vídeo com fallback automático (custo zero real).
+VideoGenerator — geração de vídeo com fallback automático.
 
-Ordem de fallback: fal.ai (HF Router) → Replicate → Kling Web (Playwright).
+Ordem de fallback (grátis → premium → backup):
+  Kling Web (Playwright, grátis) → fal.ai Kling 2.6 Pro → Replicate Wan 2.6 → fal.ai Wan (HF Router)
 
 Variáveis de ambiente:
-    HF_API_TOKEN          — Token Hugging Face (router fal-ai)
-    REPLICATE_API_TOKEN   — Token Replicate (trial)
-    KLING_EMAIL           — E-mail Kling web (fallback Playwright)
+    KLING_EMAIL           — E-mail Kling web (tier grátis — 66 créditos/dia)
     KLING_PASSWORD        — Senha Kling web
+    FAL_KEY               — Chave fal.ai (Kling 2.6 Pro premium)
+    REPLICATE_API_TOKEN   — Token Replicate (Wan 2.6 T2V/I2V)
+    REPLICATE_MODEL       — Modelo T2V (default: wan-video/wan-2.6-t2v)
+    REPLICATE_I2V_MODEL   — Modelo I2V (default: wan-video/wan-2.6-i2v)
+    HF_API_TOKEN          — Token Hugging Face (router fal-ai Wan2.2, último fallback)
     VIDEO_OUTPUT_DIR      — Diretório de saída (default: ./output/videos)
     VIDEO_MAX_RETRIES     — Tentativas por API (default: 3)
     VIDEO_POLL_INTERVAL   — Intervalo de poll em segundos (default: 10)
     VIDEO_TIMEOUT         — Timeout de geração/poll em segundos (default: 300)
+    FAL_KLING_DURATION    — Duração Kling fal.ai: 5 ou 10 (default: 5)
+    FAL_KLING_AUDIO       — true/false — áudio nativo Kling (default: false)
+    REPLICATE_WAN_RESOLUTION — 720p ou 1080p (default: 720p, mais econômico)
+    REPLICATE_WAN_DURATION   — Segundos Wan no Replicate (default: 5)
 """
 
 from __future__ import annotations
@@ -45,15 +53,49 @@ FALAI_HF_ROUTE_I2V = (
     "https://router.huggingface.co/fal-ai/fal-ai/wan/v2.2-5b/image-to-video"
 )
 REPLICATE_PREDICTIONS_URL = "https://api.replicate.com/v1/predictions"
-REPLICATE_MODEL = "lightricks/ltx-video"
-REPLICATE_VERSION = os.getenv(
+REPLICATE_MODEL = os.getenv("REPLICATE_MODEL", "wan-video/wan-2.6-t2v")
+REPLICATE_I2V_MODEL = os.getenv("REPLICATE_I2V_MODEL", "wan-video/wan-2.6-i2v")
+REPLICATE_LTX_VERSION = os.getenv(
     "REPLICATE_LTX_VERSION",
     "8c47da666861d081eeb4d1261853087de23923a268a69b63febdf5dc1dee08e4",
 )
+FAL_QUEUE_BASE = "https://queue.fal.run"
+FAL_KLING_T2V_MODEL = os.getenv(
+    "FAL_KLING_T2V_MODEL",
+    "fal-ai/kling-video/v2.6/pro/text-to-video",
+)
+FAL_KLING_I2V_MODEL = os.getenv(
+    "FAL_KLING_I2V_MODEL",
+    "fal-ai/kling-video/v2.6/pro/image-to-video",
+)
+FAL_KLING_DURATION = os.getenv("FAL_KLING_DURATION", "5")
+FAL_KLING_GENERATE_AUDIO = os.getenv("FAL_KLING_AUDIO", "false").lower() in {"1", "true", "yes"}
+REPLICATE_WAN_RESOLUTION = os.getenv("REPLICATE_WAN_RESOLUTION", "720p")
+REPLICATE_WAN_DURATION = int(os.getenv("REPLICATE_WAN_DURATION", "5"))
+FAL_KLING_ESTIMATED_COST_USD = float(os.getenv("FAL_KLING_ESTIMATED_COST_USD", "0.35"))
+REPLICATE_WAN_ESTIMATED_COST_USD = float(os.getenv("REPLICATE_WAN_ESTIMATED_COST_USD", "0.25"))
 KLING_APP_BASE = os.getenv("KLING_APP_BASE", "https://kling.ai")
 KLING_VIDEO_NEW_PATH = "/app/video/new"
 KLING_SELECTOR_TIMEOUT = int(os.getenv("KLING_SELECTOR_TIMEOUT", "20000"))
 KLING_LOGIN_TIMEOUT = int(os.getenv("KLING_LOGIN_TIMEOUT", "30000"))
+KLING_STORAGE_STATE = Path(os.getenv("KLING_STORAGE_STATE", "./cache/kling_storage_state.json"))
+KLING_EMAIL_ENTRY_SELECTORS = (
+    'div.sign-in-button.mt-24:has-text("Sign in with email")',
+    'div.sign-in-button:has-text("Sign in with email")',
+    'div.sign-in-button.mt-24:has-text("Continue with email")',
+    'div.sign-in-button:has-text("Continue with email")',
+    'div.sign-in-button.mt-24',
+    'div.sign-in-button',
+)
+KLING_LOGIN_PATHS = (
+    "/global/account/login",
+    "/account/login",
+    "/login",
+)
+KLING_CHAT_DISMISS_SELECTORS = (
+    'button:has-text("End Chat")',
+    'button:has-text("Cancel")',
+)
 
 KLING_EMAIL_SELECTORS = (
     'input[type="email"]',
@@ -119,6 +161,8 @@ _SENSITIVE_ENV_KEYS = frozenset(
         "HF_API_TOKEN",
         "HF_TOKEN",
         "REPLICATE_API_TOKEN",
+        "FAL_KEY",
+        "FAL_API_KEY",
         "KLING_PASSWORD",
         "LUMA_PASSWORD",
         "KLING_EMAIL",
@@ -191,7 +235,7 @@ class VideoGenerator:
     """
     Gera vídeos via APIs gratuitas com fallback automático.
 
-    Ordem: fal.ai (HF Router) → Replicate → Kling Web (Playwright)
+    Ordem: Kling Web (grátis) → fal.ai Kling 2.6 Pro → Replicate Wan 2.6 → HF Router Wan2.2
     """
 
     def __init__(
@@ -217,7 +261,7 @@ class VideoGenerator:
         replicate_params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Fluxo de produção I2V e-commerce: prompt otimizado → Replicate → upscale 2x.
+        Fluxo de produção I2V e-commerce: prompt otimizado → fal Kling / Replicate Wan → upscale 2x.
 
         Args:
             product_name: Nome do produto.
@@ -241,25 +285,19 @@ class VideoGenerator:
             movement=movement,  # type: ignore[arg-type]
         )
         started = time.perf_counter()
-        attempt_log = _AttemptLog(api="replicate")
-        self._attempt_logs = [attempt_log]
+        self._attempt_logs.clear()
+        negative = bundle.get("negative_prompt")
 
-        result = self._retry_with_backoff(
-            lambda: self._generate_replicate(
-                bundle["prompt"],
-                image_url,
-                params=replicate_params,
-                negative_prompt=bundle.get("negative_prompt"),
-            ),
-            attempt_log,
+        result_dict = self._generate_with_fallback(
+            prompt=bundle["prompt"],
+            image_url=image_url,
+            negative_prompt=negative,
+            download=download,
+            started=started,
+            i2v_params=replicate_params,
         )
 
-        local_path = result.local_path
-        if download and result.video_url:
-            downloaded = self._download_video(result.video_url, "replicate")
-            if downloaded:
-                local_path = str(downloaded)
-
+        local_path = result_dict.get("local_path")
         upscaled = False
         if upscale and local_path and Path(local_path).exists():
             try:
@@ -271,12 +309,12 @@ class VideoGenerator:
 
         resolution = I2V_UPSCALED_RESOLUTION if upscaled else I2V_RESOLUTION
         return {
-            "video_url": result.video_url,
-            "api_used": "replicate",
+            "video_url": result_dict["video_url"],
+            "api_used": result_dict["api_used"],
             "credits_remaining": None,
-            "duration_seconds": time.perf_counter() - started,
+            "duration_seconds": result_dict["duration_seconds"],
             "resolution": resolution,
-            "fallback_reason": None,
+            "fallback_reason": result_dict.get("fallback_reason"),
             "local_path": local_path,
             "upscaled": upscaled,
             "movement": movement,
@@ -295,10 +333,9 @@ class VideoGenerator:
         download: bool = True,
     ) -> dict[str, Any]:
         """
-        Gera vídeo T2V para cenas documentais YouTube Dark via Replicate LTX-Video.
+        Gera vídeo T2V para cenas documentais YouTube Dark.
 
-        Usa build_scene_video_prompt para prompts cinematográficos e
-        T2V_YOUTUBE_PARAMS para qualidade máxima no LTX.
+        Cadeia: Kling Web (grátis) → fal Kling 2.6 Pro → Replicate Wan 2.6 → HF Wan2.2.
 
         Args:
             scene_description: Texto narrativo da cena (narração ou descrição).
@@ -330,35 +367,26 @@ class VideoGenerator:
         )
 
         started = time.perf_counter()
-        attempt_log = _AttemptLog(api="replicate")
-        self._attempt_logs = [attempt_log]
-
         params = {**T2V_YOUTUBE_PARAMS, **(t2v_params or {})}
 
-        result = self._retry_with_backoff(
-            lambda: self._generate_replicate(
-                bundle["prompt"],
-                image_url=None,  # T2V puro — sem imagem de referência
-                params=params,
-                negative_prompt=bundle.get("negative_prompt"),
-            ),
-            attempt_log,
+        result_dict = self._generate_with_fallback(
+            prompt=bundle["prompt"],
+            image_url=None,
+            negative_prompt=bundle.get("negative_prompt"),
+            download=download,
+            started=started,
+            replicate_params=params,
+            scene_mode=True,
         )
 
-        local_path = result.local_path
-        if download and result.video_url:
-            downloaded = self._download_video(result.video_url, "replicate_youtube")
-            if downloaded:
-                local_path = str(downloaded)
-
         return {
-            "video_url": result.video_url,
-            "api_used": "replicate",
+            "video_url": result_dict["video_url"],
+            "api_used": result_dict["api_used"],
             "credits_remaining": None,
-            "duration_seconds": time.perf_counter() - started,
-            "resolution": "1024x576",
-            "fallback_reason": None,
-            "local_path": local_path,
+            "duration_seconds": result_dict["duration_seconds"],
+            "resolution": result_dict.get("resolution", "1280x720"),
+            "fallback_reason": result_dict.get("fallback_reason"),
+            "local_path": result_dict.get("local_path"),
             "scene_tipo": scene_tipo,
             "emotion": emotion,
             "prompt": bundle["prompt"],
@@ -373,7 +401,7 @@ class VideoGenerator:
         download: bool = True,
     ) -> dict[str, Any]:
         """
-        Gera vídeo com fallback fal.ai → Replicate → Kling Web.
+        Gera vídeo com fallback Kling Web → fal Kling 2.6 → Replicate Wan → HF Wan2.2.
 
         Args:
             prompt: Descrição do vídeo (inglês recomendado).
@@ -389,43 +417,93 @@ class VideoGenerator:
             RuntimeError: Se todas as APIs falharem após retries.
         """
         self._attempt_logs.clear()
-        fallback_reason: str | None = None
         started = time.perf_counter()
 
-        providers: list[tuple[str, Callable[[PromptBundle], VideoGenerationResult]]] = [
-            ("falai", lambda bundle: self._generate_falai(bundle["prompt"], image_url)),
-            (
-                "replicate",
-                lambda bundle: self._generate_replicate(bundle["prompt"], image_url),
-            ),
-            ("kling_web", lambda bundle: self._generate_kling_web_sync(bundle)),
-        ]
+        return self._generate_with_fallback(
+            prompt=prompt,
+            image_url=image_url,
+            product_name=product_name,
+            download=download,
+            started=started,
+        )
+
+    def _generate_with_fallback(
+        self,
+        *,
+        prompt: str,
+        image_url: str | None = None,
+        product_name: str | None = None,
+        negative_prompt: str | None = None,
+        download: bool = True,
+        started: float | None = None,
+        replicate_params: dict[str, Any] | None = None,
+        i2v_params: dict[str, Any] | None = None,
+        scene_mode: bool = False,
+    ) -> dict[str, Any]:
+        """Executa cadeia de providers até sucesso ou esgotar tentativas."""
+        from src.prompt_builder import _inline_negative
+
+        started = started or time.perf_counter()
+        fallback_reason: str | None = None
+        providers = self._provider_chain(image_url=image_url)
+
+        if not providers:
+            raise RuntimeError(
+                "Nenhuma API de vídeo configurada. Defina KLING_EMAIL/PASSWORD, "
+                "FAL_KEY, REPLICATE_API_TOKEN ou HF_API_TOKEN."
+            )
 
         last_error = "nenhuma API tentada"
-        for index, (api_name, generator_fn) in enumerate(providers):
-            bundle = build_from_description(
-                prompt,
-                api_name,  # type: ignore[arg-type]
-                product_name=product_name,
-            )
+        for index, api_name in enumerate(providers):
+            if api_name == "kling_web":
+                bundle = build_from_description(
+                    prompt,
+                    "kling_web",  # type: ignore[arg-type]
+                    product_name=product_name,
+                )
+                if negative_prompt:
+                    bundle = {
+                        "prompt": prompt,
+                        "negative_prompt": negative_prompt,
+                    }
+            elif api_name == "falai" and negative_prompt:
+                bundle = {
+                    "prompt": _inline_negative(prompt, negative_prompt),
+                    "negative_prompt": None,
+                }
+            elif negative_prompt is not None:
+                bundle = {"prompt": prompt, "negative_prompt": negative_prompt}
+            else:
+                bundle = build_from_description(
+                    prompt,
+                    api_name,  # type: ignore[arg-type]
+                    product_name=product_name,
+                )
+
             attempt_log = _AttemptLog(api=api_name)
             self._attempt_logs.append(attempt_log)
             api_started = time.perf_counter()
 
             try:
                 result = self._retry_with_backoff(
-                    lambda: generator_fn(bundle),
+                    lambda api=api_name, b=bundle: self._invoke_provider(
+                        api,
+                        b,
+                        image_url=image_url,
+                        replicate_params=replicate_params or i2v_params,
+                    ),
                     attempt_log,
                 )
                 attempt_log.elapsed_seconds = time.perf_counter() - api_started
 
                 local_path = result.local_path
+                download_label = f"{api_name}_youtube" if scene_mode else api_name
                 if download and result.video_url:
-                    downloaded = self._download_video(result.video_url, api_name)
+                    downloaded = self._download_video(result.video_url, download_label)
                     if downloaded:
                         local_path = str(downloaded)
 
-                result = VideoGenerationResult(
+                output = VideoGenerationResult(
                     video_url=result.video_url,
                     api_used=result.api_used,
                     credits_remaining=result.credits_remaining,
@@ -438,10 +516,10 @@ class VideoGenerator:
                 logger.info(
                     "Vídeo gerado via %s (%s) em %.1fs",
                     api_name,
-                    result.resolution,
+                    output.resolution,
                     attempt_log.elapsed_seconds,
                 )
-                return result.to_dict()
+                return output.to_dict()
 
             except Exception as error:
                 attempt_log.elapsed_seconds = time.perf_counter() - api_started
@@ -454,7 +532,7 @@ class VideoGenerator:
                     last_error,
                 )
                 if index < len(providers) - 1:
-                    next_api = providers[index + 1][0]
+                    next_api = providers[index + 1]
                     fallback_reason = (
                         f"{api_name} falhou ({last_error}) → tentando {next_api}"
                     )
@@ -464,6 +542,51 @@ class VideoGenerator:
             f"Todas as APIs de vídeo falharam. Último erro: {last_error}. "
             f"Logs: {self.get_attempt_summary()}"
         )
+
+    @staticmethod
+    def _provider_chain(*, image_url: str | None) -> list[str]:
+        """Ordem: grátis → premium fal → Replicate → HF Router."""
+        chain: list[str] = []
+        if kling_web_is_configured() and not image_url:
+            chain.append("kling_web")
+        if fal_kling_is_configured():
+            chain.append("fal_kling")
+        if replicate_is_configured():
+            chain.append("replicate")
+        if falai_is_configured():
+            chain.append("falai")
+        return chain
+
+    def _invoke_provider(
+        self,
+        api_name: str,
+        bundle: PromptBundle,
+        *,
+        image_url: str | None,
+        replicate_params: dict[str, Any] | None = None,
+    ) -> VideoGenerationResult:
+        """Despacha geração para o provider indicado."""
+        prompt = bundle["prompt"]
+        negative = bundle.get("negative_prompt")
+
+        if api_name == "kling_web":
+            return self._generate_kling_web_sync(bundle)
+        if api_name == "fal_kling":
+            return self._generate_fal_kling(
+                prompt,
+                image_url,
+                negative_prompt=negative,
+            )
+        if api_name == "replicate":
+            return self._generate_replicate(
+                prompt,
+                image_url,
+                params=replicate_params,
+                negative_prompt=negative,
+            )
+        if api_name == "falai":
+            return self._generate_falai(prompt, image_url)
+        raise RuntimeError(f"Provider desconhecido: {api_name}")
 
     def get_attempt_summary(self) -> list[dict[str, Any]]:
         """Retorna resumo das tentativas por API para relatórios de teste."""
@@ -568,7 +691,143 @@ class VideoGenerator:
         )
 
     # ------------------------------------------------------------------
-    # Replicate (secundário)
+    # fal.ai Kling 2.6 Pro (premium)
+    # ------------------------------------------------------------------
+
+    def _generate_fal_kling(
+        self,
+        prompt: str,
+        image_url: str | None,
+        *,
+        negative_prompt: str | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> VideoGenerationResult:
+        """
+        Gera vídeo via fal.ai Kling 2.6 Pro (T2V ou I2V).
+
+        Usa fila assíncrona queue.fal.run com poll até COMPLETED.
+        """
+        token = _fal_api_key()
+        if not token:
+            raise RuntimeError("FAL_KEY ausente — configure em .env")
+
+        is_i2v = bool(image_url)
+        model_id = FAL_KLING_I2V_MODEL if is_i2v else FAL_KLING_T2V_MODEL
+        merged = params or {}
+
+        payload: dict[str, Any] = {
+            "prompt": prompt,
+            "duration": str(merged.get("duration", FAL_KLING_DURATION)),
+            "aspect_ratio": merged.get("aspect_ratio", "16:9"),
+            "negative_prompt": negative_prompt or "blur, distort, and low quality",
+            "cfg_scale": merged.get("cfg_scale", 0.5),
+            "generate_audio": merged.get("generate_audio", FAL_KLING_GENERATE_AUDIO),
+        }
+        if is_i2v:
+            payload["image_url"] = image_url
+
+        headers = {
+            "Authorization": f"Key {token}",
+            "Content-Type": "application/json",
+        }
+        submit_url = f"{FAL_QUEUE_BASE}/{model_id}"
+        started = time.perf_counter()
+
+        create_response = self._session.post(
+            submit_url,
+            headers=headers,
+            json=payload,
+            timeout=60,
+        )
+        self._raise_fal_http_error(create_response, "fal_kling")
+
+        body = create_response.json()
+        request_id = body.get("request_id")
+        if not request_id:
+            raise RuntimeError(f"fal Kling não retornou request_id: {body}")
+
+        video_url = self._poll_fal_queue(model_id, request_id, headers)
+        resolution = "1280x720" if payload["aspect_ratio"] == "16:9" else "720x1280"
+        return VideoGenerationResult(
+            video_url=video_url,
+            api_used="fal_kling",
+            credits_remaining=None,
+            duration_seconds=time.perf_counter() - started,
+            resolution=resolution,
+        )
+
+    def _poll_fal_queue(
+        self,
+        model_id: str,
+        request_id: str,
+        headers: dict[str, str],
+    ) -> str:
+        """Poll fila fal.ai até COMPLETED e extrai URL do vídeo."""
+        status_url = f"{FAL_QUEUE_BASE}/{model_id}/requests/{request_id}/status"
+        result_url = f"{FAL_QUEUE_BASE}/{model_id}/requests/{request_id}"
+        deadline = time.time() + VIDEO_TIMEOUT
+
+        while time.time() < deadline:
+            response = self._session.get(status_url, headers=headers, timeout=30)
+            self._raise_fal_http_error(response, "fal_kling")
+            body = response.json()
+            status = str(body.get("status", "")).upper()
+
+            if status == "COMPLETED":
+                result_response = self._session.get(result_url, headers=headers, timeout=60)
+                self._raise_fal_http_error(result_response, "fal_kling")
+                result_body = result_response.json()
+                url = self._extract_fal_video_url(result_body)
+                if url:
+                    return url
+                raise RuntimeError(f"fal Kling COMPLETED sem URL: {str(result_body)[:400]}")
+
+            if status in ("FAILED", "CANCELLED", "CANCELED"):
+                detail = body.get("error") or body.get("detail") or body
+                raise RuntimeError(f"fal Kling {status}: {detail}")
+
+            time.sleep(VIDEO_POLL_INTERVAL)
+
+        raise TimeoutError(
+            f"fal Kling polling timeout após {VIDEO_TIMEOUT}s (id={request_id})"
+        )
+
+    @staticmethod
+    def _extract_fal_video_url(data: Any) -> str | None:
+        """Extrai URL de vídeo de respostas fal.ai."""
+        if isinstance(data, dict):
+            video = data.get("video")
+            if isinstance(video, dict) and isinstance(video.get("url"), str):
+                return video["url"]
+            if isinstance(video, str) and video.startswith("http"):
+                return video
+            for key in ("video_url", "url", "output"):
+                value = data.get(key)
+                if isinstance(value, str) and value.startswith("http"):
+                    return value
+                if isinstance(value, dict) and isinstance(value.get("url"), str):
+                    return value["url"]
+            nested = data.get("response") or data.get("data") or data.get("output")
+            if nested is not None:
+                return VideoGenerator._extract_fal_video_url(nested)
+        return None
+
+    @staticmethod
+    def _raise_fal_http_error(response: requests.Response, api_label: str) -> None:
+        """Converte erros HTTP fal.ai."""
+        if response.status_code == 401:
+            raise RuntimeError(f"{api_label} auth failed (401)")
+        if response.status_code in (402, 403):
+            raise NoCreditError(f"{api_label} créditos esgotados ({response.status_code})")
+        if response.status_code == 429:
+            raise RuntimeError(f"{api_label} rate limit (429)")
+        if response.status_code >= 400:
+            raise RuntimeError(
+                f"{api_label} HTTP {response.status_code}: {response.text[:400]}"
+            )
+
+    # ------------------------------------------------------------------
+    # Replicate (Wan 2.6 — backup pago)
     # ------------------------------------------------------------------
 
     def _generate_replicate(
@@ -580,7 +839,7 @@ class VideoGenerator:
         negative_prompt: str | None = None,
     ) -> VideoGenerationResult:
         """
-        POST Replicate predictions com lightricks/ltx-video.
+        POST Replicate predictions — Wan 2.6 T2V/I2V (default) ou LTX legado.
 
         Poll GET /v1/predictions/{id} até status succeeded.
         """
@@ -594,37 +853,66 @@ class VideoGenerator:
         }
 
         is_i2v = bool(image_url)
-        i2v_params = {**I2V_OPTIMAL_PARAMS, **(params or {})}
+        model_name = REPLICATE_I2V_MODEL if is_i2v else REPLICATE_MODEL
+        use_wan = "wan" in model_name.lower()
 
-        model_input: dict[str, Any] = {
-            "prompt": prompt,
-            "negative_prompt": negative_prompt or (
-                "blurry, distorted, low quality, watermark, overexposed, shaky camera, text overlay"
-            ),
-            "length": i2v_params.get("length", 97),
-            "steps": i2v_params.get("steps", 30),
-            "cfg": i2v_params.get("cfg", 7.5),
-        }
-
-        if is_i2v:
-            model_input["image"] = image_url
-            model_input["target_size"] = i2v_params.get("target_size", 832)
-            model_input["image_noise_scale"] = i2v_params.get("image_noise_scale", 0.12)
-            resolution = I2V_RESOLUTION
+        if use_wan:
+            wan_params = {**(params or {})}
+            model_input: dict[str, Any] = {
+                "prompt": prompt,
+                "negative_prompt": negative_prompt or (
+                    "blurry, distorted, low quality, watermark, overexposed, "
+                    "shaky camera, text overlay, cartoon"
+                ),
+                "aspect_ratio": wan_params.get("aspect_ratio", "16:9"),
+                "resolution": wan_params.get("resolution", REPLICATE_WAN_RESOLUTION),
+                "duration": wan_params.get("duration", REPLICATE_WAN_DURATION),
+                "enable_prompt_expansion": wan_params.get("enable_prompt_expansion", True),
+            }
+            if is_i2v:
+                model_input["image"] = image_url
+            resolution = (
+                "1920x1080"
+                if model_input["resolution"] == "1080p"
+                else "1280x720"
+            )
         else:
-            t2v_params = {**T2V_YOUTUBE_PARAMS, **(params or {})}
-            model_input["target_size"] = t2v_params.get("target_size", 832)
-            model_input["aspect_ratio"] = t2v_params.get("aspect_ratio", "16:9")
-            model_input["length"] = t2v_params.get("length", 97)
-            model_input["steps"] = t2v_params.get("steps", 45)
-            model_input["cfg"] = t2v_params.get("cfg", 8.5)
-            resolution = "1024x576"
+            i2v_params = {**I2V_OPTIMAL_PARAMS, **(params or {})}
+            model_input = {
+                "prompt": prompt,
+                "negative_prompt": negative_prompt or (
+                    "blurry, distorted, low quality, watermark, overexposed, shaky camera, text overlay"
+                ),
+                "length": i2v_params.get("length", 97),
+                "steps": i2v_params.get("steps", 30),
+                "cfg": i2v_params.get("cfg", 7.5),
+            }
+            if is_i2v:
+                model_input["image"] = image_url
+                model_input["target_size"] = i2v_params.get("target_size", 832)
+                model_input["image_noise_scale"] = i2v_params.get("image_noise_scale", 0.12)
+                resolution = I2V_RESOLUTION
+            else:
+                t2v_params = {**T2V_YOUTUBE_PARAMS, **(params or {})}
+                model_input["target_size"] = t2v_params.get("target_size", 832)
+                model_input["aspect_ratio"] = t2v_params.get("aspect_ratio", "16:9")
+                model_input["length"] = t2v_params.get("length", 97)
+                model_input["steps"] = t2v_params.get("steps", 45)
+                model_input["cfg"] = t2v_params.get("cfg", 8.5)
+                resolution = "1024x576"
 
         started = time.perf_counter()
+        if "/" in model_name:
+            create_url = f"https://api.replicate.com/v1/models/{model_name}/predictions"
+            create_body: dict[str, Any] = {"input": model_input}
+        else:
+            create_url = REPLICATE_PREDICTIONS_URL
+            create_body = {"version": REPLICATE_LTX_VERSION, "input": model_input}
+
         create_response = self._session.post(
-            REPLICATE_PREDICTIONS_URL,
+            create_url,
             headers=headers,
-            json={"version": REPLICATE_VERSION, "input": model_input},
+            json=create_body,
             timeout=60,
         )
         self._raise_replicate_http_error(create_response)
@@ -739,11 +1027,15 @@ class VideoGenerator:
                 headless=not headful,
                 slow_mo=500 if headful else 0,
             )
-            context = await browser.new_context(
-                accept_downloads=True,
-                viewport={"width": 1440, "height": 900},
-                locale="en-US",
-            )
+            context_kwargs: dict[str, Any] = {
+                "accept_downloads": True,
+                "viewport": {"width": 1440, "height": 900},
+                "locale": "en-US",
+            }
+            if KLING_STORAGE_STATE.exists():
+                context_kwargs["storage_state"] = str(KLING_STORAGE_STATE)
+
+            context = await browser.new_context(**context_kwargs)
             page = await context.new_page()
 
             try:
@@ -757,11 +1049,15 @@ class VideoGenerator:
                     await _kling_debug_screenshot(page, "01_video_new")
 
                 await self._kling_dismiss_blocking_ui(page)
+                await self._kling_dismiss_chat_widget(page)
                 if debug:
                     await _kling_debug_screenshot(page, "02_after_dismiss")
 
                 if await self._kling_needs_login(page):
                     await self._kling_web_login(page, email, password, debug=debug)
+                    if KLING_STORAGE_STATE.parent:
+                        KLING_STORAGE_STATE.parent.mkdir(parents=True, exist_ok=True)
+                    await context.storage_state(path=str(KLING_STORAGE_STATE))
                 else:
                     logger.info("Kling: sessão já autenticada ou login não necessário")
 
@@ -797,6 +1093,8 @@ class VideoGenerator:
         """Dispensa cookies e modais promocionais que bloqueiam cliques."""
         await self._kling_dismiss_cookies(page)
         for _ in range(3):
+            if await self._kling_login_overlay_visible(page):
+                break
             closed = False
             for selector in KLING_PROMO_CLOSE_SELECTORS:
                 locator = page.locator(selector)
@@ -808,7 +1106,7 @@ class VideoGenerator:
                         break
                     except Exception:
                         continue
-            if not closed:
+            if not closed and not await self._kling_login_overlay_visible(page):
                 try:
                     await page.keyboard.press("Escape")
                     await page.wait_for_timeout(400)
@@ -848,11 +1146,167 @@ class VideoGenerator:
                 continue
         raise ElementNotFoundError(f"Nenhum seletor funcionou: {list(selectors)}")
 
+    async def _kling_dismiss_chat_widget(self, page: Any) -> None:
+        """Fecha widget de chat — sem Escape (fecha o modal de login)."""
+        if await self._kling_login_overlay_visible(page):
+            return
+        for selector in KLING_CHAT_DISMISS_SELECTORS:
+            locator = page.locator(selector)
+            if await locator.count() and await locator.first.is_visible():
+                try:
+                    await locator.first.click(timeout=2000, force=True)
+                    await page.wait_for_timeout(500)
+                except Exception:
+                    continue
+
+    @staticmethod
+    async def _kling_login_overlay_visible(page: Any) -> bool:
+        """True se modal/tela de login estiver aberta."""
+        welcome = page.get_by_text("Welcome to Kling AI")
+        if await welcome.count() and await welcome.first.is_visible():
+            return True
+
+        email_buttons = page.locator("div.sign-in-button")
+        count = await email_buttons.count()
+        for index in range(count):
+            button = email_buttons.nth(index)
+            if not await button.is_visible():
+                continue
+            text = (await button.inner_text()).strip().lower()
+            if any(token in text for token in ("email", "google", "apple")):
+                return True
+
+        email_input = page.locator('input[type="email"]')
+        return bool(await email_input.count() and await email_input.first.is_visible())
+
+    async def _kling_surface_login_modal(self, page: Any) -> None:
+        """Abre modal de login via One-click Sign In ou botão Generate."""
+        if await self._kling_login_overlay_visible(page):
+            return
+
+        triggers = (
+            'button:has-text("One-click Sign In")',
+            'button:has-text("Generate")',
+        )
+        for selector in triggers:
+            locator = page.locator(selector)
+            if not await locator.count() or not await locator.first.is_visible():
+                continue
+            try:
+                await locator.first.click(timeout=KLING_SELECTOR_TIMEOUT, force=True)
+                await page.wait_for_timeout(1500)
+            except Exception:
+                continue
+            if await self._kling_login_overlay_visible(page):
+                return
+
+    async def _kling_wait_for_login_modal(self, page: Any, *, timeout_s: float = 25) -> bool:
+        """Aguarda botões de login ou campo e-mail ficarem disponíveis."""
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            if await self._kling_login_overlay_visible(page):
+                return True
+            await self._kling_surface_login_modal(page)
+            await page.wait_for_timeout(1000)
+        return await self._kling_login_overlay_visible(page)
+
+    async def _kling_click_sign_in_with_email(self, page: Any) -> bool:
+        """Clica em Sign in with email (ou variantes) com fallbacks."""
+        if await page.locator('input[type="email"]').count():
+            if await page.locator('input[type="email"]').first.is_visible():
+                return True
+
+        email_buttons = page.locator("div.sign-in-button")
+        count = await email_buttons.count()
+        for index in range(count):
+            button = email_buttons.nth(index)
+            if not await button.is_visible():
+                continue
+            text = (await button.inner_text()).strip().lower()
+            if "email" not in text:
+                continue
+            await button.click(timeout=KLING_SELECTOR_TIMEOUT, force=True)
+            return True
+
+        for selector in KLING_EMAIL_ENTRY_SELECTORS:
+            locator = page.locator(selector)
+            if await locator.count() and await locator.first.is_visible():
+                text = (await locator.first.inner_text()).strip().lower()
+                if "email" in text or selector.endswith("sign-in-button"):
+                    await locator.first.click(timeout=KLING_SELECTOR_TIMEOUT, force=True)
+                    return True
+
+        regex_entry = page.get_by_text(
+            re.compile(r"(sign in|continue)\s+with\s+email", re.I)
+        )
+        if await regex_entry.count() and await regex_entry.first.is_visible():
+            await regex_entry.first.click(timeout=KLING_SELECTOR_TIMEOUT, force=True)
+            return True
+
+        return bool(
+            await page.evaluate(
+                """() => {
+                    const candidates = [
+                        ...document.querySelectorAll('.sign-in-button'),
+                        ...document.querySelectorAll('button, div, a'),
+                    ];
+                    const btn = candidates.find((el) =>
+                        /sign in with email|continue with email/i.test(
+                            (el.textContent || '').trim()
+                        )
+                    );
+                    if (!btn) return false;
+                    btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                    btn.click();
+                    return true;
+                }"""
+            )
+        )
+
+    @staticmethod
+    async def _kling_is_logged_in(page: Any) -> bool:
+        """True quando modal de login fechou e botão One-click Sign In sumiu."""
+        if await VideoGenerator._kling_login_overlay_visible(page):
+            return False
+
+        sign_in = page.locator('button:has-text("One-click Sign In")')
+        return not (await sign_in.count() and await sign_in.first.is_visible())
+
+    async def _kling_open_email_login(self, page: Any, *, debug: bool = False) -> None:
+        """Abre fluxo e-mail: login modal → Sign in with email → formulário."""
+        email_input = page.locator('input[type="email"]')
+        if await email_input.count() and await email_input.first.is_visible():
+            return
+
+        await self._kling_dismiss_cookies(page)
+        await self._kling_dismiss_chat_widget(page)
+        await self._kling_surface_login_modal(page)
+
+        if not await self._kling_wait_for_login_modal(page):
+            if debug:
+                await _kling_debug_screenshot(page, "login_modal_missing")
+            raise ElementNotFoundError(
+                "Modal de login Kling não abriu — tente KLING_HEADFUL=1 para login manual"
+            )
+
+        if debug:
+            await _kling_debug_screenshot(page, "login_modal")
+
+        if not await self._kling_click_sign_in_with_email(page):
+            if debug:
+                await _kling_debug_screenshot(page, "email_button_missing")
+            raise ElementNotFoundError(
+                'Botão "Sign in with email" não encontrado — UI Kling pode ter mudado'
+            )
+
+        await page.wait_for_timeout(2000)
+        if debug:
+            await _kling_debug_screenshot(page, "email_form")
+
     @staticmethod
     async def _kling_needs_login(page: Any) -> bool:
-        """True se botão One-click Sign In estiver visível."""
-        sign_in = page.locator('button:has-text("One-click Sign In")')
-        return await sign_in.count() > 0 and await sign_in.first.is_visible()
+        """True se login ainda for necessário."""
+        return not await VideoGenerator._kling_is_logged_in(page)
 
     async def _kling_web_login(
         self,
@@ -862,67 +1316,75 @@ class VideoGenerator:
         *,
         debug: bool = False,
     ) -> None:
-        """Login via One-click Sign In → Continue with email → Sign In."""
+        """Login via One-click Sign In → Sign in with email → Sign In."""
         if await self._page_has_captcha(page):
             raise CaptchaError("CAPTCHA detectado no login Kling")
 
-        sign_in_entry = page.locator('button:has-text("One-click Sign In")')
-        if await sign_in_entry.count() and await sign_in_entry.first.is_visible():
-            await sign_in_entry.first.click(timeout=KLING_SELECTOR_TIMEOUT, force=True)
-            await page.wait_for_timeout(3000)
-            if debug:
-                await _kling_debug_screenshot(page, "login_modal")
+        await self._kling_open_email_login(page, debug=debug)
 
-        await self._kling_dismiss_cookies(page)
-
-        email_input = page.locator('input[type="email"]')
-        if not (await email_input.count() and await email_input.first.is_visible()):
-            welcome = page.get_by_text("Welcome to Kling AI")
-            if await welcome.count():
-                await welcome.first.wait_for(state="visible", timeout=KLING_SELECTOR_TIMEOUT)
-
-            email_entry = page.locator(
-                'div.sign-in-button.mt-24:has-text("Continue with email"), '
-                'div.sign-in-button:has-text("Continue with email")'
+        try:
+            email_field = await self._kling_find_visible(page, KLING_EMAIL_SELECTORS)
+        except ElementNotFoundError as error:
+            verification = page.locator(
+                'input[placeholder*="verification" i], input[placeholder*="code" i]'
             )
-            if await email_entry.count() == 0:
-                email_entry = page.get_by_text("Continue with email", exact=True)
-            await email_entry.first.click(timeout=KLING_SELECTOR_TIMEOUT, force=True)
-            await page.wait_for_timeout(2000)
-            if debug:
-                await _kling_debug_screenshot(page, "email_form")
+            if await verification.count() and await verification.first.is_visible():
+                raise RuntimeError(
+                    "Kling exige código de verificação por e-mail (sem campo de senha). "
+                    "Use KLING_HEADFUL=1 para concluir login manual uma vez, ou cadastre "
+                    "conta com senha em kling.ai."
+                ) from error
+            raise
 
-        email_field = await self._kling_find_visible(page, KLING_EMAIL_SELECTORS)
         await email_field.fill(email, timeout=KLING_SELECTOR_TIMEOUT)
 
-        password_field = await self._kling_find_visible(page, KLING_PASSWORD_SELECTORS)
-        await password_field.fill(password, timeout=KLING_SELECTOR_TIMEOUT)
+        password_field = page.locator('input[type="password"]')
+        if not (await password_field.count() and await password_field.first.is_visible()):
+            raise RuntimeError(
+                "Kling não exibiu campo de senha — login por código de e-mail. "
+                "Rode com KLING_HEADFUL=1 e salve a sessão em cache/kling_storage_state.json."
+            )
+
+        await password_field.first.fill(password, timeout=KLING_SELECTOR_TIMEOUT)
         if debug:
             await _kling_debug_screenshot(page, "password_filled")
 
         sign_in_btn = page.locator(
             'button:has-text("Sign In"):not([disabled]), '
+            'button:has-text("Sign in"):not([disabled]), '
             'button:has-text("Sign In"), '
-            '.generic-button:has-text("Sign In")'
+            'button:has-text("Sign in"), '
+            '.generic-button:has-text("Sign In"), '
+            '.generic-button:has-text("Sign in")'
         )
         if await sign_in_btn.count():
             await sign_in_btn.first.click(timeout=KLING_SELECTOR_TIMEOUT, force=True)
         else:
             await page.keyboard.press("Enter")
 
-        await page.wait_for_timeout(5000)
+        deadline = time.time() + max(30, KLING_SELECTOR_TIMEOUT // 1000)
+        while time.time() < deadline:
+            if await self._kling_is_logged_in(page):
+                logger.info("Kling: login concluído")
+                return
 
-        if await page.locator('input[type="email"]').count():
-            if await page.locator('input[type="email"]').first.is_visible():
-                welcome_visible = (
-                    await page.get_by_text("Welcome to Kling AI").count()
-                    and await page.get_by_text("Welcome to Kling AI").first.is_visible()
-                )
-                if welcome_visible:
+            error_text = page.locator(
+                '.el-form-item__error, [class*="error"], [role="alert"]'
+            )
+            if await error_text.count() and await error_text.first.is_visible():
+                message = (await error_text.first.inner_text()).strip()
+                if message:
                     raise RuntimeError(
-                        "Login Kling falhou — modal de autenticação ainda visível. "
-                        "Verifique KLING_EMAIL/KLING_PASSWORD."
+                        f"Login Kling rejeitado: {message}. Verifique KLING_EMAIL/KLING_PASSWORD."
                     )
+
+            await page.wait_for_timeout(1000)
+
+        raise RuntimeError(
+            "Login Kling falhou — modal de autenticação ainda visível. "
+            "Verifique KLING_EMAIL/KLING_PASSWORD ou rode com KLING_HEADFUL=1 "
+            "para login manual (sessão salva em cache/kling_storage_state.json)."
+        )
 
     async def _kling_web_submit(
         self,
@@ -1177,6 +1639,25 @@ async def _kling_debug_screenshot(page: Any, name: str) -> Path | None:
     return path
 
 
+def fal_kling_is_configured() -> bool:
+    """True se FAL_KEY está presente para Kling 2.6 Pro."""
+    return bool(_fal_api_key())
+
+
+def _fal_api_key() -> str:
+    return os.getenv("FAL_KEY") or os.getenv("FAL_API_KEY") or ""
+
+
+def ai_video_configured() -> bool:
+    """True se alguma API de vídeo IA está configurada."""
+    return (
+        kling_web_is_configured()
+        or fal_kling_is_configured()
+        or replicate_is_configured()
+        or falai_is_configured()
+    )
+
+
 def falai_is_configured() -> bool:
     """True se HF_API_TOKEN está presente."""
     return bool(os.getenv("HF_API_TOKEN") or os.getenv("HF_TOKEN"))
@@ -1260,9 +1741,10 @@ def write_cli_test_report(result: dict[str, Any], output_path: Path, metrics: di
         "",
         "| API | Configurada |",
         "|-----|-------------|",
-        f"| fal.ai (HF) | {'✅' if falai_is_configured() else '❌'} |",
-        f"| Replicate | {'✅' if replicate_is_configured() else '❌'} |",
-        f"| Kling Web | {'✅' if kling_web_is_configured() else '❌'} |",
+        f"| Kling Web (grátis) | {'✅' if kling_web_is_configured() else '❌'} |",
+        f"| fal.ai Kling 2.6 Pro | {'✅' if fal_kling_is_configured() else '❌'} |",
+        f"| Replicate Wan 2.6 | {'✅' if replicate_is_configured() else '❌'} |",
+        f"| fal.ai Wan (HF Router) | {'✅' if falai_is_configured() else '❌'} |",
         "",
         "## Resultado do teste real (CLI)",
         "",
@@ -1291,8 +1773,8 @@ def write_cli_test_report(result: dict[str, Any], output_path: Path, metrics: di
         "",
         "## Observações",
         "",
-        "1. APIs free entregam ~480p; use `src.video_upscaler.upscale_video()` para 960p+.",
-        "2. Configure `REPLICATE_API_TOKEN` e `KLING_EMAIL`/`KLING_PASSWORD` para fallback automático.",
+        "1. Kling Web (66 créditos/dia) → fal.ai Kling 2.6 Pro → Replicate Wan 2.6 → HF Wan2.2.",
+        "2. Configure FAL_KEY (fal.ai), REPLICATE_API_TOKEN e KLING_EMAIL/PASSWORD.",
         "3. Testes unitários: `pytest tests/test_video_apis.py -v -m \"not integration\"`.",
         "",
     ]

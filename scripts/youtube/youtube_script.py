@@ -13,6 +13,8 @@ from scripts.creative.script_parser import enrich_script_with_emotions
 from scripts.youtube.narration_utils import (
     count_words,
     validate_narration,
+    validate_sentence_length,
+    validate_scene_hooks,
     stitch_script_to_narration,
     clean_script_phrases,
     detect_banned_phrases,
@@ -29,7 +31,18 @@ SECTIONS_TO_EXPAND = [
     "revelacao",
     "consequencias",
 ]
-from scripts.utils.prompt_loader import load_prompt
+
+DARK5_SECTIONS_TO_EXPAND = [
+    "contexto",
+    "fato_5",
+    "fato_4",
+    "fato_3",
+    "fato_2",
+    "fato_1",
+    "revelacao",
+    "encerramento",
+]
+from scripts.utils.prompt_loader import load_prompt, load_script_prompt
 from scripts.utils.json_parser import parse_json
 from scripts.utils.ai_cache import load_cache, save_cache
 
@@ -48,8 +61,9 @@ def generate_youtube_script(
 
     topic_name = topic["nome"]
     angulo = strategy.get("angulo", "default")
+    roteiro_template = strategy.get("roteiro_template", "documentario")
 
-    cache_key = f"{topic_name}--{angulo}"
+    cache_key = f"{topic_name}--{angulo}--{roteiro_template}"
 
     print(
         f"📜 Roteiro YouTube: {topic_name}"
@@ -71,9 +85,10 @@ def generate_youtube_script(
         return enrich_script_with_emotions(cached)
 
 
-    prompt = load_prompt(
+    prompt = load_script_prompt(
         "script_generation",
         platform="youtube",
+        template=roteiro_template,
     )
 
 
@@ -85,18 +100,18 @@ def generate_youtube_script(
     )
     angulo_label = strategy.get("angulo", "documentario")
 
-    full_prompt = f"""
-TASK: YOUTUBE_SCRIPT_GENERATION
-
-{prompt}
-
-## Parâmetros de produção
-- Duração alvo: {duracao} ({YOUTUBE_DARK.target_duration_seconds} segundos)
-- Mínimo de palavras: {MIN_NARRATION_WORDS}
-- Meta de palavras: entre 1600 e 1800 palavras no total
-- Tom de narração: {tom}
-- Ângulo criativo: {angulo_label}
-
+    if roteiro_template == "dark5":
+        section_metas = """
+## Metas por seção — Template Dark5 (OBRIGATÓRIO)
+- hook: 50-80 palavras (promessa de ranking, "Você não vai acreditar no número 1...")
+- contexto: 150-200 palavras
+- fato_5 a fato_2: 50-70 palavras cada (15-20 segundos de cena, com gancho pro próximo)
+- fato_1: 70-90 palavras (revelação com ênfase máxima)
+- revelacao: 150-200 palavras
+- encerramento: 60-100 palavras
+"""
+    else:
+        section_metas = """
 ## Metas por seção (OBRIGATÓRIO)
 - hook: 50-80 palavras
 - contexto: 200-250 palavras
@@ -104,9 +119,32 @@ TASK: YOUTUBE_SCRIPT_GENERATION
 - revelacao: 200-250 palavras
 - consequencias: 200-250 palavras
 - encerramento: 60-100 palavras
+"""
+
+    full_prompt = f"""
+TASK: YOUTUBE_SCRIPT_GENERATION
+
+{prompt}
+
+## Parâmetros de produção
+- Template de roteiro: {roteiro_template}
+- Duração alvo: {duracao} ({YOUTUBE_DARK.target_duration_seconds} segundos)
+- Mínimo de palavras: {MIN_NARRATION_WORDS}
+- Meta de palavras: entre 1600 e 1800 palavras no total
+- Tom de narração: {tom}
+- Ângulo criativo: {angulo_label}
+
+{section_metas}
 
 IMPORTANTE: o roteiro DEVE ter entre 1600 e 1800 palavras no total.
-Seções de desenvolvimento precisam de 200-250 palavras cada — NÃO resuma.
+Seções precisam de conteúdo denso — NÃO resuma.
+
+## Regras de narração dark (OBRIGATÓRIO)
+- Máximo 12 palavras por frase — quebre frases longas em duas ou três
+- Tom grave e pausado — nunca apressado
+- Use [PAUSA] antes de revelações importantes
+- Termine cada seção (exceto encerramento) com gancho: "E isso não é o pior..."
+- Proibido linguagem formal, jargão técnico e frases enciclopédicas
 
 ## Gancho obrigatório (use como base do hook)
 "{gancho}"
@@ -136,7 +174,7 @@ Estratégia completa:
 
     if not isinstance(script, dict):
 
-        script = _fallback_script(topic, strategy)
+        script = _fallback_script(topic, strategy, roteiro_template)
 
     script = clean_script_phrases(script)
 
@@ -153,6 +191,12 @@ Estratégia completa:
     for warning in validate_narration(narration):
         print(f"⚠️ Roteiro: {warning}")
 
+    for warning in validate_sentence_length(script):
+        print(f"⚠️ Frase longa: {warning}")
+
+    for warning in validate_scene_hooks(script):
+        print(f"⚠️ Gancho: {warning}")
+
     target_seconds = YOUTUBE_DARK.target_duration_seconds
     estimated_duration = estimate_duration_seconds(narration)
 
@@ -164,7 +208,7 @@ Estratégia completa:
         )
         try:
             script = expand_script_in_sections(
-                script, topic, strategy, target_words
+                script, topic, strategy, target_words, roteiro_template
             )
         except Exception as e:
             print(
@@ -192,6 +236,7 @@ Estratégia completa:
         "palavras": word_count,
         "gancho_usado": gancho,
         "tom_narracao": tom,
+        "roteiro_template": roteiro_template,
         "director": director_decision.to_dict(),
         "emotional_timeline": timeline.to_dict(),
     }
@@ -280,7 +325,7 @@ Texto atual ({section_key}):
     return section_text
 
 
-def expand_script_in_sections(script, topic, strategy, target_words):
+def expand_script_in_sections(script, topic, strategy, target_words, roteiro_template="documentario"):
     """
     Expande o roteiro seção por seção em vez de uma única chamada grande.
     Cada iteração adiciona ~150-200 palavras a uma seção específica.
@@ -289,6 +334,11 @@ def expand_script_in_sections(script, topic, strategy, target_words):
     script = dict(script)
     current_words = count_words(stitch_script_to_narration(script))
     needed = target_words - current_words
+    sections = (
+        DARK5_SECTIONS_TO_EXPAND
+        if roteiro_template == "dark5"
+        else SECTIONS_TO_EXPAND
+    )
 
     print(
         f"📝 Expandindo roteiro por seções (+{needed} palavras necessárias)..."
@@ -297,7 +347,7 @@ def expand_script_in_sections(script, topic, strategy, target_words):
     while count_words(stitch_script_to_narration(script)) < target_words:
         made_progress = False
 
-        for section in SECTIONS_TO_EXPAND:
+        for section in sections:
             total = count_words(stitch_script_to_narration(script))
             if total >= target_words:
                 break
@@ -333,7 +383,7 @@ def expand_script_in_sections(script, topic, strategy, target_words):
     return script
 
 
-def _fallback_script(topic, strategy):
+def _fallback_script(topic, strategy, roteiro_template="documentario"):
 
     nome = topic.get("nome", "este evento")
 
@@ -342,6 +392,18 @@ def _fallback_script(topic, strategy):
         f"A história de {nome} é mais surpreendente do que você imagina."
     )
 
+    if roteiro_template == "dark5":
+        return {
+            "hook": gancho or f"Você não vai acreditar no que está no número 1 sobre {nome}.",
+            "contexto": f"Para entender esta lista sobre {nome}, precisamos de contexto.",
+            "fato_5": f"Número 5: o primeiro fato surpreendente sobre {nome}.",
+            "fato_4": f"Número 4: a história fica ainda mais estranha.",
+            "fato_3": f"Número 3: um detalhe que poucos conhecem.",
+            "fato_2": f"Número 2: quase impossível de acreditar.",
+            "fato_1": f"Número 1: o fato mais chocante sobre {nome}.",
+            "revelacao": "Mas o verdadeiro impacto só fica claro quando olhamos de perto.",
+            "encerramento": "Se essa lista te pegou, inscreva-se no canal.",
+        }
 
     return {
         "hook": gancho,

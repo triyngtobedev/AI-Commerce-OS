@@ -65,7 +65,7 @@ class TestPromptBuilder:
             assert bundle["negative_prompt"] is not None
 
     def test_no_4k_in_any_api(self) -> None:
-        for api in ("falai", "replicate", "kling_web"):
+        for api in ("falai", "fal_kling", "replicate", "kling_web"):
             bundle = build_prompt(DEFAULT_PRODUCT, api)  # type: ignore[arg-type]
             assert "4K" not in bundle["prompt"]
             assert "4k" not in bundle["prompt"].lower()
@@ -112,6 +112,42 @@ class TestPromptBuilder:
         assert "documentary" in bundle["prompt"].lower()
         assert bundle["negative_prompt"] is not None
         assert "cartoon" in bundle["negative_prompt"]
+
+    def test_build_scene_image_prompt_youtube_dark(self) -> None:
+        from src.prompt_builder import build_scene_image_prompt
+
+        bundle = build_scene_image_prompt(
+            scene_description="Australian soldiers with machine guns in desert",
+            scene_query="australian soldiers machine guns desert 1932",
+            platform="youtube_dark",
+            scene_tipo="hook",
+            emotion="impact",
+            visual_direction={
+                "visual_type": "dramatic_event",
+                "section_key": "hook",
+                "emotion": "impact",
+            },
+        )
+        prompt = bundle["prompt"].lower()
+        assert "australian soldiers" in prompt
+        assert "youtube dark" in prompt
+        assert "extreme close-up" in prompt
+        assert "dramatic event" in prompt or "reenactment" in prompt
+        assert "avoid" in prompt
+        assert "illustration" in bundle["negative_prompt"]
+
+    def test_build_scene_image_prompt_truncates(self) -> None:
+        from src.prompt_builder import build_scene_image_prompt
+
+        bundle = build_scene_image_prompt(
+            scene_description="Very long historical description " * 10,
+            scene_query="short subject",
+            platform="youtube_dark",
+            max_length=120,
+        )
+        positive = bundle["prompt"].split("\n[Avoid]:")[0]
+        assert len(positive) <= 120
+        assert positive.startswith("short subject")
 
 
 # ---------------------------------------------------------------------------
@@ -172,6 +208,57 @@ class TestFalaiGeneration:
             result = generator._generate_falai("prompt", "https://img.example/a.jpg")
 
         assert result.video_url == "https://cdn.example.com/done.mp4"
+
+
+# ---------------------------------------------------------------------------
+# fal.ai Kling mock
+# ---------------------------------------------------------------------------
+
+
+class TestFalKlingGeneration:
+    """Testa _generate_fal_kling com HTTP mockado."""
+
+    def test_fal_kling_success(self) -> None:
+        generator = VideoGenerator(output_dir=OUTPUT_DIR)
+
+        create_resp = MagicMock()
+        create_resp.status_code = 200
+        create_resp.json.return_value = {"request_id": "req-fal-1"}
+
+        status_pending = MagicMock()
+        status_pending.status_code = 200
+        status_pending.json.return_value = {"status": "IN_PROGRESS"}
+
+        status_done = MagicMock()
+        status_done.status_code = 200
+        status_done.json.return_value = {"status": "COMPLETED"}
+
+        result_resp = MagicMock()
+        result_resp.status_code = 200
+        result_resp.json.return_value = {
+            "video": {"url": "https://v3b.fal.media/files/test/output.mp4"},
+        }
+
+        with (
+            patch.dict(os.environ, {"FAL_KEY": "fal_test_key_1234567890"}),
+            patch.object(generator._session, "post", return_value=create_resp),
+            patch.object(
+                generator._session,
+                "get",
+                side_effect=[status_pending, status_done, result_resp],
+            ),
+            patch("src.video_generator.time.sleep"),
+        ):
+            result = generator._generate_fal_kling("cinematic prompt", None)
+
+        assert result.api_used == "fal_kling"
+        assert result.video_url.endswith("output.mp4")
+
+    def test_fal_kling_missing_token(self) -> None:
+        generator = VideoGenerator()
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(RuntimeError, match="FAL_KEY"):
+                generator._generate_fal_kling("prompt", None)
 
 
 # ---------------------------------------------------------------------------
@@ -243,15 +330,16 @@ class TestReplicateGeneration:
 
 
 class TestVideoGeneratorFallback:
-    """Testa cadeia fal.ai → Replicate → Kling Web."""
+    """Testa cadeia Kling Web → fal Kling → Replicate → HF."""
 
-    def test_primary_falai_success(self) -> None:
+    def test_primary_kling_web_success(self) -> None:
         generator = VideoGenerator(output_dir=OUTPUT_DIR)
         with (
+            patch.object(VideoGenerator, "_provider_chain", return_value=["kling_web"]),
             patch.object(
                 generator,
-                "_generate_falai",
-                return_value=_make_result(api_used="falai"),
+                "_generate_kling_web_sync",
+                return_value=_make_result(api_used="kling_web", resolution="720p"),
             ),
             patch.object(generator, "_download_video", return_value=None),
         ):
@@ -261,17 +349,48 @@ class TestVideoGeneratorFallback:
                 download=False,
             )
 
-        assert result["api_used"] == "falai"
-        assert result["resolution"] == "480p"
+        assert result["api_used"] == "kling_web"
+        assert result["resolution"] == "720p"
         assert result["fallback_reason"] is None
 
-    def test_fallback_falai_to_replicate(self) -> None:
+    def test_fallback_kling_web_to_fal_kling(self) -> None:
         generator = VideoGenerator(output_dir=OUTPUT_DIR)
         with (
             patch.object(
+                VideoGenerator,
+                "_provider_chain",
+                return_value=["kling_web", "fal_kling"],
+            ),
+            patch.object(
                 generator,
-                "_generate_falai",
-                side_effect=RuntimeError("HF créditos esgotados"),
+                "_generate_kling_web_sync",
+                side_effect=NoCreditError("Créditos Kling web esgotados"),
+            ),
+            patch.object(
+                generator,
+                "_generate_fal_kling",
+                return_value=_make_result(api_used="fal_kling", resolution="1280x720"),
+            ),
+            patch.object(generator, "_download_video", return_value=None),
+        ):
+            result = generator.generate(DEFAULT_PROMPT, download=False)
+
+        assert result["api_used"] == "fal_kling"
+        assert result["fallback_reason"] is not None
+        assert "kling_web" in result["fallback_reason"]
+
+    def test_fallback_fal_kling_to_replicate(self) -> None:
+        generator = VideoGenerator(output_dir=OUTPUT_DIR)
+        with (
+            patch.object(
+                VideoGenerator,
+                "_provider_chain",
+                return_value=["fal_kling", "replicate"],
+            ),
+            patch.object(
+                generator,
+                "_generate_fal_kling",
+                side_effect=RuntimeError("fal indisponível"),
             ),
             patch.object(
                 generator,
@@ -283,33 +402,43 @@ class TestVideoGeneratorFallback:
             result = generator.generate(DEFAULT_PROMPT, download=False)
 
         assert result["api_used"] == "replicate"
-        assert result["fallback_reason"] is not None
-        assert "falai" in result["fallback_reason"]
+        assert "fal_kling" in (result["fallback_reason"] or "")
 
-    def test_full_fallback_to_kling_web(self) -> None:
+    def test_full_fallback_to_falai(self) -> None:
         generator = VideoGenerator(output_dir=OUTPUT_DIR)
         with (
-            patch.object(generator, "_generate_falai", side_effect=RuntimeError("fal down")),
+            patch.object(
+                VideoGenerator,
+                "_provider_chain",
+                return_value=["kling_web", "fal_kling", "replicate", "falai"],
+            ),
+            patch.object(generator, "_generate_kling_web_sync", side_effect=RuntimeError("kling down")),
+            patch.object(generator, "_generate_fal_kling", side_effect=RuntimeError("fal down")),
             patch.object(generator, "_generate_replicate", side_effect=RuntimeError("rep down")),
             patch.object(
                 generator,
-                "_generate_kling_web_sync",
-                return_value=_make_result(api_used="kling_web", resolution="720p"),
+                "_generate_falai",
+                return_value=_make_result(api_used="falai"),
             ),
             patch.object(generator, "_download_video", return_value=None),
         ):
             result = generator.generate(DEFAULT_PROMPT, download=False)
 
-        assert result["api_used"] == "kling_web"
-        assert result["resolution"] == "720p"
+        assert result["api_used"] == "falai"
         assert "replicate" in (result["fallback_reason"] or "")
 
     def test_all_apis_fail(self) -> None:
         generator = VideoGenerator()
         with (
-            patch.object(generator, "_generate_falai", side_effect=RuntimeError("fal")),
-            patch.object(generator, "_generate_replicate", side_effect=RuntimeError("rep")),
+            patch.object(
+                VideoGenerator,
+                "_provider_chain",
+                return_value=["kling_web", "fal_kling", "replicate", "falai"],
+            ),
             patch.object(generator, "_generate_kling_web_sync", side_effect=RuntimeError("kling")),
+            patch.object(generator, "_generate_fal_kling", side_effect=RuntimeError("fal")),
+            patch.object(generator, "_generate_replicate", side_effect=RuntimeError("rep")),
+            patch.object(generator, "_generate_falai", side_effect=RuntimeError("hf")),
         ):
             with pytest.raises(RuntimeError, match="Todas as APIs"):
                 generator.generate(DEFAULT_PROMPT, download=False)
@@ -335,6 +464,7 @@ class TestRetryAndTimeout:
             return _make_result()
 
         with (
+            patch.object(VideoGenerator, "_provider_chain", return_value=["falai"]),
             patch.object(generator, "_generate_falai", side_effect=flaky),
             patch.object(generator, "_download_video", return_value=None),
             patch("src.video_generator.time.sleep"),
@@ -347,8 +477,7 @@ class TestRetryAndTimeout:
     def test_kling_captcha_propagates(self) -> None:
         generator = VideoGenerator()
         with (
-            patch.object(generator, "_generate_falai", side_effect=RuntimeError("skip")),
-            patch.object(generator, "_generate_replicate", side_effect=RuntimeError("skip")),
+            patch.object(VideoGenerator, "_provider_chain", return_value=["kling_web"]),
             patch.object(
                 generator,
                 "_generate_kling_web_sync",
@@ -364,8 +493,7 @@ class TestRetryAndTimeout:
     def test_kling_no_credit_propagates(self) -> None:
         generator = VideoGenerator()
         with (
-            patch.object(generator, "_generate_falai", side_effect=RuntimeError("skip")),
-            patch.object(generator, "_generate_replicate", side_effect=RuntimeError("skip")),
+            patch.object(VideoGenerator, "_provider_chain", return_value=["kling_web"]),
             patch.object(
                 generator,
                 "_generate_kling_web_sync",
@@ -406,15 +534,16 @@ class TestKlingWebSync:
 
 
 def test_generate_youtube_scene_uses_t2v_params(mocker):
-    """generate_youtube_scene deve usar T2V_YOUTUBE_PARAMS (steps=45, cfg=8.5)."""
+    """generate_youtube_scene deve repassar aspect_ratio 16:9 ao Replicate Wan."""
     mock_replicate = mocker.patch.object(VideoGenerator, "_generate_replicate")
     mock_replicate.return_value = VideoGenerationResult(
         video_url="https://example.com/scene.mp4",
         api_used="replicate",
         credits_remaining=None,
         duration_seconds=35.0,
-        resolution="1024x576",
+        resolution="1280x720",
     )
+    mocker.patch.object(VideoGenerator, "_provider_chain", return_value=["replicate"])
     mocker.patch.object(VideoGenerator, "_download_video", return_value=None)
     gen = VideoGenerator()
     result = gen.generate_youtube_scene(
@@ -426,8 +555,7 @@ def test_generate_youtube_scene_uses_t2v_params(mocker):
     )
     call_kwargs = mock_replicate.call_args
     params_used = call_kwargs.kwargs.get("params") or {}
-    assert params_used.get("steps", 0) >= 40, "steps deve ser >= 40 para YouTube T2V"
-    assert params_used.get("cfg", 0) >= 8.0, "cfg deve ser >= 8.0 para YouTube T2V"
+    assert params_used.get("aspect_ratio") == "16:9"
     assert result["api_used"] == "replicate"
     assert result["emotion"] == "tension"
 
@@ -438,6 +566,7 @@ def test_generate_youtube_scene_uses_scene_prompt(mocker):
         "src.video_generator.build_scene_video_prompt",
         return_value={"prompt": "test scene prompt", "negative_prompt": None},
     )
+    mocker.patch.object(VideoGenerator, "_provider_chain", return_value=["replicate"])
     mocker.patch.object(VideoGenerator, "_generate_replicate")
     mocker.patch.object(VideoGenerator, "_retry_with_backoff", side_effect=RuntimeError("skip"))
     gen = VideoGenerator()

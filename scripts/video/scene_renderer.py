@@ -854,6 +854,9 @@ def mux_video_audio_subtitles(
     if watermark:
         video_filter += f",{watermark}"
 
+    if render_style.film_grain:
+        video_filter += f",{render_style.film_grain}"
+
     video_filter += f",fade=t=in:st=0:d={opening}"
 
     audio_duration = 0.0

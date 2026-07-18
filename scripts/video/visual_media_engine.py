@@ -3,7 +3,7 @@ Visual Media Engine — busca e geração de mídia por cena.
 
 Cadeia de fallback por cena (youtube_dark):
   1. Stock — Wikimedia (prioridade histórica) → Pixabay → Pexels
-  2. Replicate T2V — prompts EN + Visual Director (fal.ai → Replicate → Kling Web)
+  2. VideoGenerator T2V — Kling Web (grátis) → fal Kling 2.6 → Replicate Wan → HF Wan
   3. Pollinations IA — bloqueado em hook/revelação/encerramento
   4. Hugging Face SDXL — imagem (se HF_TOKEN configurado)
   5. Placeholder ilustrativo — se tudo falhar
@@ -27,9 +27,10 @@ from scripts.video.media_providers.pollinations_provider import (
     generate_pollinations_image,
     generate_pollinations_video,
 )
-from src.prompt_builder import get_best_movement, build_scene_video_prompt
+from src.prompt_builder import get_best_movement, build_scene_video_prompt, build_scene_image_prompt
 from src.video_generator import (
     VideoGenerator,
+    fal_kling_is_configured,
     falai_is_configured,
     replicate_is_configured,
     kling_web_is_configured,
@@ -459,11 +460,23 @@ def _try_ai_image(
     *,
     allow_upscale: bool = True,
     allow_pollinations: bool = True,
+    scene_description: str = "",
+    scene_tipo: str = "",
+    emotion: str = "",
+    platform: str = "youtube_dark",
+    visual_direction: dict | None = None,
 ) -> tuple[bool, str]:
-    ai_prompt = _truncate_query(
-        f"{localize_search_query(prompt)}, documentary cinematic scene{suffix}",
-        max_len=120,
+    bundle = build_scene_image_prompt(
+        scene_description=scene_description or prompt,
+        scene_query=localize_search_query(prompt),
+        platform=platform,
+        scene_tipo=scene_tipo,
+        emotion=emotion,
+        visual_direction=visual_direction,
+        retry_suffix=suffix,
+        max_length=280,
     )
+    ai_prompt = bundle["prompt"]
     provider = ""
     generated = False
     if allow_pollinations:
@@ -564,17 +577,25 @@ def _generate_placeholder_image(
         if not allow_pollinations:
             return False
         saved, _ = _try_ai_image(
-            f"{prompt}, atmospheric documentary illustration",
+            prompt,
             scene_image,
+            ", atmospheric documentary illustration",
             allow_upscale=True,
             allow_pollinations=True,
+            scene_description=prompt,
+            platform="youtube_dark",
         )
         return saved
 
 
 def _ai_video_configured() -> bool:
     """True se alguma API de vídeo IA está configurada."""
-    return falai_is_configured() or replicate_is_configured() or kling_web_is_configured()
+    return (
+        kling_web_is_configured()
+        or fal_kling_is_configured()
+        or replicate_is_configured()
+        or falai_is_configured()
+    )
 
 
 def _try_ai_video(
@@ -593,15 +614,15 @@ def _try_ai_video(
     allow_pollinations: bool = True,
 ) -> tuple[bool, str]:
     """
-    Gera vídeo IA via VideoGenerator (fal.ai → Replicate → Kling Web).
-    Com image_url: fluxo I2V e-commerce otimizado (Replicate LTX + upscale 2x).
+    Gera vídeo IA via VideoGenerator (Kling Web → fal Kling 2.6 → Replicate Wan → HF).
+    Com image_url: fluxo I2V e-commerce (fal Kling / Replicate Wan + upscale 2x).
     Sem image_url: T2V documental YouTube Dark via build_scene_video_prompt.
     Pollinations só entra como último recurso em cenas não críticas.
     """
     localized_prompt = localize_search_query(prompt)
     localized_description = localize_search_query(scene_description or prompt)
 
-    if image_url and replicate_is_configured() and product_name:
+    if image_url and (fal_kling_is_configured() or replicate_is_configured()) and product_name:
         try:
             generator = VideoGenerator(output_dir=scene_video.parent)
             movement = get_best_movement(category or "")
@@ -625,13 +646,15 @@ def _try_ai_video(
                     if scene_video.exists():
                         scene_video.unlink()
                 else:
-                    return True, "replicate_i2v"
+                    return True, result.get("api_used", "i2v")
         except Exception as error:
             print(f"  ⚠️ I2V e-commerce falhou: {error}")
 
     if not image_url and _ai_video_configured():
-        if replicate_is_configured():
-            print(f"[Replicate] tentando T2V: {localized_prompt[:72]}")
+        if fal_kling_is_configured():
+            print(f"[fal.ai Kling] tentando T2V: {localized_prompt[:72]}")
+        elif replicate_is_configured():
+            print(f"[Replicate Wan] tentando T2V: {localized_prompt[:72]}")
         else:
             print(f"[VideoGenerator] tentando T2V via API configurada...")
 
@@ -670,7 +693,7 @@ def _try_ai_video(
         except Exception as error:
             print(f"  ⚠️ T2V documental falhou: {error}")
 
-        # Fallback completo (fal.ai → Replicate → Kling Web) com prompt enriquecido.
+        # Fallback completo (Kling Web → fal Kling → Replicate → HF) com prompt enriquecido.
         try:
             prompt_bundle = build_scene_video_prompt(
                 scene_description=localized_description,
@@ -703,7 +726,7 @@ def _try_ai_video(
                 if scene_video.exists():
                     scene_video.unlink()
         except Exception as error:
-            print(f"  ⚠️ Fallback T2V (fal/Kling) falhou: {error}")
+            print(f"  ⚠️ Fallback T2V (Kling/fal/Replicate) falhou: {error}")
 
         if not allow_pollinations and replicate_is_configured():
             print("[Replicate] falhou — Pollinations bloqueado em cena crítica")
@@ -958,6 +981,11 @@ def _resolve_scene_media(
         scene_image,
         allow_upscale=True,
         allow_pollinations=allow_pollinations,
+        scene_description=query_item.get("visual_goal", query_item.get("visual", busca)),
+        scene_tipo=tipo,
+        emotion=query_item.get("emotion", ""),
+        platform=platform,
+        visual_direction=visual_direction,
     )
     if ai_saved:
         result.update({
@@ -971,11 +999,16 @@ def _resolve_scene_media(
         return result
 
     ai_retry_saved, ai_retry_provider = _try_ai_image(
-        f"{busca}, {tipo}",
+        busca,
         scene_image,
-        ", atmospheric wide shot",
+        ", atmospheric wide establishing shot, epic scale",
         allow_upscale=True,
         allow_pollinations=allow_pollinations,
+        scene_description=query_item.get("visual_goal", query_item.get("visual", busca)),
+        scene_tipo=tipo,
+        emotion=query_item.get("emotion", ""),
+        platform=platform,
+        visual_direction=visual_direction,
     )
     if ai_retry_saved:
         result.update({

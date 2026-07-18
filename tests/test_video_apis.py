@@ -27,7 +27,9 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from src.prompt_builder import build_from_description  # noqa: E402
 from src.video_generator import (  # noqa: E402
+    NoCreditError,
     VideoGenerator,
+    fal_kling_is_configured,
     falai_is_configured,
     kling_web_is_configured,
     replicate_is_configured,
@@ -76,29 +78,29 @@ class TestPromptEngineering:
 class TestVideoGeneratorFallback:
     """Testa cadeia de fallback sem rede."""
 
-    def test_fallback_falai_to_replicate(self) -> None:
+    def test_fallback_kling_to_replicate(self) -> None:
         generator = VideoGenerator(output_dir=OUTPUT_DIR)
 
-        replicate_result = {
-            "video_url": "https://example.com/replicate.mp4",
-            "api_used": "replicate",
-            "credits_remaining": None,
-            "duration_seconds": 45.0,
-            "resolution": "480p",
-            "fallback_reason": "falai falhou (sem credenciais) → tentando replicate",
-        }
-
         with (
-            patch.object(generator, "_generate_falai", side_effect=RuntimeError("sem credenciais")),
+            patch.object(
+                VideoGenerator,
+                "_provider_chain",
+                return_value=["kling_web", "replicate"],
+            ),
+            patch.object(
+                generator,
+                "_generate_kling_web_sync",
+                side_effect=NoCreditError("sem créditos"),
+            ),
             patch.object(
                 generator,
                 "_generate_replicate",
                 return_value=MagicMock(
-                    video_url=replicate_result["video_url"],
-                    api_used=replicate_result["api_used"],
+                    video_url="https://example.com/replicate.mp4",
+                    api_used="replicate",
                     credits_remaining=None,
                     duration_seconds=45.0,
-                    resolution="480p",
+                    resolution="1280x720",
                     fallback_reason=None,
                     local_path=None,
                 ),
@@ -109,14 +111,20 @@ class TestVideoGeneratorFallback:
 
         assert result["api_used"] == "replicate"
         assert result["fallback_reason"] is not None
-        assert "falai" in result["fallback_reason"]
+        assert "kling_web" in result["fallback_reason"]
 
     def test_all_apis_fail_raises(self) -> None:
         generator = VideoGenerator()
         with (
-            patch.object(generator, "_generate_falai", side_effect=RuntimeError("fal down")),
-            patch.object(generator, "_generate_replicate", side_effect=RuntimeError("rep down")),
+            patch.object(
+                VideoGenerator,
+                "_provider_chain",
+                return_value=["kling_web", "fal_kling", "replicate", "falai"],
+            ),
             patch.object(generator, "_generate_kling_web_sync", side_effect=RuntimeError("kling down")),
+            patch.object(generator, "_generate_fal_kling", side_effect=RuntimeError("fal down")),
+            patch.object(generator, "_generate_replicate", side_effect=RuntimeError("rep down")),
+            patch.object(generator, "_generate_falai", side_effect=RuntimeError("hf down")),
         ):
             with pytest.raises(RuntimeError, match="Todas as APIs"):
                 generator.generate(DEFAULT_PROMPT, download=False)
@@ -141,9 +149,8 @@ class TestVideoGeneratorFallback:
             )
 
         with (
+            patch.object(VideoGenerator, "_provider_chain", return_value=["falai"]),
             patch.object(generator, "_generate_falai", side_effect=flaky),
-            patch.object(generator, "_generate_replicate", side_effect=RuntimeError("skip rep")),
-            patch.object(generator, "_generate_kling_web_sync", side_effect=RuntimeError("skip kling")),
             patch.object(generator, "_download_video", return_value=None),
             patch("src.video_generator.time.sleep"),
         ):
@@ -212,7 +219,7 @@ class TestReplicateIntegration:
         generator = VideoGenerator(output_dir=OUTPUT_DIR)
 
         with (
-            patch.object(generator, "_generate_falai", side_effect=RuntimeError("skip falai")),
+            patch.object(VideoGenerator, "_provider_chain", return_value=["replicate"]),
             patch.object(generator, "_download_video") as mock_dl,
         ):
             mock_dl.return_value = OUTPUT_DIR / "test_replicate.mp4"
@@ -239,10 +246,7 @@ class TestKlingWebIntegration:
 
         generator = VideoGenerator(output_dir=OUTPUT_DIR)
 
-        with (
-            patch.object(generator, "_generate_falai", side_effect=RuntimeError("skip falai")),
-            patch.object(generator, "_generate_replicate", side_effect=RuntimeError("skip rep")),
-        ):
+        with patch.object(VideoGenerator, "_provider_chain", return_value=["kling_web"]):
             started = time.perf_counter()
             result = generator.generate(
                 DEFAULT_PROMPT,
@@ -299,9 +303,10 @@ def write_test_report() -> Path:
         "",
         f"| API | Configurada |",
         f"|-----|-------------|",
-        f"| fal.ai (HF) | {'✅' if falai_is_configured() else '❌'} |",
-        f"| Replicate | {'✅' if replicate_is_configured() else '❌'} |",
-        f"| Kling Web | {'✅' if kling_web_is_configured() else '❌'} |",
+        f"| Kling Web (grátis) | {'✅' if kling_web_is_configured() else '❌'} |",
+        f"| fal.ai Kling 2.6 | {'✅' if fal_kling_is_configured() else '❌'} |",
+        f"| Replicate Wan 2.6 | {'✅' if replicate_is_configured() else '❌'} |",
+        f"| fal.ai Wan (HF) | {'✅' if falai_is_configured() else '❌'} |",
         "",
     ]
 
@@ -350,7 +355,7 @@ def write_test_report() -> Path:
         ]
     )
 
-    for api in ("falai", "replicate", "kling_web"):
+    for api in ("falai", "fal_kling", "replicate", "kling_web"):
         video = OUTPUT_DIR / f"test_{api}.mp4"
         status = f"✅ `{video}`" if video.exists() else "❌ não gerado"
         lines.append(f"- **{api}**: {status}")
@@ -373,9 +378,10 @@ def main() -> int:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=== Testes de APIs de Vídeo ===\n")
-    print(f"fal.ai configurado:     {falai_is_configured()}")
-    print(f"Replicate configurado:  {replicate_is_configured()}")
-    print(f"Kling Web configurado:  {kling_web_is_configured()}\n")
+    print(f"Kling Web configurado:  {kling_web_is_configured()}")
+    print(f"fal.ai Kling 2.6:      {fal_kling_is_configured()}")
+    print(f"Replicate Wan 2.6:   {replicate_is_configured()}")
+    print(f"HF Wan2.2 configurado: {falai_is_configured()}\n")
 
     tests_run = 0
 

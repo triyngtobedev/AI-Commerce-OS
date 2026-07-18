@@ -75,8 +75,11 @@ def main() -> int:
 
     replicate = (env.get("REPLICATE_API_TOKEN") or "").strip()
     hf = (env.get("HF_API_TOKEN") or "").strip()
+    fal_key = (env.get("FAL_KEY") or env.get("FAL_API_KEY") or "").strip()
     gemini = (env.get("GEMINI_API_KEY") or "").strip()
     groq = (env.get("GROQ_API_KEY") or "").strip()
+    kling_email = (env.get("KLING_EMAIL") or "").strip()
+    kling_password = (env.get("KLING_PASSWORD") or "").strip()
 
     checks = [
         check_http(
@@ -100,6 +103,53 @@ def main() -> int:
         ),
     ]
 
+    optional = []
+    if fal_key:
+        optional.append(
+            {
+                "name": "FAL_KEY",
+                "set": True,
+                "ok": len(fal_key) >= 20,
+                "status": None,
+                "detail": "OK" if len(fal_key) >= 20 else "token curto demais",
+                "masked": mask(fal_key),
+            }
+        )
+    else:
+        optional.append(
+            {
+                "name": "FAL_KEY",
+                "set": False,
+                "ok": False,
+                "status": None,
+                "detail": "nao configurado (fal.ai Kling 2.6 Pro)",
+                "masked": mask(fal_key),
+            }
+        )
+
+    if kling_email and kling_password:
+        optional.append(
+            {
+                "name": "KLING_WEB",
+                "set": True,
+                "ok": True,
+                "status": None,
+                "detail": "credenciais presentes (tier grátis Playwright)",
+                "masked": mask(kling_email),
+            }
+        )
+    else:
+        optional.append(
+            {
+                "name": "KLING_WEB",
+                "set": False,
+                "ok": False,
+                "status": None,
+                "detail": "KLING_EMAIL/PASSWORD ausentes",
+                "masked": mask(kling_email),
+            }
+        )
+
     failed = 0
     for item in checks:
         status = item.get("status")
@@ -111,11 +161,22 @@ def main() -> int:
             failed += 1
             print(f"      {item['detail']}")
 
+    print("\nVideo IA (opcional):")
+    for item in optional:
+        status_txt = item.get("status") if item.get("status") is not None else "-"
+        icon = "OK" if item["ok"] else "INFO"
+        token_txt = item.get("masked", "-")
+        print(f"[{icon}] {item['name']} token={token_txt} HTTP={status_txt}")
+        if not item["ok"]:
+            print(f"      {item['detail']}")
+
     print()
     if failed:
         hf = (env.get("HF_API_TOKEN") or "").strip()
         if hf and len(hf) < 20:
             print("Dica: HF_API_TOKEN parece placeholder (ex.: hf_...) — gere em https://huggingface.co/settings/tokens")
+        if not fal_key:
+            print("Dica: FAL_KEY em fal.ai/dashboard/keys — Kling 2.6 Pro (~$0,35/clip 5s)")
         if not (env.get("GEMINI_API_KEY") or "").strip() and not (env.get("GROQ_API_KEY") or "").strip():
             print("Dica: configure GEMINI_API_KEY (Google AI Studio) ou GROQ_API_KEY (console.groq.com) para roteiro.")
         print(f"Resultado: {failed} token(s) com problema.")

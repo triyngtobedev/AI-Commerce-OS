@@ -150,7 +150,15 @@ AI-Commerce-OS/
 │   └── topics_source.json           # Fonte de temas YouTube
 │
 ├── prompts/                         # Templates de prompt para IA
+├── api/                             # FastAPI bridge (n8n + nuvem)
+├── scripts/cloud/                   # Cliente Railway + entrypoint Docker
+├── Dockerfile                       # Imagem de produção (Railway)
+├── railway.toml                     # Config deploy Railway
 ├── docs/
+│   ├── STATUS.md                    # Snapshot do status atual
+│   ├── deploy-railway.md            # Deploy na nuvem (zero SSH)
+│   ├── deploy-nuvem.md              # Resumo deploy
+│   ├── n8n_integration.md           # Integração n8n
 │   └── youtube_oauth.md             # Guia OAuth do YouTube
 │
 ├── output/                          # Artefatos gerados (gitignored)
@@ -195,6 +203,35 @@ Edite o `.env` com suas chaves de API (detalhes abaixo).
 
 ---
 
+## Deploy na Nuvem (Railway)
+
+Gere vídeos **sem travar o PC** — o processamento pesado (FFmpeg, Whisper, render) roda no Railway; você só envia o tema e baixa o MP4.
+
+```powershell
+# 1) Deploy: conecte o repo no railway.app (guia completo abaixo)
+# 2) Configure no .env local:
+#    CLOUD_API_URL=https://seu-app.up.railway.app
+#    CLOUD_API_KEY=<mesma PIPELINE_API_KEY do Railway>
+
+# Atalho interativo
+.\scripts\cloud\configurar_pc.ps1
+
+# Testar conexão
+python scripts/cloud/gerar_video.py --topic "teste de conexão"
+
+# Gerar vídeo completo
+.\scripts\cloud\gerar_video.ps1 -Topic "A verdade sobre a Biblioteca de Alexandria"
+```
+
+| Recurso | Detalhe |
+|---|---|
+| Custo estimado | ~R$ 25/mês (Railway Hobby + 4 GB RAM) |
+| Tempo típico | 45–120 min por vídeo |
+| Documentação | [`docs/deploy-railway.md`](docs/deploy-railway.md) |
+| Status do projeto | [`docs/STATUS.md`](docs/STATUS.md) |
+
+---
+
 ## Configuração do Ambiente
 
 Copie `.env.example` para `.env` e preencha:
@@ -230,6 +267,11 @@ YOUTUBE_PUBLISH_ENABLED=true
 # Azure Speech (TTS com SSML — motor principal de narração)
 AZURE_SPEECH_KEY=
 AZURE_SPEECH_REGION=
+
+# Pipeline na nuvem (Railway — opcional, para gerar_video.py)
+CLOUD_API_URL=
+CLOUD_API_KEY=
+PIPELINE_API_KEY=              # mesma chave no Railway e no PC
 ```
 
 | Variável | Descrição |
@@ -247,7 +289,7 @@ AZURE_SPEECH_REGION=
 
 ### Geração de vídeo IA (VideoGenerator)
 
-Ordem de fallback automático: **fal.ai (HF Router)** → **Replicate** → **Kling Web (Playwright)**.
+Ordem de fallback automático: **Kling Web (grátis)** → **fal.ai Kling 2.6 Pro** → **Replicate Wan 2.6** → **fal.ai Wan (HF Router)**.
 
 ```env
 # Mínimo para primeiro vídeo real (menor fricção):
@@ -256,8 +298,9 @@ HF_API_TOKEN=hf_...          # huggingface.co/settings/tokens
                              # Crédito free: US$ 0,10/mês
 
 # Fallbacks opcionais:
-REPLICATE_API_TOKEN=r8_...   # replicate.com — trial com créditos iniciais
-KLING_EMAIL=seu@email.com    # Kling web — 66 créditos/dia
+REPLICATE_API_TOKEN=r8_...   # replicate.com — Wan 2.6 (~$0,25/clip 5s 720p)
+FAL_KEY=fal_...            # fal.ai — Kling 2.6 Pro premium (~$0,35/clip)
+KLING_EMAIL=seu@email.com    # Kling web — 66 créditos/dia (tier grátis, tentado primeiro)
 KLING_PASSWORD=suasenha
 
 VIDEO_OUTPUT_DIR=./output/videos
@@ -296,7 +339,9 @@ pip install playwright
 python -m playwright install chromium
 ```
 
-Fluxo automatizado: `kling.ai/app/video/new` → One-click Sign In → Continue with email → Generate.
+Fluxo automatizado: `kling.ai/app/video/new` → One-click Sign In → **Sign in with email** → Generate.
+
+Sessão salva em `cache/kling_storage_state.json` após login bem-sucedido (reutilizada nas próximas execuções).
 
 Debug visual (salva screenshots em `debug/`):
 
@@ -429,7 +474,7 @@ python -m unittest scripts.youtube.test_youtube_pipeline_e2e -v
 
 ### Produção de Vídeo
 - Geração de cenas, queries de mídia e download automático (Pexels)
-- **VideoGenerator** com fallback fal.ai → Replicate → Kling Web para cenas IA
+- **VideoGenerator** com fallback Kling Web → fal Kling 2.6 → Replicate Wan 2.6 → HF Wan2.2
 - Upscale automático 480p → 960p (`src/video_upscaler.py`)
 - Narração Azure Speech SDK (SSML por seção) com fallback Edge-TTS e gTTS
 - Sincronização cena-a-cena via scene timeline
@@ -463,16 +508,28 @@ python -m unittest scripts.youtube.test_youtube_pipeline_e2e -v
 
 ## Status Atual
 
-Versão funcional com suporte multi-plataforma.
+> Snapshot detalhado: [`docs/STATUS.md`](docs/STATUS.md) (atualizado em jul/2026)
 
+Versão funcional com suporte multi-plataforma, API HTTP e deploy na nuvem.
+
+**Local (CLI)**
 - Análise de produtos e temas com IA
 - Geração de roteiros, conteúdo e cenas
-- Produção automática de vídeos (vertical e horizontal)
-- Narração TTS e legendas sincronizadas
-- Pipeline YouTube Dark end-to-end
-- Upload automático no YouTube via OAuth
-- YouTube Analytics e métricas de produção
-- Testes unitários e E2E para módulos YouTube
+- Produção automática de vídeos (vertical 9:16 e horizontal 16:9)
+- VideoGenerator com fallback Kling Web → fal → Replicate → HF
+- Narração TTS (Azure → Edge-TTS → gTTS) e legendas sincronizadas
+- Pipeline YouTube Dark end-to-end + upload OAuth + analytics
+- Reprocessamento com `--rerun` / `--force`
+
+**Nuvem e automação**
+- API FastAPI (`/api/v1/pipeline/run`, status, download)
+- Deploy Docker no Railway (`Dockerfile`, `railway.toml`)
+- Cliente local `scripts/cloud/gerar_video.py` (tema → MP4 na pasta `downloads/`)
+- Integração n8n em progresso (workflows + bridge HTTP)
+
+**Qualidade**
+- Testes unitários YouTube, VideoGenerator e APIs de vídeo
+- Validação de tokens: `python scripts/validate_tokens.py`
 
 ---
 
@@ -487,15 +544,20 @@ Versão funcional com suporte multi-plataforma.
 - [x] Scene timeline e sincronização cena-áudio
 - [x] Pesquisa automática de temas
 - [x] Métricas de produção
+- [x] VideoGenerator multi-provider (Kling, fal, Replicate, HF)
+- [x] Containerização Docker + deploy Railway
+- [x] API HTTP para acionamento remoto do pipeline
+
+### Em progresso
+- [ ] Integração n8n (orquestração de cenas IA assíncronas)
+- [ ] Validação end-to-end na nuvem (Railway + `gerar_video.py`)
 
 ### Próximos passos
 - [ ] Dashboard web para monitoramento
-- [ ] Integração com n8n para automação agendada
 - [ ] Otimização baseada em analytics (feedback loop)
 - [ ] Suporte a novos nichos e plataformas
 - [ ] Modo persona reativado para TikTok
 - [ ] Testes automatizados em CI/CD
-- [ ] Containerização (Docker)
 
 ---
 

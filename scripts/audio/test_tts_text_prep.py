@@ -21,8 +21,10 @@ class TestTtsTextPrep(unittest.TestCase):
         self.assertIn("1908", result)
         self.assertIn("Sibéria", result)
 
-    def test_empty_input(self):
-        self.assertEqual(prepare_text_for_tts(""), "")
+    def test_pause_marker_converted(self):
+        result = prepare_text_for_tts("Algo aconteceu. [PAUSA] Ninguém esperava.")
+        self.assertIn("... ...", result)
+        self.assertNotIn("[PAUSA]", result)
 
 
 if __name__ == "__main__":

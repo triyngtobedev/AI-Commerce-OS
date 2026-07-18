@@ -19,9 +19,11 @@ class SubtitleStyle:
     font_size: int = 16
     margin_v: int = 70
     outline: int = 2
-    shadow: int = 1
-    max_words_per_block: int = 8
-    max_chars: int = 76
+    shadow: int = 2
+    max_words_per_block: int = 5
+    max_chars: int = 42
+    bold: bool = True
+    highlight_colors: tuple = ("gold", "red", "cyan")
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,7 @@ class RenderStyle:
     closing_fade_seconds: float = 2.0
     intro_seconds: float = 2.0
     outro_seconds: float = 2.5
+    film_grain: str = "noise=alls=8:allf=t+u"
 
 
 @dataclass(frozen=True)
@@ -60,12 +63,14 @@ def _build_config(platform_id: str) -> BrandEngineConfig:
         kit=kit,
         subtitle=SubtitleStyle(
             font_name="Arial",
-            font_size=44,
-            margin_v=92,
-            outline=3,
+            font_size=52,
+            margin_v=110,
+            outline=2,
             shadow=2,
-            max_words_per_block=6,
-            max_chars=64,
+            max_words_per_block=5,
+            max_chars=42,
+            bold=True,
+            highlight_colors=("gold", "red", "cyan"),
         ),
         render=RenderStyle(
             transition_seconds=cinematic.transition_seconds,
@@ -77,6 +82,7 @@ def _build_config(platform_id: str) -> BrandEngineConfig:
             closing_fade_seconds=cinematic.closing_fade_seconds,
             intro_seconds=kit.overlay.intro_seconds,
             outro_seconds=kit.overlay.outro_seconds,
+            film_grain=cinematic.film_grain,
         ),
         show_watermark=True,
         show_intro=True,
@@ -110,6 +116,8 @@ def get_subtitle_style(platform_id: str = "youtube_dark") -> dict:
         "shadow": style.shadow,
         "max_words_per_block": style.max_words_per_block,
         "max_chars": style.max_chars,
+        "bold": style.bold,
+        "highlight_colors": style.highlight_colors,
     }
 
 

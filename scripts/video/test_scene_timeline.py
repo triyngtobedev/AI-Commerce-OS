@@ -3,6 +3,8 @@
 import unittest
 from unittest.mock import patch
 
+from scripts.core.emotional_timeline import EmotionalTimeline, TimelineSection
+from scripts.video.scene_emotion import apply_timeline_to_scenes
 from scripts.video.scene_timeline import (
     sync_scenes_to_audio,
     split_long_scenes,
@@ -46,7 +48,7 @@ class TestSceneTimeline(unittest.TestCase):
         for scene in cenas:
             self.assertIn("duration_seconds", scene)
             self.assertIn("tempo_inicio", scene)
-            self.assertLessEqual(scene["duration_seconds"], 55.0)
+            self.assertLessEqual(scene["duration_seconds"], 20.0)
 
     def test_scene_weights_defined(self):
         self.assertIn("hook", SCENE_WEIGHTS)
@@ -58,7 +60,7 @@ class TestSceneTimeline(unittest.TestCase):
         self.assertEqual(len(parts), 2)
         self.assertIn(".", parts[0])
 
-    def test_split_long_scenes_divides_above_55s(self):
+    def test_split_long_scenes_divides_above_20s(self):
         scenes = {
             "cenas": [{
                 "tipo": "revelacao",
@@ -73,7 +75,7 @@ class TestSceneTimeline(unittest.TestCase):
         expanded = result["cenas"]
         self.assertGreater(len(expanded), 1)
         for scene in expanded:
-            self.assertLessEqual(scene["duration_seconds"], 55.0)
+            self.assertLessEqual(scene["duration_seconds"], 20.0)
         self.assertEqual(expanded[0].get("media_index"), 0)
 
     @patch("scripts.video.scene_timeline.probe_duration", return_value=120.0)
@@ -86,7 +88,43 @@ class TestSceneTimeline(unittest.TestCase):
         }
         result = sync_scenes_to_audio(scenes, " ".join(["Palavra"] * 210), "/fake/audio.mp3")
         durations = [s["duration_seconds"] for s in result["cenas"]]
-        self.assertTrue(all(d <= 55.0 for d in durations[:-1] or durations))
+        self.assertTrue(all(d <= 20.0 for d in durations[:-1] or durations))
+
+    def test_apply_timeline_assigns_duration_for_unmatched_scene_types(self):
+        timeline = EmotionalTimeline(
+            sections=[
+                TimelineSection(
+                    text="Hook",
+                    emotion="impact",
+                    intensity=0.9,
+                    section_key="hook",
+                    real_duration=10.0,
+                    duration=10.0,
+                ),
+                TimelineSection(
+                    text="Fato 5",
+                    emotion="mystery",
+                    intensity=0.6,
+                    section_key="fato_5",
+                    real_duration=20.0,
+                    duration=20.0,
+                ),
+            ],
+            total_duration=30.0,
+            director_meta={"synced_to_audio": True},
+        )
+        scenes = {
+            "cenas": [
+                {"tipo": "hook", "narracao": "Hook."},
+                {"tipo": "desenvolvimento_1", "narracao": "Legado sem match."},
+            ],
+            "synced": True,
+        }
+
+        result = apply_timeline_to_scenes(scenes, timeline)
+
+        for scene in result["cenas"]:
+            self.assertGreater(float(scene.get("duration_seconds", 0)), 0)
 
 
 if __name__ == "__main__":

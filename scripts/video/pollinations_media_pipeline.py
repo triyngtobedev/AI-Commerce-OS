@@ -25,21 +25,12 @@ from scripts.video.media_quality import (
     MIN_AI_IMAGE_WIDTH,
     validate_image_file,
 )
+from scripts.core.visual_director_engine import direct_scene_visual
+from src.prompt_builder import build_scene_image_prompt
 
 
 # CONTENT_MODE que ativam a geração por IA (Pollinations).
 _PERSONA_MODES = {"persona", "ai", "pollinations"}
-
-# Reforço de mood por emoção da cena (Emotional Timeline).
-_EMOTION_STYLE = {
-    "tension": "high tension, deep shadows, ominous mood",
-    "mystery": "mysterious atmosphere, fog, low-key lighting, enigmatic",
-    "impact": "epic scale, powerful, dramatic high contrast",
-    "calm": "serene, soft natural light, contemplative",
-    "awe": "awe-inspiring grandeur, cinematic wide vista",
-    "sadness": "melancholic, muted desaturated colors, soft haze",
-    "curiosity": "intriguing, revealing light, subtle depth",
-}
 
 
 def content_mode() -> str:
@@ -63,18 +54,27 @@ def _dimensions_for_platform(platform: str) -> tuple[int, int]:
     return 1920, 1080
 
 
-def _scene_prompt(scene: dict) -> str:
-    """Monta prompt cinematográfico a partir da descrição/mood da cena."""
+def _scene_prompt(scene: dict, platform: str = "youtube_dark") -> str:
+    """Monta prompt cinematográfico YouTube Dark a partir da cena."""
 
     visual = (scene.get("visual") or "").strip()
     narracao = (scene.get("narracao") or "").strip()
+    query = (scene.get("query") or scene.get("busca") or "").strip()
 
-    base = visual or narracao[:120] or "atmospheric documentary establishing shot"
+    visual_direction = scene.get("visual_direction")
+    if not visual_direction and (visual or narracao):
+        visual_direction = direct_scene_visual(scene).to_dict()
 
-    emotion = (scene.get("emotion") or "calm").lower()
-    mood = _EMOTION_STYLE.get(emotion, "cinematic, dramatic lighting")
-
-    return f"{base}, {mood}"
+    bundle = build_scene_image_prompt(
+        scene_description=visual or narracao[:160],
+        scene_query=query or visual or narracao[:120],
+        platform=platform,
+        scene_tipo=scene.get("tipo", ""),
+        emotion=scene.get("emotion", ""),
+        visual_direction=visual_direction,
+        max_length=280,
+    )
+    return bundle["prompt"]
 
 
 def _clear_stock_leftovers(images_folder: Path, videos_folder: Path) -> None:
@@ -137,7 +137,7 @@ def generate_persona_media(subject, scenes) -> list:
     for index, scene in enumerate(scene_list):
         scene_num = index + 1
         output_path = images_folder / f"scene-{scene_num:02d}.jpg"
-        prompt = _scene_prompt(scene)
+        prompt = _scene_prompt(scene, platform=platform)
 
         ok = generate_pollinations_image(prompt, output_path, width=width, height=height)
 

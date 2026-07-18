@@ -1,0 +1,185 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "meta": {
+    "name": "Projeto Atlas — YouTube Dark",
+    "version": "1.0.0",
+    "platform": "youtube_dark",
+    "channel": "Projeto Atlas",
+    "tagline": "História · Mistério · Ciência",
+    "source": "scripts/core/brand_kit.py + scripts/core/brand_profile.py",
+    "rationale": "Tokens espelham o BrandKit em produção. Alterações aqui devem ser refletidas no código antes de render."
+  },
+
+  "color": {
+    "background": {
+      "default": { "value": "#080C18", "rgb": [8, 12, 24] },
+      "elevated": { "value": "#0C1220", "rgb": [12, 18, 32] },
+      "panel": { "value": "#080818", "rgb": [8, 12, 24] },
+      "surface-1": { "value": "#0F1011", "rgb": [15, 16, 17] },
+      "surface-2": { "value": "#141518", "rgb": [20, 21, 24] },
+      "surface-3": { "value": "#191A1B", "rgb": [25, 26, 27] }
+    },
+    "text": {
+      "primary": { "value": "#FFFFFF", "rgb": [255, 255, 255] },
+      "muted": { "value": "#B4B9C3", "rgb": [180, 185, 195] },
+      "inverse": { "value": "#080C18", "rgb": [8, 12, 24] }
+    },
+    "accent": {
+      "gold": { "value": "#FFB703", "rgb": [255, 183, 3] },
+      "gold-dim": { "value": "#CC9202", "rgb": [204, 146, 2] },
+      "gold-glow": { "value": "rgba(255, 183, 3, 0.18)", "usage": "overlay blend, lower thirds bg tint" }
+    },
+    "border": {
+      "subtle": { "value": "#23252A", "opacity": 0.06 },
+      "default": { "value": "#2A2D35", "opacity": 0.12 },
+      "accent": { "value": "#FFB703", "width": "2px", "usage": "thumbnail anti-dark-mode border" }
+    },
+    "shadow": {
+      "text": { "value": "#000000", "rgb": [0, 0, 0], "layers": 3 },
+      "overlay": { "value": "rgba(0, 0, 0, 0.75)" }
+    },
+    "semantic": {
+      "success": { "value": "#22C55E" },
+      "warning": { "value": "#F59E0B" },
+      "danger": { "value": "#EF4444" },
+      "info": { "value": "#3B82F6" }
+    },
+    "grade": {
+      "contrast": 1.08,
+      "brightness": -0.03,
+      "saturation": 1.08,
+      "vignette": "PI/4.5"
+    }
+  },
+
+  "typography": {
+    "fontFamily": {
+      "display": { "value": "Roboto-Bold.ttf", "fallback": "Arial Bold" },
+      "body": { "value": "Roboto-Regular.ttf", "fallback": "Arial" },
+      "googleAlternative": { "display": "Roboto", "body": "Roboto", "editorial": "Playfair Display" }
+    },
+    "fontSize": {
+      "thumbnail-hook": { "value": "88px", "px": 88 },
+      "thumbnail-subtitle": { "value": "32px", "px": 32 },
+      "thumbnail-badge": { "value": "20px", "px": 20 },
+      "video-title": { "value": "72px", "px": 72 },
+      "video-subtitle": { "value": "36px", "px": 36 },
+      "lower-third": { "value": "28px", "px": 28 },
+      "watermark": { "value": "13px", "px": 13 }
+    },
+    "textCase": {
+      "hook": "uppercase",
+      "channelName": "uppercase",
+      "tagline": "title"
+    },
+    "lineHeight": {
+      "hook": 1.1,
+      "body": 1.5
+    }
+  },
+
+  "spacing": {
+    "base": { "value": "8px", "px": 8 },
+    "thumbnail": {
+      "panel-padding-x": { "value": "48px", "px": 48 },
+      "hook-start-y": { "value": "140px", "px": 140 },
+      "accent-underline-height": { "value": "4px", "px": 4 },
+      "footer-height": { "value": "56px", "px": 56 }
+    },
+    "video": {
+      "lower-third-x": { "value": "60px", "px": 60 },
+      "lower-third-y": { "value": "h-120", "note": "FFmpeg drawtext offset from bottom" }
+    }
+  },
+
+  "borderRadius": {
+    "none": { "value": "0" },
+    "sm": { "value": "4px" },
+    "md": { "value": "8px" },
+    "badge": { "value": "50%", "usage": "compass badge circle" }
+  },
+
+  "shadow": {
+    "text-hook": {
+      "layers": [
+        { "offsetX": 4, "offsetY": 4, "blur": 0, "color": "#000000" },
+        { "offsetX": 3, "offsetY": 3, "blur": 0, "color": "#000000" },
+        { "offsetX": 2, "offsetY": 2, "blur": 0, "color": "#000000" }
+      ]
+    },
+    "vignette": {
+      "blur": 60,
+      "ellipse": [-60, -30, "w+60", "h+60"],
+      "opacity": 210
+    }
+  },
+
+  "thumbnail": {
+    "width": 1280,
+    "height": 720,
+    "textPanelRatio": 0.42,
+    "heroImageRatio": 0.58,
+    "blendWidth": 80,
+    "accentBarHeight": 6,
+    "hookMaxWords": 4,
+    "hookMaxLines": 2,
+    "hookMaxCharsPerLine": 14,
+    "contrastBoost": 1.35,
+    "saturationBoost": 1.22,
+    "overlayBlend": 0.18,
+    "compassBadgeRadius": 28,
+    "mobilePreviewSize": 168,
+    "jpegQuality": 93
+  },
+
+  "video": {
+    "resolution": { "width": 1920, "height": 1080, "aspect": "16:9" },
+    "introSeconds": 2.0,
+    "outroSeconds": 2.5,
+    "lowerThirdSeconds": 4.0,
+    "watermarkOpacity": 0.12,
+    "showLowerThirdOn": ["hook", "revelacao"],
+    "transitionSeconds": 0.7,
+    "crossfadeSeconds": 0.45,
+    "openingFadeSeconds": 0.8,
+    "closingFadeSeconds": 2.0,
+    "sceneFadeSeconds": 0.5,
+    "kenBurnsZoomMax": 1.22
+  },
+
+  "sceneMotion": {
+    "hook": "zoom_in_center",
+    "contexto": "parallax_right",
+    "desenvolvimento_1": "parallax_left",
+    "desenvolvimento_2": "drift_up",
+    "revelacao": "zoom_in_center",
+    "consequencias": "parallax_right",
+    "impacto": "pan_left",
+    "encerramento": "zoom_out_center"
+  },
+
+  "sceneCrossfade": {
+    "hook": 0.35,
+    "revelacao": 0.55,
+    "encerramento": 0.6,
+    "default": 0.45
+  },
+
+  "brand": {
+    "icon": "compass",
+    "iconLetter": "A",
+    "watermarkText": "Projeto Atlas"
+  },
+
+  "content": {
+    "targetDurationMinutes": 8,
+    "targetDurationSeconds": 480,
+    "minDurationForMidroll": 480,
+    "sceneCount": 8,
+    "chapterCount": { "min": 4, "max": 6 },
+    "titleMaxChars": 70,
+    "descriptionShortMaxChars": 125,
+    "narrationWordsPerMinute": 150,
+    "narrationWordRange": [1600, 1800]
+  }
+}

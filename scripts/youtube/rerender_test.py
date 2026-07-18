@@ -23,9 +23,79 @@ from scripts.youtube.thumbnail_generator import generate_thumbnail
 from scripts.audio.soundtrack_engine import generate_soundtrack
 from scripts.core.production.quality_score import run_quality_score
 from scripts.core.timeline_sync import sync_timeline_to_audio
-from scripts.core.emotional_timeline import EmotionalTimeline
+from scripts.core.emotional_timeline import EmotionalTimeline, build_emotional_timeline
 from scripts.core.emotional_effects import apply_effect_hints_to_scenes
 
+
+def _load_json(path: Path) -> dict | list | None:
+    """Carrega JSON ignorando arquivos ausentes, vazios ou corrompidos."""
+
+    if not path.exists():
+        return None
+
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        return None
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as error:
+        print(f"⚠️ JSON inválido em {path.name}: {error}")
+        return None
+
+
+def _save_json(path: Path, data: dict | list) -> None:
+    path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=4),
+        encoding="utf-8",
+    )
+
+
+def _resolve_emotional_timeline(
+    folder: Path,
+    script: dict | None,
+    audio: Path,
+) -> tuple[EmotionalTimeline | None, dict | None]:
+    """Carrega ou reconstrói emotional_timeline a partir do roteiro."""
+
+    emotional_file = folder / "emotional_timeline.json"
+    emotional_data = _load_json(emotional_file)
+
+    if emotional_data:
+        timeline = EmotionalTimeline.from_dict(emotional_data)
+    elif script:
+        print("♻️ emotional_timeline.json ausente/vazio — reconstruindo a partir do roteiro")
+        timeline = build_emotional_timeline(
+            script,
+            director_meta=script.get("_director"),
+        )
+        emotional_data = timeline.to_dict()
+    else:
+        return None, None
+
+    if audio.exists():
+        timeline = sync_timeline_to_audio(timeline, str(audio))
+        emotional_data = timeline.to_dict()
+
+    _save_json(emotional_file, emotional_data)
+    return timeline, emotional_data
+
+
+def _persist_synced_project(folder: Path, cenas: dict, content: dict) -> None:
+    """Atualiza scenes.json e video_project.json com cenas sincronizadas."""
+
+    _save_json(folder / "scenes.json", cenas)
+
+    project_file = folder / "video_project.json"
+    project = _load_json(project_file) or {}
+    project["cenas"] = cenas
+    if content.get("texto_narracao"):
+        project["narracao"] = content["texto_narracao"]
+    if isinstance(cenas, dict):
+        if cenas.get("audio_duration"):
+            project["duracao_segundos"] = cenas["audio_duration"]
+        project["status"] = "READY_FOR_RENDER"
+    _save_json(project_file, project)
 
 def rerender(
     folder_path: str,
@@ -49,29 +119,27 @@ def rerender(
     }
 
     scenes_file = folder / "scenes.json"
-    if scenes_file.exists():
-        with open(scenes_file, encoding="utf-8") as f:
-            result["cenas"] = json.load(f)
-    else:
-        print("❌ scenes.json não encontrado")
+    scenes_data = _load_json(scenes_file)
+    if not scenes_data:
+        project_data = _load_json(folder / "video_project.json")
+        if isinstance(project_data, dict):
+            scenes_data = project_data.get("cenas")
+
+    if not scenes_data:
+        print("❌ scenes.json / video_project.json não encontrado ou inválido")
         return None
+
+    result["cenas"] = scenes_data
 
     audio = folder / "assets" / "audio" / "narracao.mp3"
     if audio.exists():
         result["audio"] = str(audio)
 
-    content = {}
-    content_file = folder / "content.json"
-    if content_file.exists():
-        with open(content_file, encoding="utf-8") as f:
-            content = json.load(f)
-            result["conteudo"] = content
+    content = _load_json(folder / "content.json") or {}
+    if content:
+        result["conteudo"] = content
 
-    strategy = {}
-    strategy_file = folder / "strategy.json"
-    if strategy_file.exists():
-        with open(strategy_file, encoding="utf-8") as f:
-            strategy = json.load(f)
+    strategy = _load_json(folder / "strategy.json") or {}
 
     previous_video = folder / "video_final.mp4"
     backup_path = folder / "video_final_previous.mp4"
@@ -84,39 +152,30 @@ def rerender(
         if not queries_file.exists():
             print("❌ asset_queries.json não encontrado — pulando refresh de mídia")
         else:
-            with open(queries_file, encoding="utf-8") as f:
-                queries_data = json.load(f)
-            if isinstance(queries_data, list):
-                queries = queries_data
+            queries_data = _load_json(queries_file)
+            if not queries_data:
+                print("❌ asset_queries.json vazio ou inválido — pulando refresh de mídia")
             else:
-                queries = queries_data.get("queries", [])
+                if isinstance(queries_data, list):
+                    queries = queries_data
+                else:
+                    queries = queries_data.get("queries", [])
 
-            from scripts.video.visual_media_engine import run_visual_media_pipeline
+                from scripts.video.visual_media_engine import run_visual_media_pipeline
 
-            print("\n📸 Re-buscando mídia com Visual Media Engine v2...")
-            run_visual_media_pipeline(subject, result["cenas"], queries)
+                print("\n📸 Re-buscando mídia com Visual Media Engine v2...")
+                run_visual_media_pipeline(subject, result["cenas"], queries)
 
-    emotional_file = folder / "emotional_timeline.json"
-    emotional_timeline = None
-    if emotional_file.exists():
-        with open(emotional_file, encoding="utf-8") as f:
-            result["emotional_timeline"] = json.load(f)
-            emotional_timeline = EmotionalTimeline.from_dict(result["emotional_timeline"])
-
-    script = None
-    script_file = folder / "script.json"
-    if script_file.exists():
-        with open(script_file, encoding="utf-8") as f:
-            script = json.load(f)
+    script = _load_json(folder / "script.json")
+    emotional_timeline, emotional_data = _resolve_emotional_timeline(
+        folder,
+        script,
+        audio,
+    )
+    if emotional_data:
+        result["emotional_timeline"] = emotional_data
 
     if audio.exists() and content.get("texto_narracao"):
-        if emotional_timeline:
-            emotional_timeline = sync_timeline_to_audio(
-                emotional_timeline,
-                str(audio),
-            )
-            result["emotional_timeline"] = emotional_timeline.to_dict()
-
         result["cenas"] = sync_scenes_to_audio(
             result["cenas"],
             content["texto_narracao"],
@@ -128,6 +187,7 @@ def rerender(
             result["cenas"],
             emotional_timeline,
         )
+        _persist_synced_project(folder, result["cenas"], content)
         synced_count = len(result["cenas"].get("cenas", []))
         print(f"⏱️ Cenas re-sincronizadas: {synced_count} (split de ritmo aplicado)")
 

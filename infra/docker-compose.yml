@@ -1,4 +1,4 @@
-# Docker Compose — n8n + Nginx reverse proxy (Oracle Cloud ARM64 / Ampere A1)
+# Docker Compose — n8n + Nginx reverse proxy (Hetzner Cloud / VM Linux)
 #
 # Uso (produção — VM + domínio + SSL):
 #   cd infra

@@ -26,12 +26,7 @@ def build_pollinations_url(
 ) -> str:
     """Constrói URL de geração de imagem Pollinations."""
 
-    style_prefix = (
-        "cinematic documentary photograph, dramatic lighting, "
-        "historical atmosphere, photorealistic, 16:9, "
-    )
-    full_prompt = f"{style_prefix}{prompt}"
-    encoded = urllib.parse.quote(full_prompt)
+    encoded = urllib.parse.quote(prompt.strip())
 
     return (
         f"{POLLINATIONS_IMAGE_BASE}/{encoded}"

@@ -17,6 +17,14 @@ from typing import Optional
 from scripts.core.brand_engine import get_subtitle_style
 
 
+# Cores ASS (formato &HAABBGGRR) — estilo canais dark YouTube
+HIGHLIGHT_ASS_COLORS = {
+    "gold": "&H0000D7FF",
+    "red": "&H000000FF",
+    "cyan": "&H00FFFF00",
+}
+
+
 def _format_srt_time(seconds: float) -> str:
     if seconds < 0:
         seconds = 0.0
@@ -42,8 +50,8 @@ def _parse_srt_time(value: str) -> float:
     )
 
 
-def _split_into_lines(text: str, max_chars: int = 38, max_lines: int = 2) -> str:
-    """Divide texto em no máximo 2 linhas curtas."""
+def _split_into_lines(text: str, max_chars: int = 42, max_lines: int = 2) -> str:
+    """Divide texto em no máximo 2 linhas curtas (4-5 palavras por linha)."""
 
     text = text.strip()
     if not text:
@@ -124,16 +132,33 @@ def _chunk_by_words(
     return [c for c in chunks if c]
 
 
-def _emphasize_keywords(text: str, keywords: Optional[list[str]] = None) -> str:
-    """Destaca palavras importantes (para ASS). Mantém texto limpo no SRT."""
+def _emphasize_keywords(
+    text: str,
+    keywords: Optional[list[str]] = None,
+    style: Optional[dict] = None,
+) -> str:
+    """
+    Destaca palavras-chave com cor (ASS) — estilo Dark5/Top5s.
+    Fallback: bold branco com outline preto quando sem keywords.
+    """
 
     if not keywords:
         return text
 
+    style = style or {}
+    color_names = style.get("highlight_colors", ("gold", "red", "cyan"))
     result = text
-    for word in keywords:
+
+    for index, word in enumerate(keywords):
+        color_name = color_names[index % len(color_names)]
+        ass_color = HIGHLIGHT_ASS_COLORS.get(color_name, HIGHLIGHT_ASS_COLORS["gold"])
         pattern = re.compile(re.escape(word), re.IGNORECASE)
-        result = pattern.sub(f"{{\\b1}}{word}{{\\b0}}", result)
+
+        def _colorize(match: re.Match, color: str = ass_color) -> str:
+            matched = match.group(0)
+            return f"{{\\c{color}&\\b1}}{matched}{{\\r\\b0}}"
+
+        result = pattern.sub(_colorize, result, count=1)
 
     return result
 
@@ -262,7 +287,11 @@ def generate_scene_subtitles(
             srt_lines.append("")
 
             keywords = _extract_keywords(chunk)
-            ass_text = _emphasize_keywords(chunk.replace("\n", "\\N"), keywords)
+            ass_text = _emphasize_keywords(
+                chunk.replace("\n", "\\N"),
+                keywords,
+                style=style,
+            )
             ass_events.append(
                 f"Dialogue: 0,{_format_ass_time(current)},"
                 f"{_format_ass_time(chunk_end)},Default,,0,0,0,,{ass_text}"
@@ -357,7 +386,11 @@ def generate_subtitles_from_words(
         srt_lines.append("")
 
         keywords = _extract_keywords(chunk)
-        ass_text = _emphasize_keywords(chunk.replace("\n", "\\N"), keywords)
+        ass_text = _emphasize_keywords(
+            chunk.replace("\n", "\\N"),
+            keywords,
+            style=style,
+        )
         ass_events.append(
             f"Dialogue: 0,{_format_ass_time(start_t)},"
             f"{_format_ass_time(end_t)},Default,,0,0,0,,{ass_text}"
@@ -378,9 +411,11 @@ def _format_ass_time(seconds: float) -> str:
 
 def _build_ass_header(style: dict) -> str:
     font = style.get("font_name", "Arial")
-    size = style.get("font_size", 44)
-    margin_v = style.get("margin_v", 92)
-    outline = style.get("outline", 3)
+    size = style.get("font_size", 52)
+    margin_v = style.get("margin_v", 110)
+    outline = style.get("outline", 2)
+    shadow = style.get("shadow", 2)
+    bold = -1 if style.get("bold", True) else 0
 
     return f"""[Script Info]
 ScriptType: v4.00+
@@ -389,7 +424,7 @@ PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,{outline},2,2,60,60,{margin_v},1
+Style: Default,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,{bold},0,0,0,100,100,0,0,1,{outline},{shadow},2,60,60,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -472,6 +507,7 @@ def ffmpeg_subtitle_filter(subtitle_path: Path, platform: str = "youtube_dark") 
         f"OutlineColour=&H000000,"
         f"Outline={style['outline']},"
         f"Shadow={style.get('shadow', 2)},"
+        f"Bold=1,"
         f"MarginV={style['margin_v']},"
         f"Alignment=2"
     )

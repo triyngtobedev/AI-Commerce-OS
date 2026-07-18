@@ -55,15 +55,15 @@ def run_smoke(folder_path: str) -> int:
 
     failures = []
 
-    # 1. Ritmo — nenhuma cena acima de 55s após split
+    # 1. Ritmo — nenhuma cena acima de 20s após split
     split_result = split_long_scenes(cenas if isinstance(cenas, dict) else {"cenas": scenes})
     split_scenes = split_result["cenas"]
     long_scenes = [
-        s for s in split_scenes if float(s.get("duration_seconds", 0)) > 55.0
+        s for s in split_scenes if float(s.get("duration_seconds", 0)) > 20.0
     ]
-    print(f"  Cenas após split: {len(split_scenes)} (longas>{55}s: {len(long_scenes)})")
+    print(f"  Cenas após split: {len(split_scenes)} (longas>{20}s: {len(long_scenes)})")
     if long_scenes:
-        failures.append(f"ritmo: {len(long_scenes)} cenas acima de 55s")
+        failures.append(f"ritmo: {len(long_scenes)} cenas acima de 20s")
 
     # 2. Re-sync se áudio disponível
     if audio.exists():
@@ -80,11 +80,11 @@ def run_smoke(folder_path: str) -> int:
         )
         synced_long = [
             s for s in synced["cenas"]
-            if float(s.get("duration_seconds", 0)) > 55.0
+            if float(s.get("duration_seconds", 0)) > 20.0
         ]
-        print(f"  Re-sync com áudio: {len(synced['cenas'])} cenas, longas>{55}s: {len(synced_long)}")
+        print(f"  Re-sync com áudio: {len(synced['cenas'])} cenas, longas>{20}s: {len(synced_long)}")
         if synced_long:
-            failures.append(f"sync: {len(synced_long)} cenas acima de 55s após re-sync")
+            failures.append(f"sync: {len(synced_long)} cenas acima de 20s após re-sync")
         split_result = synced
 
     # 3. Legendas

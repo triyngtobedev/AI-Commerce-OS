@@ -18,7 +18,7 @@
     },
     {
       "parameters": {
-        "content": "## Orquestrador Free Tier (YouTube Dark)\n\nAlinhado ao `video_generator.py`:\n\n1. **Replicate LTX** (trial / créditos free)\n2. **HF Router → fal.ai Wan2.2** (~US$ 0,10/mês HF)\n\nPadrão n8n: POST → Wait → Poll → IF succeeded.\n\nCredenciais:\n- `Replicate API Token` → Authorization: Token …\n- `Hugging Face API Token` → Authorization: Bearer …\n- `Pipeline API Key` → X-API-Key\n\n⚠️ Kling Web (Playwright) não roda no n8n — fica no Python quando n8n falha.",
+        "content": "## Orquestrador (YouTube Dark)\n\nAlinhado ao `video_generator.py`:\n\n1. **Replicate Wan 2.6** (720p, 5s — ~$0,25/clip)\n2. **HF Router → fal.ai Wan2.2** (~US$ 0,10/mês HF)\n\nKling Web (grátis) e fal.ai Kling 2.6 Pro rodam no Python antes do n8n.\n\nCredenciais:\n- `Replicate API Token` → Authorization: Token …\n- `Hugging Face API Token` → Authorization: Bearer …\n- `Pipeline API Key` → X-API-Key",
         "height": 280,
         "width": 460
       },
@@ -89,12 +89,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.replicate.com/v1/predictions",
+        "url": "https://api.replicate.com/v1/models/wan-video/wan-2.6-t2v/predictions",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"version\": \"8c47da666861d081eeb4d1261853087de23923a268a69b63febdf5dc1dee08e4\",\n  \"input\": {\n    \"prompt\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.prompt) }},\n    \"negative_prompt\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.negative_prompt) }},\n    \"length\": 97,\n    \"target_size\": 832,\n    \"aspect_ratio\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.aspect_ratio) }},\n    \"steps\": 45,\n    \"cfg\": 8.5\n  }\n}",
+        "jsonBody": "={\n  \"input\": {\n    \"prompt\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.prompt) }},\n    \"negative_prompt\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.negative_prompt) }},\n    \"aspect_ratio\": {{ JSON.stringify($('Set — Normalizar Payload').item.json.aspect_ratio) }},\n    \"resolution\": \"720p\",\n    \"duration\": 5,\n    \"enable_prompt_expansion\": true\n  }\n}",
         "options": {
           "timeout": 120000,
           "response": {
@@ -116,7 +116,7 @@
           "name": "Replicate API Token"
         }
       },
-      "notes": "Inicia prediction LTX-Video (lightricks/ltx-video)."
+      "notes": "Inicia prediction Wan 2.6 T2V (wan-video/wan-2.6-t2v, 720p 5s)."
     },
     {
       "parameters": {

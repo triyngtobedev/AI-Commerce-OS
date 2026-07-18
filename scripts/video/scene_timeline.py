@@ -9,7 +9,11 @@ from typing import Optional
 
 from scripts.core.emotional_timeline import EmotionalTimeline, build_emotional_timeline
 from scripts.video.media_probe import probe_duration
-from scripts.video.scene_emotion import MAX_SCENE_DURATION, apply_timeline_to_scenes
+from scripts.video.scene_emotion import (
+    MAX_SCENE_DURATION,
+    MIN_SCENE_DURATION,
+    apply_timeline_to_scenes,
+)
 from scripts.youtube.narration_utils import estimate_duration_seconds
 
 SCENE_WEIGHTS = {
@@ -21,6 +25,11 @@ SCENE_WEIGHTS = {
     "consequencias": 12,
     "impacto": 12,
     "encerramento": 6,
+    "fato_1": 17,
+    "fato_2": 17,
+    "fato_3": 17,
+    "fato_4": 17,
+    "fato_5": 17,
 }
 
 DEFAULT_WEIGHT = 10
@@ -121,11 +130,11 @@ def _estimate_scene_durations(scenes: list, narracao: str, audio_duration: float
     durations = []
     for estimate in estimates:
         raw = (estimate / total_estimate) * audio_duration
-        durations.append(max(3.0, round(raw, 2)))
+        durations.append(max(MIN_SCENE_DURATION, round(raw, 2)))
 
     if durations:
         delta = round(audio_duration - sum(durations), 2)
-        durations[-1] = max(3.0, round(durations[-1] + delta, 2))
+        durations[-1] = max(MIN_SCENE_DURATION, round(durations[-1] + delta, 2))
 
     return durations
 
@@ -156,9 +165,54 @@ def _split_narration_at_sentences(text: str, parts: int) -> list[str]:
     return _split_text_by_weights(text, [1] * parts)
 
 
+def _compute_split_count(
+    duration: float,
+    max_duration: float = MAX_SCENE_DURATION,
+    min_duration: float = MIN_SCENE_DURATION,
+) -> int:
+    """Calcula quantas sub-cenas manter cada bloco entre min e max segundos."""
+
+    if duration <= max_duration:
+        return 1
+
+    min_parts = max(2, math.ceil(duration / max_duration))
+    max_parts = max(1, math.floor(duration / min_duration))
+    if max_parts >= min_parts:
+        return min_parts
+    return min_parts
+
+
+def _split_durations_evenly(
+    duration: float,
+    parts: int,
+    max_duration: float = MAX_SCENE_DURATION,
+    min_duration: float = MIN_SCENE_DURATION,
+) -> list[float]:
+    """Distribui duração total em partes equilibradas dentro do range 15–20s."""
+
+    if parts <= 1:
+        return [round(duration, 2)]
+
+    target = min(max_duration, max(min_duration, round(duration / parts, 2)))
+    durations: list[float] = []
+    remaining = duration
+
+    for idx in range(parts):
+        if idx == parts - 1:
+            part = round(remaining, 2)
+        else:
+            part = min(target, max_duration, round(remaining - min_duration * (parts - idx - 1), 2))
+            part = max(min_duration, min(part, max_duration))
+        durations.append(part)
+        remaining = round(remaining - part, 2)
+
+    return durations
+
+
 def split_long_scenes(
     scenes_data: dict,
     max_duration: float = MAX_SCENE_DURATION,
+    min_duration: float = MIN_SCENE_DURATION,
 ) -> dict:
     """
     Divide cenas acima do limite de ritmo em sub-cenas narrativas.
@@ -180,6 +234,14 @@ def split_long_scenes(
 
         if duration <= max_duration or not narration:
             new_scene = dict(scene)
+            if duration <= 0:
+                duration = float(
+                    new_scene.get("duration_hint")
+                    or new_scene.get("timeline", {}).get("real_duration")
+                    or min_duration
+                )
+            new_scene["duration_seconds"] = duration
+            new_scene["duration_hint"] = duration
             new_scene["media_index"] = scene.get("media_index", index)
             new_scene["tempo_inicio"] = round(current_time, 2)
             new_scene["tempo_fim"] = round(current_time + duration, 2)
@@ -188,21 +250,15 @@ def split_long_scenes(
             expanded.append(new_scene)
             continue
 
-        parts = max(2, math.ceil(duration / max_duration))
+        parts = _compute_split_count(duration, max_duration, min_duration)
         text_parts = _split_narration_at_sentences(narration, parts)
         while len(text_parts) < parts:
             text_parts.append("")
         text_parts = text_parts[:parts]
 
-        word_counts = [max(1, len(t.split())) for t in text_parts]
-        total_words = sum(word_counts) or 1
-        part_start = current_time
+        part_durations = _split_durations_evenly(duration, parts, max_duration, min_duration)
 
-        for part_idx, (text_part, word_count) in enumerate(zip(text_parts, word_counts)):
-            if part_idx == parts - 1:
-                part_duration = round(duration - (current_time - part_start), 2)
-            else:
-                part_duration = round((word_count / total_words) * duration, 2)
+        for part_idx, (text_part, part_duration) in enumerate(zip(text_parts, part_durations)):
             part_duration = max(0.5, part_duration)
 
             new_scene = dict(scene)
@@ -308,10 +364,10 @@ def sync_scenes_to_audio(
     updated = []
 
     for i, scene in enumerate(scenes):
-        duration = durations[i] if i < len(durations) else max(3.0, weights[i])
+        duration = durations[i] if i < len(durations) else max(MIN_SCENE_DURATION, weights[i])
 
         if i == len(scenes) - 1:
-            duration = max(3.0, round(audio_duration - current, 2))
+            duration = max(MIN_SCENE_DURATION, round(audio_duration - current, 2))
 
         end = min(current + duration, audio_duration)
 

@@ -69,7 +69,8 @@ class TestSubtitleEngine(unittest.TestCase):
         self.assertIn("00:00:00", srt)
 
         self.assertIn("Dialogue:", ass)
-        self.assertIn(",44,", ass)
+        self.assertIn(",52,", ass)
+        self.assertIn(",-1,", ass)
 
 
 

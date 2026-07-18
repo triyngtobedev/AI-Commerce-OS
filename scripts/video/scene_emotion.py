@@ -13,7 +13,8 @@ from scripts.core.emotional_timeline import EmotionalTimeline, TimelineSection
 from scripts.core.visual_intent_engine import resolve_visual_intent
 
 # Mapeia tipos de cena (8) para chaves da timeline (6)
-MAX_SCENE_DURATION = 55.0
+MIN_SCENE_DURATION = 15.0
+MAX_SCENE_DURATION = 20.0
 
 SCENE_SECTION_ALIASES: dict[str, str] = {
     "desenvolvimento_1": "desenvolvimento",
@@ -62,6 +63,21 @@ def apply_timeline_to_scenes(
         section_key = _section_key_for_scene(scene)
         section = sections_by_key.get(section_key)
         if not section:
+            section = _match_timeline_section(index, timeline.sections, scene)
+
+        if not section:
+            remaining = len(scenes) - index
+            remaining_time = max(0.0, audio_duration - current_time)
+            assigned = max(
+                0.5,
+                round(remaining_time / remaining, 2) if remaining else MIN_SCENE_DURATION,
+            )
+            scene["duration_seconds"] = assigned
+            scene["duration_hint"] = assigned
+            scene["tempo_inicio"] = round(current_time, 2)
+            scene["tempo_fim"] = round(current_time + assigned, 2)
+            scene["tempo"] = f"{int(current_time)}-{int(current_time + assigned)}"
+            current_time = round(current_time + assigned, 2)
             continue
 
         group_indices = section_scene_groups.get(section_key, [index])

@@ -24,6 +24,18 @@ YOUTUBE_SECTION_KEYS = [
     "encerramento",
 ]
 
+DARK5_SECTION_KEYS = [
+    "hook",
+    "contexto",
+    "fato_5",
+    "fato_4",
+    "fato_3",
+    "fato_2",
+    "fato_1",
+    "revelacao",
+    "encerramento",
+]
+
 TIKTOK_SECTION_KEYS = [
     "hook",
     "problema",
@@ -44,6 +56,11 @@ DEFAULT_EMOTION_BY_SECTION: dict[str, str] = {
     "consequencias": "warning",
     "impacto": "impact",
     "encerramento": "calm",
+    "fato_1": "impact",
+    "fato_2": "mystery",
+    "fato_3": "warning",
+    "fato_4": "calm",
+    "fato_5": "mystery",
     "problema": "warning",
     "teste": "calm",
     "resultado": "impact",
@@ -71,6 +88,11 @@ DEFAULT_VISUAL_INTENT_BY_SECTION: dict[str, str] = {
     "consequencias": "impact_consequences",
     "impacto": "legacy_impact",
     "encerramento": "atmospheric_closing",
+    "fato_1": "dramatic_reveal",
+    "fato_2": "investigation",
+    "fato_3": "historical_event",
+    "fato_4": "investigation",
+    "fato_5": "dramatic_opening",
     "problema": "problem_setup",
     "teste": "product_demo",
     "resultado": "result_showcase",
@@ -181,7 +203,9 @@ def _normalize_section(raw: Any, index: int = 0) -> dict[str, Any]:
 def _sections_from_keyed_dict(script: dict) -> list[dict[str, Any]]:
     """Converte dict legado {hook: text, ...} em lista de seções."""
 
-    if any(key in script for key in YOUTUBE_SECTION_KEYS):
+    if any(key in script for key in ("fato_1", "fato_5")):
+        keys = DARK5_SECTION_KEYS
+    elif any(key in script for key in YOUTUBE_SECTION_KEYS):
         keys = YOUTUBE_SECTION_KEYS
     elif any(key in script for key in TIKTOK_SECTION_KEYS):
         keys = TIKTOK_SECTION_KEYS

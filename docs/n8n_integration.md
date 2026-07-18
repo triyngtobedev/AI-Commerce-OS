@@ -1,6 +1,6 @@
 # Integração n8n — AI-Commerce-OS
 
-Camada de integração que conecta o pipeline Python existente ao **n8n** hospedado em Oracle Cloud (ARM Ampere A1). O n8n atua **apenas nas bordas** do sistema:
+Camada de integração que conecta o pipeline Python existente ao **n8n** hospedado em uma VM Linux (Hetzner Cloud). O n8n atua **apenas nas bordas** do sistema:
 
 1. **Alimentador (Trigger)** — dispara o pipeline periodicamente via HTTP
 2. **Orquestrador assíncrono de IA** — gerencia filas e fallback entre **Replicate (trial)** e **HF Router (fal.ai Wan2.2)**
@@ -13,7 +13,7 @@ O pipeline CLI (`python main.py ...`) continua funcionando **sem alterações**.
 
 ```mermaid
 flowchart TB
-    subgraph OracleCloud["Oracle Cloud VM (ARM A1)"]
+    subgraph CloudVM["VM Linux (Hetzner Cloud)"]
         subgraph Docker["Docker Compose"]
             Nginx["Nginx :443 HTTPS"]
             N8N["n8n :5678 localhost"]
@@ -150,19 +150,19 @@ cloudflared tunnel --url http://127.0.0.1:8000
 
 ---
 
-## Guia de Setup (Produção — Oracle Cloud)
+## Guia de Setup (Produção — Hetzner Cloud)
 
 ### Pré-requisitos
 
-- VM Oracle Cloud **Ampere A1** (ARM64) com Ubuntu 22.04+
+- VM **Hetzner Cloud** (CX22 ou superior) com Ubuntu 22.04+
 - Domínio apontando para o IP público da VM (A record)
 - Docker e Docker Compose v2 instalados
 - Python 3.10+ na máquina que executa o pipeline
-- Portas abertas no Security List da Oracle Cloud
+- Portas abertas no firewall da Hetzner (painel + UFW)
 
-### 1. Abrir portas no Oracle Cloud
+### 1. Abrir portas no firewall Hetzner
 
-No **Networking → Virtual Cloud Networks → Security List**:
+No painel **Firewalls** (ou UFW na VM via `setup_cloud_vm.sh`):
 
 | Porta | Protocolo | Origem | Uso |
 |-------|-----------|--------|-----|

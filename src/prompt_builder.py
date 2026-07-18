@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal, TypedDict
 
-ApiName = Literal["falai", "replicate", "kling_web"]
+ApiName = Literal["falai", "fal_kling", "replicate", "kling_web"]
 I2VMovement = Literal["zoom", "rotate", "float", "reveal"]
 
 _I2V_MOVEMENT_PROMPTS: dict[str, str] = {
@@ -90,7 +90,7 @@ def build_prompt(product_name: str, api: ApiName, *, extra: str = "") -> PromptB
 
     Args:
         product_name: Nome do produto em foco.
-        api: Provider alvo — ``falai``, ``replicate`` ou ``kling_web``.
+        api: Provider alvo — ``falai``, ``fal_kling``, ``replicate`` ou ``kling_web``.
         extra: Descrição adicional opcional (sempre em inglês).
 
     Returns:
@@ -102,10 +102,10 @@ def build_prompt(product_name: str, api: ApiName, *, extra: str = "") -> PromptB
     if api == "kling_web":
         return {"prompt": positive, "negative_prompt": DEFAULT_NEGATIVE}
 
-    # falai e replicate: negative inline (sem campo dedicado confiável no free tier)
+    # falai, fal_kling e replicate: negative inline ou campo separado conforme API
     return {
         "prompt": _inline_negative(positive, DEFAULT_NEGATIVE),
-        "negative_prompt": None,
+        "negative_prompt": DEFAULT_NEGATIVE if api == "fal_kling" else None,
     }
 
 
@@ -153,6 +153,11 @@ _YOUTUBE_PLATFORM_STYLE = {
         "dark cinematic documentary, dramatic lighting, 16:9 landscape, "
         "atmospheric, film grain, moody shadows"
     ),
+    "youtube_dark": (
+        "YouTube dark documentary aesthetic, desaturated teal-orange color grade, "
+        "low-key chiaroscuro lighting, subtle film grain, moody shadows, "
+        "16:9 cinematic landscape, photorealistic archival still"
+    ),
     "tiktok": (
         "vertical mobile video, clean product showcase, bright studio, "
         "9:16 portrait, social media aesthetic"
@@ -176,6 +181,43 @@ _YOUTUBE_NEGATIVE = (
     "overexposed, neon colors, product placement"
 )
 
+_YOUTUBE_IMAGE_NEGATIVE = (
+    f"{_YOUTUBE_NEGATIVE}, illustration, 3D render, digital art, "
+    "oversaturated, plastic skin, smiling stock photo, collage, meme"
+)
+
+# Composição de still frame por ato narrativo (referência: Fern, LEMMiNO, Nexpo, MrBallen).
+_SCENE_IMAGE_COMPOSITION: dict[str, str] = {
+    "hook": "extreme close-up, high contrast, visceral tension, shallow depth of field",
+    "contexto": "wide establishing shot, epic environmental scale, layered atmosphere",
+    "desenvolvimento_1": "medium documentary frame, investigative detail, textured foreground",
+    "desenvolvimento_2": "dynamic historical reenactment still, narrative tension, depth layers",
+    "revelacao": "dramatic spotlight reveal, focal subject isolation, narrative climax framing",
+    "consequencias": "impactful wide shot, emotional weight, human-scale tragedy",
+    "impacto": "contrasting past and present, legacy symbolism, bold composition",
+    "encerramento": "contemplative closing still, soft vignette, quiet atmosphere",
+}
+
+_EMOTION_IMAGE_MOOD: dict[str, str] = {
+    "tension": "ominous low-key shadows, cold blue undertones",
+    "impact": "bold dramatic backlight, high contrast silhouette",
+    "mystery": "enigmatic fog, partial reveal, muted desaturated palette",
+    "sorrow": "melancholic desaturated tones, soft haze",
+    "neutral": "balanced documentary tone, natural contrast",
+    "curiosity": "intriguing directional light, subtle depth cues",
+    "awe": "grand scale vista, awe-inspiring atmosphere",
+    "warning": "urgent dramatic contrast, unsettling atmosphere",
+}
+
+_VISUAL_TYPE_IMAGE: dict[str, str] = {
+    "historical_documentary": "archival war documentary photograph, authentic period atmosphere",
+    "geographic_explanation": "aerial geography overview, strategic map-like composition",
+    "emotional_moment": "intimate human-scale tragedy, documentary portrait distance",
+    "investigation": "research evidence still life, documents and artifacts, rim lighting",
+    "dramatic_event": "dramatic historical event reenactment photograph, high tension",
+    "general_narrative": "documentary cinematic still, balanced photojournalistic framing",
+}
+
 
 _VISUAL_TYPE_SUFFIX: dict[str, str] = {
     "historical_documentary": "archival war documentary footage, authentic period atmosphere",
@@ -194,6 +236,92 @@ _ANIMATION_CAMERA: dict[str, str] = {
 }
 
 
+def _truncate_prompt_positive(prompt: str, max_length: int) -> str:
+    """Encurta prompt preservando o sujeito (primeira cláusula) e cortando modificadores finais."""
+    cleaned = ", ".join(part.strip() for part in prompt.split(",") if part.strip())
+    if len(cleaned) <= max_length:
+        return cleaned
+
+    parts = [part.strip() for part in cleaned.split(",") if part.strip()]
+    if not parts:
+        return cleaned[:max_length].strip()
+
+    result = [parts[0]]
+    length = len(parts[0])
+    for part in parts[1:]:
+        next_len = length + len(part) + 2
+        if next_len > max_length:
+            break
+        result.append(part)
+        length = next_len
+
+    compact = ", ".join(result).strip()
+    return compact or cleaned[:max_length].strip()
+
+
+def build_scene_image_prompt(
+    scene_description: str,
+    scene_query: str,
+    platform: str = "youtube_dark",
+    *,
+    scene_tipo: str = "",
+    emotion: str = "",
+    visual_direction: dict | None = None,
+    retry_suffix: str = "",
+    max_length: int = 0,
+) -> PromptBundle:
+    """
+    Prompt otimizado para geração de imagens (T2I) em documentários YouTube Dark.
+
+    Referência visual: canais dark de alta retenção (Fern, LEMMiNO, Nexpo, MrBallen) —
+    still frames cinematográficos, grading desaturado, luz dramática e tom arquivístico.
+    """
+    subject = (scene_query or scene_description or "historical documentary scene").strip()
+
+    if visual_direction:
+        scene_tipo = scene_tipo or visual_direction.get("section_key", "")
+        emotion = emotion or visual_direction.get("emotion", "")
+
+    platform_key = (
+        "youtube_dark"
+        if platform == "youtube_dark"
+        else ("youtube" if platform in ("youtube",) else platform)
+    )
+    platform_style = _YOUTUBE_PLATFORM_STYLE.get(
+        platform_key,
+        _YOUTUBE_PLATFORM_STYLE["youtube_dark"],
+    )
+
+    parts: list[str] = [subject]
+
+    visual_type = (visual_direction or {}).get("visual_type", "")
+    type_clause = _VISUAL_TYPE_IMAGE.get(visual_type, "")
+    if type_clause:
+        parts.append(type_clause)
+    elif scene_description and scene_description.strip() != subject:
+        parts.append(scene_description.strip())
+
+    parts.append(_SCENE_IMAGE_COMPOSITION.get(scene_tipo, "cinematic documentary still, balanced composition"))
+
+    mood = _EMOTION_IMAGE_MOOD.get(emotion, "")
+    if mood:
+        parts.append(mood)
+
+    parts.append(platform_style)
+
+    if retry_suffix.strip():
+        parts.append(retry_suffix.strip(", "))
+
+    positive = ", ".join(part for part in parts if part)
+    if max_length > 0:
+        positive = _truncate_prompt_positive(positive, max_length)
+
+    return {
+        "prompt": _inline_negative(positive, _YOUTUBE_IMAGE_NEGATIVE),
+        "negative_prompt": _YOUTUBE_IMAGE_NEGATIVE,
+    }
+
+
 def build_scene_video_prompt(
     scene_description: str,
     scene_query: str,
@@ -210,7 +338,11 @@ def build_scene_video_prompt(
     Diferente do I2V de produto: tom dramático, cinematográfico, 16:9.
     """
     subject = (scene_query or scene_description or "historical documentary scene").strip()
-    platform_key = "youtube" if platform in ("youtube", "youtube_dark") else platform
+    platform_key = (
+        "youtube_dark"
+        if platform == "youtube_dark"
+        else ("youtube" if platform == "youtube" else platform)
+    )
     platform_style = _YOUTUBE_PLATFORM_STYLE.get(platform_key, _YOUTUBE_PLATFORM_STYLE["youtube"])
 
     if visual_direction:

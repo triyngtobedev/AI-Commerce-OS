@@ -16,6 +16,29 @@ SCRIPT_SECTIONS = [
     "encerramento",
 ]
 
+DARK5_SCRIPT_SECTIONS = [
+    "hook",
+    "contexto",
+    "fato_5",
+    "fato_4",
+    "fato_3",
+    "fato_2",
+    "fato_1",
+    "revelacao",
+    "encerramento",
+]
+
+DARK5_SECTION_TRANSITIONS = {
+    "contexto": "Mas a lista começa pelo número 5.",
+    "fato_5": "Agora, o número 4.",
+    "fato_4": "Mas espere — o número 3 é ainda mais surpreendente.",
+    "fato_3": "Seguindo a contagem regressiva, o número 2.",
+    "fato_2": "E agora, o momento que você esperou — o número 1.",
+    "fato_1": "Mas o verdadeiro impacto só fica claro quando olhamos de perto.",
+    "revelacao": None,
+    "encerramento": None,
+}
+
 SECTION_TRANSITIONS = {
     "contexto": "Mas para entender o que aconteceu, precisamos voltar no tempo.",
     "desenvolvimento": "E é aqui que a história começa a ficar fascinante.",
@@ -23,6 +46,20 @@ SECTION_TRANSITIONS = {
     "consequencias": "E as consequências disso reverberam até hoje.",
     "encerramento": None,
 }
+
+
+def _script_sections_for(script: dict) -> list[str]:
+    """Retorna ordem de seções conforme o template do roteiro."""
+
+    if any(script.get(key) for key in ("fato_1", "fato_5")):
+        return DARK5_SCRIPT_SECTIONS
+    return SCRIPT_SECTIONS
+
+
+def _transitions_for(script: dict) -> dict:
+    if any(script.get(key) for key in ("fato_1", "fato_5")):
+        return DARK5_SECTION_TRANSITIONS
+    return SECTION_TRANSITIONS
 
 BANNED_PHRASES = [
     r"Imagine uma\b",
@@ -34,7 +71,28 @@ BANNED_PHRASES = [
     r"Descubra a história fascinante",
     r"E assim, o mistério\b",
     r"inscreva-se e ative o sininho para mais",
+    r"\boutrossim\b",
+    r"\bdestarte\b",
+    r"\bem virtude de\b",
+    r"\bconsoante\b",
+    r"\bnotadamente\b",
 ]
+
+FORMAL_WORDS = [
+    "outrossim", "destarte", "consoante", "notadamente",
+    "em virtude de", "hodiernamente", "doravante",
+]
+
+SCENE_HOOK_PHRASES = [
+    "E isso não é o pior",
+    "Mas espere",
+    "O que vem a seguir",
+    "E aqui a história fica",
+    "Mas o próximo",
+    "Ainda não acabou",
+]
+
+MAX_WORDS_PER_SENTENCE = 12
 
 MIN_NARRATION_WORDS = 1600
 TARGET_NARRATION_WORDS = 1700
@@ -48,15 +106,17 @@ def stitch_script_to_narration(script: dict, use_transitions: bool = False) -> s
     """
 
     parts = []
+    sections = _script_sections_for(script)
+    transitions = _transitions_for(script)
 
-    for key in SCRIPT_SECTIONS:
+    for key in sections:
         text = (script.get(key) or "").strip()
 
         if not text:
             continue
 
         if use_transitions and parts:
-            transition = SECTION_TRANSITIONS.get(key)
+            transition = transitions.get(key)
             if transition:
                 parts.append(transition)
 
@@ -119,6 +179,75 @@ def detect_banned_phrases(script: dict) -> list[str]:
                 found.append(f"{key}: {banned}")
 
     return found
+
+
+def validate_sentence_length(
+    script: dict,
+    max_words: int = MAX_WORDS_PER_SENTENCE,
+) -> list[str]:
+    """
+    Valida se frases respeitam o limite de palavras (estilo dark YouTube).
+    Retorna avisos com seção e frase violadora.
+    """
+
+    import re
+
+    warnings = []
+
+    for key, text in script.items():
+        if key.startswith("_") or not isinstance(text, str):
+            continue
+
+        clean = re.sub(r"\[PAUSA\]", "", text, flags=re.IGNORECASE)
+        sentences = re.split(r"(?<=[.!?…])\s+", clean)
+
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+
+            word_count = len(sentence.split())
+            if word_count > max_words:
+                preview = sentence[:60] + ("..." if len(sentence) > 60 else "")
+                warnings.append(
+                    f"{key}: frase com {word_count} palavras "
+                    f"(máx {max_words}): \"{preview}\""
+                )
+
+    return warnings
+
+
+def validate_scene_hooks(script: dict) -> list[str]:
+    """Verifica se seções narrativas terminam com gancho de retenção."""
+
+    warnings = []
+    sections = _script_sections_for(script)
+
+    for key in sections:
+        if key == "encerramento":
+            continue
+
+        text = (script.get(key) or "").strip()
+        if not text:
+            continue
+
+        lower = text.lower()
+        has_hook = any(hook.lower() in lower for hook in SCENE_HOOK_PHRASES)
+        if not has_hook:
+            warnings.append(
+                f"{key}: sem gancho de retenção "
+                f"(ex: 'E isso não é o pior...')"
+            )
+
+    return warnings
+
+
+def strip_pause_markers(text: str) -> str:
+    """Remove marcadores [PAUSA] para legendas e metadados."""
+
+    import re
+
+    return re.sub(r"\s*\[PAUSA\]\s*", " ", text, flags=re.IGNORECASE).strip()
 
 
 def count_words(text: str) -> int:

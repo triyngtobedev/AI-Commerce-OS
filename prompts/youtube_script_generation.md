@@ -43,25 +43,31 @@ Retorne APENAS JSON:
 5. **Micro-cliffhangers** entre seções: termine parágrafos com curiosidade pendente
 6. **Encerramento forte**: callback ao hook + CTA natural (não robótico)
 
-## Tom e linguagem
+## Tom e linguagem — ESTILO DARK (Dark5, Top5s, Thoughty2)
 
-- Português brasileiro, tom documentário envolvente e conversacional
-- Frases variadas: misture curtas (impacto) com médias (contexto)
-- Fatos verificáveis, datas e nomes reais
-- Linguagem acessível mas respeitosa — como um narrador de canal profissional
+- **Tom:** grave, pausado, levemente dramático — NUNCA apressado
+- **Frases curtas:** MÁXIMO **12 palavras por frase** — quebre frases longas
+- **Pausas estratégicas:** use `[PAUSA]` antes de revelações importantes
+- **Vocabulário:** direto, sem academicismo, sem palavras difíceis ou jargão técnico
+- **Ritmo narrativo:** começa devagar → acelera no meio → desacelera no clímax
+- **Ganchos entre seções:** OBRIGATÓRIO terminar cada seção (exceto encerramento) com frase de gancho:
+  - "E isso não é o pior..."
+  - "Mas espere — tem mais."
+  - "O que vem a seguir muda tudo."
+  - "E aqui a história fica estranha."
 
-## PROIBIDO (texto robótico)
+## PROIBIDO (texto robótico e formal)
 
-NÃO use estas construções:
+NÃO use:
+- Frases com mais de 12 palavras
+- Linguagem formal/acadêmica ("outrossim", "destarte", "em virtude de")
+- Jargão técnico sem explicação imediata
 - "Imagine uma..." / "Imagine que..."
 - "No entanto," no início de frases
 - "Além disso," repetidamente
-- "Hoje em dia," como transição
-- "E assim, o mistério permanece" (fechamento genérico)
-- "Descubra a história fascinante de..."
-- Parágrafos enciclopédicos sem tensão narrativa
-- Listar teorias sem drama ou consequência
+- "E assim, o mistério permanece"
 - CTA genérico: "grandes perguntas da humanidade"
+- Listar itens sem drama ou consequência
 
 ## Exemplo de hook forte
 

@@ -217,16 +217,20 @@ def _score_rhythm(result: dict) -> tuple[float, str]:
 
     max_dur = max(durations)
     avg_dur = sum(durations) / len(durations)
-    long_scenes = sum(1 for d in durations if d > 55)
+    long_scenes = sum(1 for d in durations if d > 20)
 
     score = 100.0
-    if max_dur > 70:
+    if max_dur > 25:
         score -= 25
-    elif max_dur > 55:
+    elif max_dur > 20:
         score -= 10
     if long_scenes > 2:
         score -= 15
-    if avg_dur > 50:
+    if avg_dur > 18:
+        score -= 10
+
+    short_scenes = sum(1 for d in durations if d < 15)
+    if short_scenes > 2:
         score -= 10
 
     variance = max(durations) - min(durations)

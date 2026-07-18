@@ -30,17 +30,25 @@ from src.video_upscaler import upscale_video_ffmpeg
 from src.prompt_builder import build_scene_video_prompt
 from src.video_generator import (
     VideoGenerator,
+    FAL_KLING_ESTIMATED_COST_USD,
+    REPLICATE_WAN_ESTIMATED_COST_USD,
+    fal_kling_is_configured,
     falai_is_configured,
     replicate_is_configured,
     kling_web_is_configured,
 )
 
-# Custo estimado por geração T2V no Replicate (LTX trial — ajustável via env).
-REPLICATE_ESTIMATED_COST_USD = 0.05
+# Custo estimado por geração (5s, áudio off / 720p — ajustável via env).
+REPLICATE_ESTIMATED_COST_USD = REPLICATE_WAN_ESTIMATED_COST_USD
 
 
 def _ai_video_configured() -> bool:
-    return falai_is_configured() or replicate_is_configured() or kling_web_is_configured()
+    return (
+        kling_web_is_configured()
+        or fal_kling_is_configured()
+        or replicate_is_configured()
+        or falai_is_configured()
+    )
 
 
 def search_pexels_for_scene(query: str) -> dict | None:
@@ -76,7 +84,7 @@ def _generate_scene_video_fallback_local(
 ) -> dict | None:
     """
     Gera vídeo T2V via VideoGenerator quando stock (Pexels) falha.
-    Cadeia interna: fal.ai → Replicate → Kling Web.
+    Cadeia interna: Kling Web → fal Kling 2.6 → Replicate Wan 2.6 → HF Wan2.2.
     """
     if not _ai_video_configured():
         print("[VideoGenerator] Nenhuma API de vídeo configurada — fallback IA ignorado")
@@ -92,8 +100,15 @@ def _generate_scene_video_fallback_local(
         visual_direction=(scene or {}).get("visual_direction"),
     )
 
-    api_hint = "Replicate" if replicate_is_configured() else "fal.ai/Kling"
-    print(f"[Replicate] tentando T2V via {api_hint}...")
+    if fal_kling_is_configured():
+        api_hint = "fal.ai Kling 2.6 Pro"
+    elif replicate_is_configured():
+        api_hint = "Replicate Wan 2.6"
+    elif kling_web_is_configured():
+        api_hint = "Kling Web (grátis)"
+    else:
+        api_hint = "HF Router Wan2.2"
+    print(f"[VideoGenerator] tentando T2V via {api_hint}...")
     print(f"  Query: {scene_query[:72]}")
 
     try:
@@ -122,7 +137,13 @@ def _generate_scene_video_fallback_local(
     resolution = result.get("resolution", "—")
     elapsed = round(result.get("duration_seconds", 0), 1)
 
-    if api_used == "replicate":
+    if api_used == "fal_kling":
+        print(f"[fal.ai Kling] sucesso — {local_path}")
+        print(
+            f"  Resolução: {resolution} | Tempo: {elapsed}s | "
+            f"Custo est.: ~${FAL_KLING_ESTIMATED_COST_USD:.2f}"
+        )
+    elif api_used == "replicate":
         print(f"[Replicate] sucesso — {local_path}")
         print(f"  Resolução: {resolution} | Tempo: {elapsed}s | Custo est.: ~${REPLICATE_ESTIMATED_COST_USD:.2f}")
     else:

@@ -1,0 +1,50 @@
+# Docker Compose — Pipeline na nuvem (Railway / VM amd64)
+#
+# Sobe o pipeline completo (Python + FFmpeg + FastAPI) na VM.
+# O dono aciona vídeos via scripts/cloud/gerar_video.py no PC local.
+#
+# Uso na VM:
+#   cd /opt/ai-commerce-os
+#   cp .env.example .env    # preencha as chaves
+#   docker compose -f infra/docker-compose.cloud.yml up -d --build
+
+services:
+  pipeline:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: ai-commerce-os:latest
+    container_name: ai-commerce-pipeline
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - WHISPER_MODEL_SIZE=${WHISPER_MODEL_SIZE:-tiny}
+    ports:
+      - "${PIPELINE_API_PORT:-8000}:8000"
+    volumes:
+      - pipeline_output:/app/output
+      - pipeline_cache:/app/cache
+      - pipeline_database:/app/database
+    deploy:
+      resources:
+        limits:
+          memory: 3500M
+        reservations:
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+volumes:
+  pipeline_output:
+    name: ai_commerce_output
+  pipeline_cache:
+    name: ai_commerce_cache
+  pipeline_database:
+    name: ai_commerce_database

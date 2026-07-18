@@ -129,6 +129,12 @@ def _normalize_dates(text: str) -> str:
     return text
 
 
+def _convert_pause_markers(text: str) -> str:
+    """Converte [PAUSA] do roteiro em pausa longa para TTS."""
+
+    return re.sub(r"\[PAUSA\]", " ... ... ", text, flags=re.IGNORECASE)
+
+
 def _add_breathing_pauses(text: str) -> str:
     """Insere pausas naturais para ritmo documental e suspense."""
 
@@ -172,5 +178,6 @@ def prepare_text_for_tts(text: str) -> str:
     result = _normalize_dates(result)
     result = _add_breathing_pauses(result)
     result = _clean_whitespace(result)
+    result = _convert_pause_markers(result)
 
     return result

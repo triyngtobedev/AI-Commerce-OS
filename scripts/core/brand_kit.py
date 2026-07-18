@@ -48,6 +48,8 @@ class ThumbnailStyle:
     saturation_boost: float = 1.22
     overlay_blend: float = 0.18
     accent_bar_height: int = 6
+    border_width: int = 2
+    border_color: tuple = (255, 215, 0)
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,7 @@ class CinematicStyle:
     opening_fade_seconds: float = 0.8
     closing_fade_seconds: float = 2.0
     scene_fade_seconds: float = 0.5
+    film_grain: str = "noise=alls=8:allf=t+u"
 
 
 SCENE_MOTION: dict[str, str] = {
@@ -192,6 +195,22 @@ class BrandKit:
 
     # ── Thumbnail ───────────────────────────────────────────────────────
 
+    def _draw_thumbnail_border(self, canvas, draw):
+        """Borda dourada premium visível no feed dark do YouTube."""
+
+        style = self.thumbnail
+        if style.border_width <= 0:
+            return canvas
+
+        w, h = canvas.size
+        gold = style.border_color
+        for offset in range(style.border_width):
+            draw.rectangle(
+                [(offset, offset), (w - 1 - offset, h - 1 - offset)],
+                outline=gold,
+            )
+        return canvas
+
     def render_thumbnail_background(
         self,
         output_path: Path,
@@ -228,6 +247,8 @@ class BrandKit:
                 fill=self.colors.text_muted,
                 font=sub_font,
             )
+
+        self._draw_thumbnail_border(img, draw)
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         img.save(output_path, "JPEG", quality=93)
@@ -359,6 +380,9 @@ class BrandKit:
         vignette = vignette.filter(ImageFilter.GaussianBlur(60))
         dark = Image.new("RGB", (w, h), (0, 0, 0))
         canvas = Image.composite(canvas, dark, vignette)
+
+        draw = ImageDraw.Draw(canvas)
+        self._draw_thumbnail_border(canvas, draw)
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         canvas.save(output_path, "JPEG", quality=93)

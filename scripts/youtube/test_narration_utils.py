@@ -1,66 +1,51 @@
-"""Testes para utilitários de narração YouTube."""
+"""Testes para validação de narração dark."""
 
 import unittest
 
 from scripts.youtube.narration_utils import (
-    stitch_script_to_narration,
-    count_words,
-    estimate_duration_seconds,
-    validate_narration,
-    MIN_NARRATION_WORDS,
-    TARGET_NARRATION_WORDS,
+    validate_sentence_length,
+    validate_scene_hooks,
+    strip_pause_markers,
+    MAX_WORDS_PER_SENTENCE,
 )
 
 
-SAMPLE_SCRIPT = {
-    "hook": "Em 1908, algo explodiu na Sibéria com força devastadora.",
-    "contexto": "A Rússia vivia uma era de transformação científica e industrial.",
-    "desenvolvimento": " " * 400 + "fatos " * 100,
-    "revelacao": "Ninguém encontrou um cráter de impacto.",
-    "consequencias": "O evento mudou como a ciência vê ameaças cósmicas.",
-    "encerramento": "Inscreva-se para mais mistérios históricos.",
-}
+class TestNarrationDarkRules(unittest.TestCase):
 
-
-class TestNarrationUtils(unittest.TestCase):
-
-    def test_stitch_preserves_all_sections(self):
-        narration = stitch_script_to_narration(SAMPLE_SCRIPT)
-        self.assertIn("1908", narration)
-        self.assertIn("cráter", narration)
-        self.assertIn("Inscreva-se", narration)
-
-    def test_stitch_does_not_summarize(self):
+    def test_detects_long_sentences(self):
         script = {
-            "hook": "Primeira frase completa do hook.",
-            "contexto": "Segunda seção com detalhes importantes.",
-            "desenvolvimento": "",
-            "revelacao": "",
-            "consequencias": "",
-            "encerramento": "",
+            "hook": (
+                "Esta frase tem mais de doze palavras e deveria "
+                "ser detectada como violação do limite máximo permitido."
+            ),
         }
-        narration = stitch_script_to_narration(script)
-        self.assertEqual(
-            narration,
-            "Primeira frase completa do hook. Segunda seção com detalhes importantes.",
-        )
+        warnings = validate_sentence_length(script)
+        self.assertTrue(any("hook" in w for w in warnings))
 
-    def test_count_words(self):
-        self.assertEqual(count_words("uma duas três"), 3)
+    def test_accepts_short_sentences(self):
+        script = {
+            "hook": "Em 1908, algo explodiu. Ninguém sabe o que foi.",
+        }
+        warnings = validate_sentence_length(script)
+        self.assertEqual(warnings, [])
 
-    def test_estimate_duration(self):
-        text = " ".join(["palavra"] * 150)
-        seconds = estimate_duration_seconds(text)
-        self.assertEqual(seconds, 60)
+    def test_detects_missing_hooks(self):
+        script = {
+            "hook": "Fato surpreendente sobre emus.",
+            "contexto": "A Austrália enfrentou uma guerra estranha.",
+            "encerramento": "Inscreva-se no canal.",
+        }
+        warnings = validate_scene_hooks(script)
+        self.assertTrue(len(warnings) >= 1)
 
-    def test_validate_short_narration_warns(self):
-        warnings = validate_narration("texto curto demais")
-        self.assertTrue(len(warnings) > 0)
+    def test_strip_pause_markers(self):
+        text = "Algo aconteceu. [PAUSA] Ninguém esperava."
+        result = strip_pause_markers(text)
+        self.assertNotIn("[PAUSA]", result)
+        self.assertIn("aconteceu", result)
 
-    def test_validate_long_narration_ok(self):
-        text = " ".join(["palavra"] * TARGET_NARRATION_WORDS)
-        warnings = validate_narration(text)
-        self.assertEqual(len(warnings), 0)
+    def test_max_words_constant(self):
+        self.assertEqual(MAX_WORDS_PER_SENTENCE, 12)
 
 
 if __name__ == "__main__":
