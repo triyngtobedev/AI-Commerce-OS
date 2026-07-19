@@ -69,7 +69,7 @@ class TestAIRouterHealth(unittest.TestCase):
 
     @patch.dict(
         os.environ,
-        {"GEMINI_API_KEY": "x", "PEXELS_API_KEY": "y"},
+        {"GEMINI_API_KEY": "x"},
         clear=True,
     )
     def test_health_ready_minimal(self):

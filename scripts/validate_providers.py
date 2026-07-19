@@ -38,7 +38,7 @@ OPTIONAL_VARS = [
     ("YOUTUBE_CLIENT_ID", "Upload YouTube OAuth"),
     ("YOUTUBE_CLIENT_SECRET", "Upload YouTube OAuth"),
     ("YOUTUBE_REFRESH_TOKEN", "Upload YouTube OAuth"),
-    ("HF_TOKEN", "HuggingFace media provider"),
+    ("HF_TOKEN", "HuggingFace media provider (HF_API_TOKEN também aceito)"),
     ("AZURE_SPEECH_KEY", "TTS Azure"),
 ]
 
@@ -103,6 +103,13 @@ def check_env_vars() -> tuple[list[str], list[str], list[str]]:
             failed.append(var)
 
     for var, desc in OPTIONAL_VARS:
+        if var == "HF_TOKEN":
+            if os.getenv("HF_TOKEN") or os.getenv("HF_API_TOKEN"):
+                ok(f"HF_TOKEN/HF_API_TOKEN configurado — {desc}")
+                passed.append("HF_TOKEN|HF_API_TOKEN")
+            else:
+                warn(f"HF_TOKEN/HF_API_TOKEN ausente — {desc}")
+            continue
         if os.getenv(var):
             ok(f"{var} configurada — {desc}")
             passed.append(var)

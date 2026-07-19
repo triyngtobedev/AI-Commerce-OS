@@ -14,6 +14,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from scripts.utils.hf_token import hf_token_configured
 from scripts.video.media_providers.huggingface.errors import HFError
 from scripts.video.media_providers.huggingface.provider import HuggingFaceProvider
 
@@ -23,9 +24,9 @@ logger = logging.getLogger("hf_ai")
 
 
 def hf_is_configured() -> bool:
-    """True se HF_TOKEN está presente."""
+    """True se HF_API_TOKEN ou HF_TOKEN está presente."""
 
-    return bool(os.getenv("HF_TOKEN"))
+    return hf_token_configured()
 
 
 def _reconcile_output_path(asset_path: Path, requested: Path) -> bool:

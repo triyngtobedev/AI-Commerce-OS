@@ -31,9 +31,10 @@ def check_http(
     headers: dict[str, str] | None = None,
     *,
     ok_statuses: tuple[int, ...] = (200,),
+    token: str | None = None,
 ) -> dict:
-    token = (env.get(name) or "").strip()
-    if not token:
+    resolved = (token if token is not None else (env.get(name) or "")).strip()
+    if not resolved:
         return {"name": name, "set": False, "ok": False, "status": None, "detail": "nao configurado"}
 
     hdrs = {
@@ -51,7 +52,7 @@ def check_http(
             "ok": ok,
             "status": resp.status_code,
             "detail": detail,
-            "masked": mask(token),
+            "masked": mask(resolved),
         }
     except Exception as exc:  # noqa: BLE001
         return {
@@ -60,7 +61,7 @@ def check_http(
             "ok": False,
             "status": None,
             "detail": str(exc),
-            "masked": mask(token),
+            "masked": mask(resolved),
         }
 
 
@@ -74,7 +75,7 @@ def main() -> int:
         return 1
 
     replicate = (env.get("REPLICATE_API_TOKEN") or "").strip()
-    hf = (env.get("HF_API_TOKEN") or "").strip()
+    hf = (env.get("HF_API_TOKEN") or env.get("HF_TOKEN") or "").strip()
     fal_key = (env.get("FAL_KEY") or env.get("FAL_API_KEY") or "").strip()
     gemini = (env.get("GEMINI_API_KEY") or "").strip()
     groq = (env.get("GROQ_API_KEY") or "").strip()
@@ -88,9 +89,10 @@ def main() -> int:
             {"Authorization": f"Bearer {replicate}"},
         ),
         check_http(
-            "HF_API_TOKEN",
+            "HF_API_TOKEN|HF_TOKEN",
             "https://huggingface.co/api/whoami-v2",
             {"Authorization": f"Bearer {hf}"},
+            token=hf,
         ),
         check_http(
             "GEMINI_API_KEY",
@@ -172,9 +174,12 @@ def main() -> int:
 
     print()
     if failed:
-        hf = (env.get("HF_API_TOKEN") or "").strip()
+        hf = (env.get("HF_API_TOKEN") or env.get("HF_TOKEN") or "").strip()
         if hf and len(hf) < 20:
-            print("Dica: HF_API_TOKEN parece placeholder (ex.: hf_...) — gere em https://huggingface.co/settings/tokens")
+            print(
+                "Dica: HF_API_TOKEN/HF_TOKEN parece placeholder (ex.: hf_...) — "
+                "gere em https://huggingface.co/settings/tokens"
+            )
         if not fal_key:
             print("Dica: FAL_KEY em fal.ai/dashboard/keys — Kling 2.6 Pro (~$0,35/clip 5s)")
         if not (env.get("GEMINI_API_KEY") or "").strip() and not (env.get("GROQ_API_KEY") or "").strip():

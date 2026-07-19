@@ -105,9 +105,16 @@ class HuggingFaceProvider:
         request_timeout: int = REQUEST_TIMEOUT,
         on_metrics: OnHFMetricsCallback | None = None,
     ) -> None:
-        token = api_token if api_token is not None else os.getenv("HF_TOKEN", "")
+        if api_token is not None:
+            token = api_token
+        else:
+            from scripts.utils.hf_token import get_hf_token
+
+            token = get_hf_token()
         if not token:
-            raise HFConfigError("HF_TOKEN ausente — configure em .env ou huggingface.co/settings/tokens")
+            raise HFConfigError(
+                "HF_API_TOKEN ou HF_TOKEN ausente — configure em .env ou huggingface.co/settings/tokens"
+            )
 
         self._token = token
         self._session = session or requests.Session()
