@@ -236,6 +236,39 @@ def patch_workflow_urls(wf: dict, api_base: str) -> dict:
     return patched
 
 
+PLACEHOLDER_CREDENTIAL_SUFFIX = "_CREDENTIAL_ID"
+
+
+def patch_workflow_optional_nodes(wf: dict) -> dict:
+    """
+    Desativa nós com credenciais placeholder (Slack opcional, etc.).
+
+    Evita falha em execução quando SLACK_CREDENTIAL_ID não foi configurado.
+    """
+    patched = json.loads(json.dumps(wf))
+    disabled: list[str] = []
+
+    for node in patched.get("nodes", []):
+        creds = node.get("credentials") or {}
+        has_template_cred = any(
+            isinstance(meta, dict)
+            and str(meta.get("id", "")).endswith(PLACEHOLDER_CREDENTIAL_SUFFIX)
+            for meta in creds.values()
+        )
+        notes = node.get("notes") or ""
+        is_placeholder = "PLACEHOLDER" in notes or "(opcional)" in node.get("name", "").lower()
+
+        if node.get("disabled") or has_template_cred or (is_placeholder and creds):
+            node["disabled"] = True
+            node.pop("credentials", None)
+            disabled.append(node.get("name", node.get("id", "?")))
+
+    if disabled:
+        print(f"  Nós opcionais desativados (sem credencial): {', '.join(disabled)}")
+
+    return patched
+
+
 def patch_workflow_credentials(workflow: dict, cred_ids: dict[str, str]) -> dict:
     wf = json.loads(json.dumps(workflow))
     for node in wf.get("nodes", []):
@@ -258,6 +291,7 @@ def import_workflow(
     raw = json.loads(workflow_path.read_text(encoding="utf-8"))
     wf = patch_workflow_urls(raw, api_base)
     wf = patch_workflow_credentials(wf, cred_ids)
+    wf = patch_workflow_optional_nodes(wf)
 
     payload = {
         "name": wf["name"],

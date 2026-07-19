@@ -263,12 +263,7 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [1680, 120],
-      "credentials": {
-        "slackOAuth2Api": {
-          "id": "SLACK_CREDENTIAL_ID",
-          "name": "Slack OAuth2"
-        }
-      },
+      "disabled": true,
       "notes": "PLACEHOLDER — configure credencial Slack ou substitua por Telegram/Email."
     },
     {
@@ -288,12 +283,7 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [1680, 520],
-      "credentials": {
-        "slackOAuth2Api": {
-          "id": "SLACK_CREDENTIAL_ID",
-          "name": "Slack OAuth2"
-        }
-      },
+      "disabled": true,
       "notes": "PLACEHOLDER — notificação de falha."
     },
     {

@@ -72,12 +72,7 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [720, 300],
-      "credentials": {
-        "slackOAuth2Api": {
-          "id": "SLACK_CREDENTIAL_ID",
-          "name": "Slack OAuth2"
-        }
-      },
+      "disabled": true,
       "notes": "PLACEHOLDER — substitua por nó Email (SMTP) ou Telegram. Conteúdo completo em $json.content."
     }
   ],
