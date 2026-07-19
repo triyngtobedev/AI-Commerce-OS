@@ -179,6 +179,7 @@ async def health_check() -> HealthResponse:
 
 
 @app.get("/download/latest-video", tags=["download"])
+@app.head("/download/latest-video", tags=["download"])
 def download_latest_video() -> FileResponse:
     """Baixa o video_final.mp4 mais recente em /app/persistent/output ou /app/output."""
     video_path = get_latest_video_final()

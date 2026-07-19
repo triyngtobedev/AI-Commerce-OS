@@ -7,6 +7,7 @@ Gera quality_report.json com scores e explicação de aprovação/bloqueio.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Any, Optional
@@ -97,6 +98,10 @@ def _compute_media_metrics(media_data: dict, scenes: list) -> dict:
     }
 
 
+def _quality_gate_enabled() -> bool:
+    return os.getenv("QUALITY_GATE_ENABLED", "true").lower() not in ("false", "0", "no")
+
+
 def run_quality_gate(
     export_folder: Path,
     result: dict,
@@ -109,9 +114,21 @@ def run_quality_gate(
     """
 
     logger = get_logger("quality_gate")
+    export_folder = Path(export_folder)
+
+    if not _quality_gate_enabled():
+        report = QualityGateReport(approved=True, blocked=False)
+        report.decisions.append("SKIPPED — QUALITY_GATE_ENABLED=false")
+        report_path = export_folder / "quality_report.json"
+        report_path.write_text(
+            json.dumps(report.to_dict(), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        logger.info("Quality Gate: desabilitado (QUALITY_GATE_ENABLED=false)")
+        return report
+
     report = QualityGateReport(approved=True, blocked=False)
 
-    export_folder = Path(export_folder)
     media_data = _load_media_search(export_folder)
     scenes = result.get("cenas", {}).get("cenas", []) if isinstance(result.get("cenas"), dict) else []
     metrics = _compute_media_metrics(media_data, scenes)
@@ -140,9 +157,10 @@ def run_quality_gate(
             f"{metrics['scenes_without_asset']} scene(s) without asset"
         )
 
-    if metrics["visual_repetition_count"] > len(scenes) // 2:
-        report.blocked = True
-        report.block_reasons.append("Excessive visual repetition — looks mass-produced")
+    # Disabled — blocked valid Wikimedia-only footage (same provider per scene)
+    # if metrics["visual_repetition_count"] > len(scenes) // 2:
+    #     report.blocked = True
+    #     report.block_reasons.append("Excessive visual repetition — looks mass-produced")
 
     # Watermark check via media metadata
     for scene_result in media_data.get("scenes", []):
