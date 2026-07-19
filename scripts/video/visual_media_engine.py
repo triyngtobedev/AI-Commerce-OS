@@ -20,6 +20,7 @@ import os
 import shutil
 import subprocess
 import time
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -106,6 +107,13 @@ REPLICATE_FLUX_POLL_INTERVAL = float(os.getenv("REPLICATE_FLUX_POLL_INTERVAL", "
 REPLICATE_FLUX_TIMEOUT = float(os.getenv("REPLICATE_FLUX_TIMEOUT", "120"))
 
 _t2v_scenes_used = 0
+
+
+def _dbg_scene1_var(scene_num: int, name: str, value: Any) -> None:
+    """Debug: type/value of variables used with .get() in footage resolution (scene 1 only)."""
+
+    if scene_num == 1:
+        print(f"DEBUG scene1 {name}: type={type(value).__name__} value={value!r}")
 
 
 def _coerce_mapping(value: Any, *, label: str = "objeto") -> dict | None:
@@ -1144,12 +1152,20 @@ def _resolve_scene_media(
     scene = _coerce_mapping(scene, label=f"Cena {scene_num} scene") or {}
     subject = _coerce_mapping(subject, label="subject") or {}
 
+    _dbg_scene1_var(scene_num, "scene", scene)
+    _dbg_scene1_var(scene_num, "query_item", query_item)
     busca = query_item.get("busca", "")
+    _dbg_scene1_var(scene_num, "query_item", query_item)
     fallback = query_item.get("busca_fallback", "")
+    _dbg_scene1_var(scene_num, "query_item", query_item)
     tematica = query_item.get("busca_tematica", "")
+    _dbg_scene1_var(scene_num, "query_item", query_item)
     atmosfera = query_item.get("busca_atmosfera", "")
+    _dbg_scene1_var(scene_num, "query_item", query_item)
     tipo = query_item.get("tipo", "")
+    _dbg_scene1_var(scene_num, "query_item", query_item)
     preferir_imagem = query_item.get("preferir_imagem", False)
+    _dbg_scene1_var(scene_num, "query_item", query_item)
     visual_direction = query_item.get("visual_direction")
     critical_scene = is_critical_scene(tipo)
     allow_pollinations = not critical_scene
@@ -1169,7 +1185,9 @@ def _resolve_scene_media(
     }
 
     scene = scene or {}
+    _dbg_scene1_var(scene_num, "subject", subject)
     topic = subject.get("nome", "")
+    _dbg_scene1_var(scene_num, "subject", subject)
     platform = subject.get("_output_platform", "youtube_dark")
 
     # --- Prioridade 1: YouTube Creative Commons (yt-dlp) ---
@@ -1182,11 +1200,14 @@ def _resolve_scene_media(
             ledger=ledger,
             scene_num=scene_num,
         )
+        _dbg_scene1_var(scene_num, "cc_result", cc_result)
         if cc_result and cc_result.get("saved"):
             result.update(cc_result)
             result["scene"] = scene_num
             result["tipo"] = tipo
             result["query_enriched"] = cc_query
+            _dbg_scene1_var(scene_num, "cc_result", cc_result)
+            _dbg_scene1_var(scene_num, "cc_result.get('attribution', {})", cc_result.get("attribution", {}))
             print(
                 f"🎬 Cena {scene_num} ({tipo}): vídeo YouTube CC "
                 f"— {cc_result.get('attribution', {}).get('title', cc_query)[:60]}"
@@ -1230,9 +1251,11 @@ def _resolve_scene_media(
     if not preferir_imagem:
         for query in search_queries:
             media, source = media_by_query[query]
+            _dbg_scene1_var(scene_num, "media", media)
             if not media.get("videos"):
                 continue
 
+            _dbg_scene1_var(scene_num, "media", media)
             top_score = best_video_score(query, media.get("videos", []), used_ids)
             if top_score < MIN_RELEVANCE_SCORE:
                 print(
@@ -1253,6 +1276,7 @@ def _resolve_scene_media(
                 scene_num=scene_num,
             )
             if saved and chosen:
+                _dbg_scene1_var(scene_num, "chosen", chosen)
                 vid = chosen.get("id")
                 if vid:
                     used_ids.add(vid)
@@ -1275,9 +1299,11 @@ def _resolve_scene_media(
     if not stock_video_found:
         for query in search_queries:
             media, source = media_by_query[query]
+            _dbg_scene1_var(scene_num, "media", media)
             if not media.get("photos"):
                 continue
 
+            _dbg_scene1_var(scene_num, "media", media)
             top_photo_score = max(
                 (score_photo(query, photo) for photo in media.get("photos", [])),
                 default=0.0,
@@ -1301,9 +1327,11 @@ def _resolve_scene_media(
                 scene_num=scene_num,
             )
             if saved and chosen:
+                _dbg_scene1_var(scene_num, "chosen", chosen)
                 pid = chosen.get("id")
                 if pid:
                     used_ids.add(pid)
+                _dbg_scene1_var(scene_num, "scene", scene)
                 duration = float(scene.get("duration_seconds", 10) or 10)
                 if scene_image.exists() and create_ken_burns_video(
                     scene_image,
@@ -1335,11 +1363,13 @@ def _resolve_scene_media(
                 print(f"🖼️ Cena {scene_num} ({tipo}): imagem stock — {source}")
                 return result
 
+    _dbg_scene1_var(scene_num, "result", result)
     stock_failed = not result.get("saved")
 
     # --- Prioridade 2: Fallback editorial (Ken Burns, motion graphics) ---
     if stock_failed:
         print(f"  📐 Cena {scene_num}: tentando fallback editorial...")
+        _dbg_scene1_var(scene_num, "scene", scene)
         duration = float(scene.get("duration_seconds", 5) or 5)
         saved_images = [p for p in (saved_assets or []) if p.suffix.lower() in {".jpg", ".jpeg", ".png"}]
         editorial_ok, editorial_type, strategy = execute_editorial_fallback(
@@ -1372,6 +1402,7 @@ def _resolve_scene_media(
             return result
 
     # --- Prioridade 3: T2V seletivo (máx. 2 cenas) ---
+    _dbg_scene1_var(scene_num, "result", result)
     if stock_failed and not result.get("saved"):
         tracker = t2v_tracker or T2VTracker()
         if preferir_imagem:
@@ -1411,12 +1442,18 @@ def _resolve_scene_media(
             category = None
             material = None
             if subject:
+                _dbg_scene1_var(scene_num, "subject", subject)
                 image_url = subject.get("image_url") or subject.get("imagem_url")
+                _dbg_scene1_var(scene_num, "subject", subject)
                 product_name = subject.get("nome") or subject.get("name")
+                _dbg_scene1_var(scene_num, "subject", subject)
                 category = subject.get("categoria") or subject.get("category")
+                _dbg_scene1_var(scene_num, "subject", subject)
                 material = subject.get("material")
 
+            _dbg_scene1_var(scene_num, "query_item", query_item)
             scene_description = query_item.get("visual_goal", busca)
+            _dbg_scene1_var(scene_num, "query_item", query_item)
             emotion = query_item.get("emotion", "")
 
             ai_video_saved = False
@@ -1448,8 +1485,10 @@ def _resolve_scene_media(
                     emotion=emotion,
                     scene=query_item,
                 )
+                _dbg_scene1_var(scene_num, "n8n_result", n8n_result)
                 if n8n_result and n8n_result.get("local_path"):
                     ai_video_saved = True
+                    _dbg_scene1_var(scene_num, "n8n_result", n8n_result)
                     ai_video_provider = n8n_result.get("api_used", "n8n")
             else:
                 ai_video_saved, ai_video_provider = _try_ai_video(
@@ -1505,6 +1544,7 @@ def _resolve_scene_media(
                 return result
 
     # --- Prioridade 4: Imagem IA documental ---
+    _dbg_scene1_var(scene_num, "query_item", query_item)
     ai_saved, ai_provider = _try_ai_image(
         busca,
         scene_image,
@@ -1528,10 +1568,12 @@ def _resolve_scene_media(
             "replicate_flux": "Replicate Flux",
             "huggingface": "Hugging Face",
         }
+        _dbg_scene1_var(scene_num, "provider_labels", provider_labels)
         label = provider_labels.get(ai_provider, ai_provider)
         print(f"🤖 Cena {scene_num} ({tipo}): imagem {label}")
         return result
 
+    _dbg_scene1_var(scene_num, "query_item", query_item)
     ai_retry_saved, ai_retry_provider = _try_ai_image(
         busca,
         scene_image,
@@ -1692,13 +1734,13 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
                 ledger=ledger,
                 t2v_tracker=t2v_tracker,
             )
-        except Exception as error:
-            print(f"  ⚠️ Cena {scene_num}: erro na resolução de mídia ({error})")
+        except Exception as e:
+            print(f"TRACEBACK cena {i}: {traceback.format_exc()}")
             result = _recover_scene_with_placeholder(
                 scene_num,
                 query_item,
                 scene_image,
-                error=str(error),
+                error=str(e),
             )
 
         signature = result.pop("selection_signature", None)
