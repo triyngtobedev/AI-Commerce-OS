@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 from api import __version__
 from api.config import get_pipeline_api_key
 from api.models.schemas import HealthResponse
-from api.routers import analytics, pipeline, scenes, youtube
+from api.routers import analytics, download, pipeline, scenes, youtube
 
 load_dotenv()
 
@@ -73,6 +73,7 @@ async def security_middleware(request: Request, call_next: Callable):
         "/api/docs",
         "/api/redoc",
         "/api/openapi.json",
+        "/download/latest-video",
     }
 
     if path not in public_paths:
@@ -181,3 +182,4 @@ app.include_router(pipeline.router, prefix="/api/v1")
 app.include_router(scenes.router, prefix="/api/v1")
 app.include_router(youtube.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
+app.include_router(download.router)
