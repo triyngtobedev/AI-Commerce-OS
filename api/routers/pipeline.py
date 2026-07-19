@@ -58,9 +58,10 @@ async def get_pipeline_status(job_id: str) -> PipelineStatusResponse:
     try:
         parsed_id = UUID(job_id)
     except ValueError as exc:
+        # Jobs são sempre UUID; identificador inválido = recurso inexistente (404).
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid job_id format",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} not found",
         ) from exc
 
     job = job_store.get_job(parsed_id)
