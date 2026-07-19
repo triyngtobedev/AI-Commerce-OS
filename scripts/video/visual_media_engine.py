@@ -2,26 +2,14 @@
 Visual Media Engine — busca e geração de mídia por cena (footage-first).
 
 Cadeia de fallback por cena (youtube_dark):
-<<<<<<< HEAD
-    1. Stock ranqueado — Media Search Orchestrator (Wikimedia → Pixabay → Pexels)
-     Prioridade histórica/editorial para footage seguro.
-
-  2. Foto stock + Ken Burns / fallback editorial
-     Mapas, timelines, gráficos e composições editoriais quando vídeo não agrega valor.
-     Cenas com preferir_imagem evitam T2V e usam movimento em imagem.
-
-  3. T2V seletivo — máximo MAX_T2V_SCENES_PER_VIDEO (default 2)
-     Usa n8n (USE_N8N_FOR_SCENES) ou VideoGenerator local
-     (Kling → fal → Replicate → HF conforme disponibilidade).
-
-  4. Imagem IA documental — Pollinations / Replicate Flux Schnell /
-     Hugging Face FLUX.1-schnell quando configurado.
-     Uso restrito para cenas críticas, hooks, revelações ou encerramentos.
-
-  5. Placeholder ilustrativo — se todos os fallbacks falharem.
+  1. Stock ranqueado — Media Search Orchestrator (Wikimedia → Pixabay → Pexels)
+  2. Foto stock + Ken Burns / fallback editorial (mapa, timeline, gráfico)
+  3. T2V seletivo — máx. 2 cenas/vídeo (n8n ou VideoGenerator local: Kling → fal → Replicate → HF).
+     Cenas preferir_imagem pulam T2V e usam imagem + Ken Burns (~$0,03/imagem vs ~$0,25/clip T2V).
+  4. Imagem IA documental — Replicate Flux → Pollinations → HF (bloqueado em cenas críticas)
+  5. Placeholder ilustrativo — se tudo falhar
 
 Todos os assets passam pelo Asset Rights Ledger antes do render.
->>>>>>> origin/main
 """
 
 from __future__ import annotations
@@ -82,6 +70,29 @@ from scripts.video.media_downloader import (
     select_photo_url,
     select_video_file_with_fallback,
 )
+from scripts.video.media_quality import (
+    MIN_IMAGE_HEIGHT,
+    MIN_IMAGE_HEIGHT_FALLBACK,
+    MIN_IMAGE_WIDTH,
+    MIN_IMAGE_WIDTH_FALLBACK,
+    MIN_VIDEO_HEIGHT,
+    MIN_VIDEO_HEIGHT_FALLBACK,
+    MIN_VIDEO_WIDTH,
+    MIN_VIDEO_WIDTH_FALLBACK,
+    validate_image_file,
+    validate_video_file,
+)
+from scripts.core.asset_rights_ledger import AssetRightsLedger, evaluate_license
+from scripts.video.media_search_orchestrator import search_and_rank_scene
+from scripts.scoring.visual_relevance_scorer import (
+    FALLBACK_KEEP,
+    TOP_CANDIDATES,
+    rank_candidates_with_visual_score,
+)
+from scripts.core.feature_flags import sprint30_visual_score
+from scripts.ai.gemini_quota import is_gemini_quota_exhausted
+from scripts.video.editorial_fallback import execute_editorial_fallback
+from scripts.video.t2v_decision import T2VDecision, T2VTracker, evaluate_t2v_decision
 
 REPLICATE_PREDICTIONS_URL = "https://api.replicate.com/v1/predictions"
 REPLICATE_FLUX_MODEL = os.getenv("REPLICATE_FLUX_MODEL", "black-forest-labs/flux-schnell")
@@ -110,29 +121,6 @@ def _consume_t2v_budget() -> None:
 
     global _t2v_scenes_used
     _t2v_scenes_used += 1
-from scripts.video.media_quality import (
-    MIN_IMAGE_HEIGHT,
-    MIN_IMAGE_HEIGHT_FALLBACK,
-    MIN_IMAGE_WIDTH,
-    MIN_IMAGE_WIDTH_FALLBACK,
-    MIN_VIDEO_HEIGHT,
-    MIN_VIDEO_HEIGHT_FALLBACK,
-    MIN_VIDEO_WIDTH,
-    MIN_VIDEO_WIDTH_FALLBACK,
-    validate_image_file,
-    validate_video_file,
-)
-from scripts.core.asset_rights_ledger import AssetRightsLedger, evaluate_license
-from scripts.video.media_search_orchestrator import search_and_rank_scene
-from scripts.scoring.visual_relevance_scorer import (
-    FALLBACK_KEEP,
-    TOP_CANDIDATES,
-    rank_candidates_with_visual_score,
-)
-from scripts.core.feature_flags import sprint30_visual_score
-from scripts.ai.gemini_quota import is_gemini_quota_exhausted
-from scripts.video.editorial_fallback import execute_editorial_fallback
-from scripts.video.t2v_decision import T2VTracker, evaluate_t2v_decision
 
 
 def _output_folder(subject):
@@ -1261,96 +1249,6 @@ def _resolve_scene_media(
                 print(f"🖼️ Cena {scene_num} ({tipo}): imagem stock — {source}")
                 return result
 
-<<<<<<< HEAD
-    # Stock falhou — T2V pago (limitado) ou imagem IA + Ken Burns (template n8n).
-    if not stock_video_found and not result.get("saved"):
-        print(
-            f"  ⚠️ Cena {scene_num}: stock sem mídia adequada — "
-            f"acionando geração IA"
-        )
-        image_url = None
-        product_name = None
-        category = None
-        material = None
-        if subject:
-            image_url = subject.get("image_url") or subject.get("imagem_url")
-            product_name = subject.get("nome") or subject.get("name")
-            category = subject.get("categoria") or subject.get("category")
-            material = subject.get("material")
-
-        platform = (subject or {}).get("_output_platform", "youtube_dark")
-        scene_description = query_item.get("visual_goal", busca)
-        emotion = query_item.get("emotion", "")
-
-        ai_video_saved = False
-        ai_video_provider = ""
-
-        skip_t2v = preferir_imagem or not _t2v_budget_available()
-        if preferir_imagem:
-            print(
-                f"  💰 Cena {scene_num}: preferir_imagem — "
-                f"pulando T2V (imagem + Ken Burns, estilo template n8n)"
-            )
-        elif not _t2v_budget_available():
-            print(
-                f"  💰 Cena {scene_num}: orçamento T2V esgotado "
-                f"({MAX_T2V_SCENES_PER_VIDEO}/vídeo) — usando imagem + Ken Burns"
-            )
-
-        # I2V e-commerce: sempre local (n8n orquestra só T2V documental).
-        i2v_ecommerce = (
-            not skip_t2v
-            and image_url
-            and (fal_kling_is_configured() or replicate_is_configured())
-            and product_name
-        )
-        if i2v_ecommerce:
-            ai_video_saved, ai_video_provider = _try_ai_video(
-                busca,
-                scene_video,
-                image_url=image_url,
-                product_name=product_name,
-                category=category,
-                material=material,
-                scene_description=scene_description,
-                scene_tipo=tipo,
-                emotion=emotion,
-                platform=platform,
-                visual_direction=visual_direction,
-                allow_pollinations=allow_pollinations,
-            )
-        elif not skip_t2v and use_n8n_for_scenes():
-            print(f"[n8n] delegando T2V cena {scene_num} ao orquestrador n8n")
-            fallback = generate_scene_video_fallback(
-                scene_description=scene_description,
-                scene_query=busca,
-                output_path=scene_video,
-                platform=platform,
-                scene_tipo=tipo,
-                emotion=emotion,
-                scene=query_item,
-            )
-            if fallback and fallback.get("local_path"):
-                ai_video_saved = True
-                ai_video_provider = fallback.get("api_used", "n8n")
-        elif not skip_t2v:
-            ai_video_saved, ai_video_provider = _try_ai_video(
-                busca,
-                scene_video,
-                image_url=image_url,
-                product_name=product_name,
-                category=category,
-                material=material,
-                scene_description=scene_description,
-                scene_tipo=tipo,
-                emotion=emotion,
-                platform=platform,
-                visual_direction=visual_direction,
-                allow_pollinations=allow_pollinations,
-            )
-        if ai_video_saved:
-            _consume_t2v_budget()
-=======
     stock_failed = not result.get("saved")
 
     # --- Prioridade 2: Fallback editorial (Ken Burns, motion graphics) ---
@@ -1376,7 +1274,6 @@ def _resolve_scene_media(
                     local_path=scene_video,
                     visual_quality_score=0.75,
                 )
->>>>>>> origin/main
             result.update({
                 "saved": True,
                 "media_type": editorial_type,
@@ -1391,13 +1288,32 @@ def _resolve_scene_media(
     # --- Prioridade 3: T2V seletivo (máx. 2 cenas) ---
     if stock_failed and not result.get("saved"):
         tracker = t2v_tracker or T2VTracker()
-        t2v_decision = evaluate_t2v_decision(
-            scene_num, scene, query_item,
-            tracker=tracker,
-            stock_failed=True,
-            editorial_failed=True,
-            scene_importance=0.8 if critical_scene else 0.5,
-        )
+        if preferir_imagem:
+            print(
+                f"  💰 Cena {scene_num}: preferir_imagem — "
+                f"pulando T2V (imagem + Ken Burns, estilo template n8n)"
+            )
+            t2v_decision = T2VDecision(
+                should_use_t2v=False,
+                reason="preferir_imagem",
+            )
+        elif not _t2v_budget_available() or not tracker.can_use_t2v():
+            print(
+                f"  💰 Cena {scene_num}: orçamento T2V esgotado "
+                f"({MAX_T2V_SCENES_PER_VIDEO}/vídeo) — usando imagem + Ken Burns"
+            )
+            t2v_decision = T2VDecision(
+                should_use_t2v=False,
+                reason="t2v_budget_exhausted",
+            )
+        else:
+            t2v_decision = evaluate_t2v_decision(
+                scene_num, scene, query_item,
+                tracker=tracker,
+                stock_failed=True,
+                editorial_failed=True,
+                scene_importance=0.8 if critical_scene else 0.5,
+            )
         result["t2v_decision"] = t2v_decision.to_dict()
 
         if not t2v_decision.should_use_t2v:
@@ -1461,6 +1377,7 @@ def _resolve_scene_media(
                 )
 
             if ai_video_saved:
+                _consume_t2v_budget()
                 tracker.record_use(scene_num, t2v_decision)
                 if ledger:
                     ledger.register_asset(
