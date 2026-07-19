@@ -9,9 +9,17 @@ from scripts.ai.providers.openrouter import generate as openrouter_generate
 
 load_dotenv()
 
-groq_client = Groq(
-    api_key=os.getenv("GROQ_API_KEY")
-)
+_groq_client = None
+
+
+def _get_groq_client() -> Groq:
+    global _groq_client
+    if _groq_client is None:
+        api_key = os.getenv("GROQ_API_KEY", "").strip()
+        if not api_key:
+            raise Exception("GROQ_API_KEY não configurada")
+        _groq_client = Groq(api_key=api_key)
+    return _groq_client
 
 GROQ_MODELS_FALLBACK = [
     "llama-3.3-70b-versatile",   # primário (12k TPM)
