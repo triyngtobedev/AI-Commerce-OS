@@ -37,6 +37,18 @@ os.environ.setdefault("SPRINT30_METRICS", "true")
 
 def _preflight() -> bool:
     from scripts.ai.router import get_client
+    from scripts.utils.merge_conflict_scan import find_merge_conflicts
+
+    conflicts = find_merge_conflicts(ROOT)
+    if conflicts:
+        print("\n❌ Conflitos de merge não resolvidos em arquivos Python:")
+        for hit in conflicts[:10]:
+            print(f"   • {hit['path']}:{hit['line']}")
+        if len(conflicts) > 10:
+            print(f"   … e mais {len(conflicts) - 10} ocorrências")
+        print("\n   Resolva os marcadores <<<<<<< / ======= / >>>>>>> e tente novamente.")
+        print("   Dica: git checkout --theirs scripts/video/visual_media_engine.py  (ou --ours)")
+        return False
 
     health = get_client().health()
     print("\n🔍 Preflight Sprint 30:")

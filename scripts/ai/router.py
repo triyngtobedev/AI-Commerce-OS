@@ -222,8 +222,20 @@ class AIRouter:
         audio_library = Path("assets/audio/library.json").exists()
         has_tts = tts["azure"] or tts["edge_fallback"]
 
+        from scripts.utils.merge_conflict_scan import find_merge_conflicts
+
+        merge_conflicts = find_merge_conflicts(Path(__file__).resolve().parents[2])
+        if merge_conflicts:
+            first = merge_conflicts[0]
+            missing.append(
+                f"Merge: resolva conflitos Git em {first['path']}:{first['line']} "
+                f"({len(merge_conflicts)} marcador(es))"
+            )
+
         return {
-            "ready_for_batch": any(ai.values()) and footage["pexels"] and has_tts,
+            "ready_for_batch": (
+                any(ai.values()) and footage["pexels"] and has_tts and not merge_conflicts
+            ),
             "ready_for_batch_strict": len(missing) == 0,
             "ai": ai,
             "ai_any": any(ai.values()),
@@ -232,6 +244,8 @@ class AIRouter:
             "audio_library": audio_library,
             "sprint30_flags": sprint30_flags_snapshot(),
             "missing_required": missing,
+            "merge_conflicts": merge_conflicts[:5],
+            "merge_conflicts_count": len(merge_conflicts),
             "hint": "cp .env.sprint30.example .env e preencha as chaves",
         }
 
