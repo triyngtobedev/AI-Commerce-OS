@@ -1,14 +1,21 @@
 # Railway.app — deploy zero SSH (conecta GitHub, sobe Docker automaticamente)
-# Docs: docs/deploy-railway.md
+# Docs: docs/deploy-railway.md e docs/railway-volume.md
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Bind explícito em $PORT (Railway injeta automaticamente)
-startCommand = "/bin/sh /app/scripts/cloud/entrypoint.sh"
+startCommand = "bash scripts/cloud/entrypoint.sh"
 healthcheckPath = "/api/v1/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
+
+# Volume persistente: garante que SQLite e output/ sobrevivam a restarts e deploys
+# Configure em: Railway dashboard → seu serviço → Volumes → Add Volume
+# Mount path deve ser /app/persistent
+# Depois ajuste as variáveis abaixo no Railway:
+#   DATABASE_PATH=/app/persistent/database/pipeline_jobs.db
+#   OUTPUT_DIR=/app/persistent/output
+#   REPORTS_DIR=/app/persistent/reports

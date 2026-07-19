@@ -161,10 +161,18 @@ async def log_auth_config() -> None:
 @app.get("/api/v1/health", response_model=HealthResponse, tags=["health"])
 async def health_check() -> HealthResponse:
     """Health check simples — usado por Railway, n8n e monitoramento."""
+    persistent_dir = os.getenv("PERSISTENT_DIR", "/app/persistent")
+    git_commit = (
+        os.getenv("RAILWAY_GIT_COMMIT_SHA")
+        or os.getenv("GIT_COMMIT")
+        or None
+    )
     return HealthResponse(
         status="ok",
         version=__version__,
         auth_configured=bool(get_pipeline_api_key()),
+        git_commit=git_commit,
+        persistent_storage=os.path.isdir(persistent_dir),
     )
 
 

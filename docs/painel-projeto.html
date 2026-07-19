@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI-Commerce-OS — Painel do Projeto</title>
+  <style>
+    :root {
+      --bg: #f4f3f0;
+      --card: #fff;
+      --text: #1a1a1a;
+      --muted: #888780;
+      --border: #e0e0dc;
+      --green: #1D9E75;
+      --yellow: #BA7517;
+      --orange: #D97706;
+      --red: #E24B4A;
+      --blue: #378ADD;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .header {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 24px 32px;
+    }
+    .header h1 { font-size: 20px; font-weight: 500; }
+    .header p { color: #aaa; font-size: 13px; margin-top: 6px; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .metric {
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .metric b { display: block; font-size: 28px; font-weight: 500; }
+    .metric span { font-size: 12px; color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .card {
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .card h3 { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+    .card ul { list-style: none; font-size: 12px; color: var(--muted); }
+    .card li { padding: 3px 0; }
+    .card li code { font-size: 11px; background: #f0efec; padding: 1px 4px; border-radius: 3px; }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 10px;
+    }
+    .badge-green { background: #e6f5ef; color: var(--green); }
+    .badge-yellow { background: #fef3e2; color: var(--yellow); }
+    .badge-orange { background: #fff4e5; color: var(--orange); }
+    .badge-red { background: #fdeaea; color: var(--red); }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .steps { display: flex; flex-direction: column; gap: 8px; }
+    .step {
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .step-header:hover { background: #fafaf8; }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-title { flex: 1; font-size: 14px; font-weight: 500; }
+    .step-tag {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+    .tag-done { background: #e6f5ef; color: var(--green); }
+    .tag-partial { background: #fef3e2; color: var(--yellow); }
+    .tag-manual { background: #fff4e5; color: var(--orange); }
+    .tag-backlog { background: #fdeaea; color: var(--red); }
+    .step-chevron { color: var(--muted); transition: transform 0.2s; }
+    .step.open .step-chevron { transform: rotate(180deg); }
+    .step-body {
+      display: none;
+      padding: 0 16px 16px 56px;
+      font-size: 13px;
+      color: #444;
+    }
+    .step.open .step-body { display: block; }
+    .step-body p { margin-bottom: 10px; }
+    .step-body pre {
+      background: #1a1a1a;
+      color: #e8e8e8;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      overflow-x: auto;
+      margin: 8px 0 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .step-body a { color: var(--blue); }
+    .footer {
+      margin-top: 32px;
+      padding: 16px;
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .footer strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>AI-Commerce-OS — Painel do Projeto</h1>
+  <p>Snapshot · 19/07/2026 · Guia visual para vibe coders · <a href="CAMINHO-IMEDIATO.md" style="color:#8cf">Ver guia completo (MD)</a></p>
+</div>
+
+<div class="wrap">
+
+  <div class="metrics">
+    <div class="metric"><b>6</b><span>passos no caminho imediato</span></div>
+    <div class="metric"><b>4</b><span>frentes do projeto</span></div>
+    <div class="metric"><b>7</b><span>itens com código pronto</span></div>
+    <div class="metric"><b>4</b><span>ações manuais pendentes</span></div>
+  </div>
+
+  <div class="section-title">O que foi entregue (visão geral)</div>
+  <div class="grid">
+    <div class="card">
+      <span class="badge badge-yellow">health pendente</span>
+      <h3>☁️ Deploy Railway</h3>
+      <ul>
+        <li><code>Dockerfile</code> — imagem produção</li>
+        <li><code>railway.toml</code> — uvicorn + health</li>
+        <li><code>entrypoint.sh</code> — volume + diagnóstico</li>
+        <li><code>smoke_test_railway.py</code> — checklist E2E</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="badge badge-yellow">placeholders ativos</span>
+      <h3>⚡ Automação n8n</h3>
+      <ul>
+        <li><code>01_pipeline_trigger</code> — schedule 8h</li>
+        <li><code>02_scene_generation</code> — T2V Replicate/HF</li>
+        <li><code>03_weekly_analytics</code> — domingo 9h</li>
+        <li><code>notification_nodes.json</code> — colar na UI</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="badge badge-green">funcional local</span>
+      <h3>🌙 Template lofi_dark</h3>
+      <ul>
+        <li><code>lofi_dark_config.py</code> — 1200s</li>
+        <li><code>lofi_background.py</code> — footage FFmpeg</li>
+        <li><code>soundtrack_engine.py</code> — trilha ambient</li>
+        <li><code>template_override.py</code> — via env</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="badge badge-orange">OAuth Railway pendente</span>
+      <h3>▶️ Upload e analytics YT</h3>
+      <ul>
+        <li><code>uploader.py</code> — OAuth + metadados</li>
+        <li><code>youtube_analytics.py</code> — analytics.json</li>
+        <li><code>report.py</code> — relatório semanal</li>
+        <li><code>gerar_token.py</code> — gerar refresh token</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section-title">Próximos passos — clique para expandir</div>
+  <div class="steps" id="steps">
+
+    <div class="step open">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">1</div>
+        <div class="step-title">Merge do PR #23 → ativa CI no GitHub</div>
+        <span class="step-tag tag-manual">ação manual</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <p><strong>Código:</strong> ✅ pronto no branch <code>cursor/infra-ci-railway-c640</code></p>
+        <p><strong>Você faz:</strong> merge no GitHub para entrar no <code>main</code> e rodar CI automaticamente.</p>
+        <p>1. Abra <a href="https://github.com/triyngtobedev/AI-Commerce-OS/pull/23" target="_blank">PR #23</a><br>
+           2. Clique <strong>Merge pull request</strong><br>
+           3. Vá em <strong>Actions</strong> → workflow <strong>CI</strong> deve ficar verde</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">2</div>
+        <div class="step-title">Smoke test Railway → confirma produção saudável</div>
+        <span class="step-tag tag-partial">script pronto</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <p>Testa health, autenticação e (opcional) submissão de job.</p>
+        <pre>cd C:\Projetos\AI-Commerce-OS
+python scripts/cloud/smoke_test_railway.py ^
+  --url https://SUA-URL.up.railway.app ^
+  --key SUA_PIPELINE_API_KEY ^
+  --skip-job</pre>
+        <p>Sucesso = mensagem <strong>Railway OK — pronto para produção</strong></p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">3</div>
+        <div class="step-title">Volume em /app/persistent → jobs não somem no restart</div>
+        <span class="step-tag tag-manual">config Railway</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <p><strong>Código:</strong> ✅ entrypoint + health <code>persistent_storage</code></p>
+        <p><strong>Você faz:</strong> Railway → Settings → Volumes → Add Volume</p>
+        <pre>Mount path: /app/persistent
+Size: 5 GB (mínimo)</pre>
+        <p>Confirme no smoke test: <code>"persistent_storage": true</code></p>
+        <p>Guia: <code>docs/railway-volume.md</code></p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">4</div>
+        <div class="step-title">OAuth YouTube no Railway → upload automático</div>
+        <span class="step-tag tag-manual">config Railway</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <p><strong>Passo A — no PC:</strong></p>
+        <pre>python scripts/youtube/gerar_token.py</pre>
+        <p><strong>Passo B — no Railway Variables:</strong></p>
+        <pre>YOUTUBE_CLIENT_ID=...
+YOUTUBE_CLIENT_SECRET=...
+YOUTUBE_REFRESH_TOKEN=...
+YOUTUBE_AUTO_UPLOAD=true</pre>
+        <p>Guia: <code>docs/youtube_oauth.md</code></p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">5</div>
+        <div class="step-title">Ativar n8n → automação diária</div>
+        <span class="step-tag tag-partial">script pronto</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <p>Requisitos: Docker Desktop aberto + Railway OK (passos 2–4).</p>
+        <pre>.\infra\ativar-n8n.ps1</pre>
+        <p>Ou validar antes:</p>
+        <pre>python infra/setup_n8n.py --validate</pre>
+        <p>n8n UI: <a href="http://localhost:5678" target="_blank">http://localhost:5678</a></p>
+        <p>Guia: <code>docs/ATIVAR-N8N.md</code></p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">6</div>
+        <div class="step-title">Colar notificações nos workflows 01 e 03</div>
+        <span class="step-tag tag-manual">editar no n8n</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <p>Abra <code>infra/n8n_workflows/notification_nodes.json</code></p>
+        <p>Escolha Telegram, Slack ou Email. Substitua os nós <strong>PLACEHOLDER</strong> nos workflows 01 e 03 na UI do n8n.</p>
+        <p>Configure credenciais do bot/canal no n8n → Settings → Credentials.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">7</div>
+        <div class="step-title">Expandir cobertura de testes</div>
+        <span class="step-tag tag-done">concluído</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <p><code>run_tests.py</code> com suites pytest modulares.</p>
+        <pre>python run_tests.py fast    # rápido
+python run_tests.py           # suite padrão
+python run_tests.py cov       # cobertura HTML</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">8</div>
+        <div class="step-title">CI/CD GitHub Actions</div>
+        <span class="step-tag tag-done">concluído</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <p>Workflows em <code>.github/workflows/</code>:</p>
+        <ul style="margin-left:16px;margin-top:8px">
+          <li><strong>ci.yml</strong> — testes em push/PR</li>
+          <li><strong>railway-smoke.yml</strong> — smoke manual (workflow_dispatch)</li>
+        </ul>
+        <p>Ativo após merge do PR #23.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">9</div>
+        <div class="step-title">Dashboard web (jobs + analytics + n8n)</div>
+        <span class="step-tag tag-done">concluído</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <p>Gera dashboard com dados reais do projeto:</p>
+        <pre>python scripts/dashboard/generator.py --open</pre>
+        <p>Saída: <code>output/dashboard.html</code> e <code>output/dashboard.json</code></p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">10</div>
+        <div class="step-title">Validar video_upscaler e providers</div>
+        <span class="step-tag tag-partial">script pronto</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <pre>python scripts/validate_providers.py
+python scripts/validate_providers.py --strict</pre>
+        <p>Verifica ffmpeg, Real-ESRGAN e tokens de API.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header" onclick="toggleStep(this)">
+        <div class="step-num">11</div>
+        <div class="step-title">Sprint 2 — pesquisa TikTok Shop</div>
+        <span class="step-tag tag-backlog">backlog</span>
+        <span class="step-chevron">▼</span>
+      </div>
+      <div class="step-body">
+        <p>Pipeline TikTok legado existe, mas sprint de pesquisa/automação de produtos ainda não foi priorizada. Foco atual: YouTube Dark + Railway + n8n.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <strong>Caminho natural imediato:</strong> 1 → 2 → 3 → 4 → 5 → 6<br><br>
+    Legenda: <span class="step-tag tag-done" style="display:inline">concluído</span>
+    <span class="step-tag tag-partial" style="display:inline;margin-left:6px">script pronto</span>
+    <span class="step-tag tag-manual" style="display:inline;margin-left:6px">ação manual</span>
+    <span class="step-tag tag-backlog" style="display:inline;margin-left:6px">backlog</span>
+  </div>
+
+</div>
+
+<script>
+function toggleStep(header) {
+  const step = header.parentElement;
+  step.classList.toggle('open');
+}
+</script>
+</body>
+</html>

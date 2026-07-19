@@ -1,57 +1,119 @@
 # Status do Projeto — AI-Commerce-OS
 
-> Atualizado em: **18 de julho de 2026**
+> Atualizado em: **19 de julho de 2026**
+
+## Painel visual (vibe coder)
+
+Abra no navegador (duplo clique):
+
+- **[docs/painel-projeto.html](painel-projeto.html)** — snapshot interativo com os 10+ passos clicáveis
+- **[docs/CAMINHO-IMEDIATO.md](CAMINHO-IMEDIATO.md)** — guia passo a passo com comandos copy-paste
+
+---
 
 ## Resumo
 
-Plataforma funcional de automação com IA para produção de vídeos **TikTok Shop** (9:16) e **YouTube Dark** (16:9). Pipeline end-to-end local + API HTTP + deploy na nuvem via Railway.
+Plataforma de automação com IA para vídeos **YouTube Dark** (16:9) e pipeline legado **TikTok Shop** (9:16). Foco ativo: canal dark + deploy Railway + n8n.
 
-| Área | Status |
-|------|--------|
-| Pipeline TikTok Shop | ✅ Funcional |
-| Pipeline YouTube Dark | ✅ Funcional (roteiro, cenas, TTS, render, thumbnail) |
-| VideoGenerator (IA) | ✅ Kling Web → fal Kling 2.6 → Replicate Wan 2.6 → HF Wan2.2 |
-| Upload YouTube OAuth | ✅ Funcional |
-| API FastAPI (`/api/v1`) | ✅ Jobs assíncronos, health, download |
-| Deploy Railway (Docker) | ✅ Dockerfile + `railway.toml` — ver [deploy-railway.md](deploy-railway.md) |
-| Cliente nuvem (`gerar_video.py`) | ✅ Envia tema, faz polling, baixa MP4 |
-| Integração n8n | ✅ Pronta — ativar com `infra/ativar-n8n.ps1` (ver [ATIVAR-N8N.md](ATIVAR-N8N.md)) |
-| Dashboard web | ⏳ Planejado |
-| CI/CD automatizado | ⏳ Planejado |
+| Área | Status | Notas |
+|------|--------|-------|
+| Pipeline YouTube Dark | ✅ Funcional | Roteiro, cenas, TTS, render, thumbnail |
+| Template lofi_dark | ✅ Funcional local | 1200s, Pexels + FFmpeg fallback |
+| Pipeline TikTok Shop | ✅ Legado funcional | Não é o foco da sprint atual |
+| VideoGenerator (IA) | ✅ | Kling → fal → Replicate Wan → HF Wan2.2 |
+| API FastAPI (`/api/v1`) | ✅ | Jobs assíncronos, health, download |
+| Deploy Railway (Docker) | ⚠️ Parcial | Infra pronta; **smoke test + volume pendentes** |
+| Upload YouTube OAuth | ⚠️ Parcial | Código OK; **tokens no Railway pendentes** |
+| Integração n8n | ⚠️ Parcial | Workflows prontos; **ativação + notificações pendentes** |
+| Dashboard web | ✅ | `scripts/dashboard/generator.py` → `output/dashboard.html` |
+| CI/CD GitHub Actions | ✅ | PR #23 — merge pendente para ativar no `main` |
+| Cobertura de testes | ✅ | `run_tests.py` (pytest, suites modulares) |
+| Volume persistente Railway | ⚠️ Código pronto | Config manual no Railway Dashboard |
+| Notificações n8n | ⏳ | `notification_nodes.json` — colar na UI |
+| Sprint 2 TikTok Shop | ⏳ Backlog | Pesquisa de produtos não priorizada |
+
+---
+
+## Caminho imediato (ordem recomendada)
+
+| # | Etapa | Código | Ação manual |
+|---|-------|--------|-------------|
+| 1 | Merge PR #23 | ✅ | Merge no GitHub |
+| 2 | Smoke test Railway | ✅ `smoke_test_railway.py` | Rodar contra URL real |
+| 3 | Volume `/app/persistent` | ✅ entrypoint + health | Add Volume no Railway |
+| 4 | OAuth YouTube no Railway | ✅ `gerar_token.py` | Copiar vars para Railway |
+| 5 | Ativar n8n | ✅ `ativar-n8n.ps1` / `setup_n8n.py` | Docker + executar script |
+| 6 | Notificações Slack/TG | ✅ `notification_nodes.json` | Colar nos workflows 01/03 |
+
+Detalhes: [CAMINHO-IMEDIATO.md](CAMINHO-IMEDIATO.md)
+
+---
 
 ## Deploy na nuvem
 
-- **Plataforma recomendada:** [Railway.app](https://railway.app) (~R$ 25/mês, 4 GB RAM)
+- **Plataforma:** [Railway.app](https://railway.app)
 - **URL de produção:** `https://ai-commerce-os-production-b4f9.up.railway.app`
-- **Guia:** [docs/deploy-railway.md](deploy-railway.md)
-- **Comando local:** `python scripts/cloud/gerar_video.py --topic "Seu tema"`
+- **Guias:** [deploy-railway.md](deploy-railway.md) · [railway-volume.md](railway-volume.md)
+- **Smoke test:** `python scripts/cloud/smoke_test_railway.py --url URL --key CHAVE --skip-job`
+- **Cliente local:** `python scripts/cloud/gerar_video.py --topic "Seu tema"`
 
-Correção recente (commit `9deab98`): bind uvicorn em `0.0.0.0:$PORT`, entrypoint LF, alias `/health`.
+Health check expõe:
 
-## Testes recentes
-
-| Teste | Resultado | Detalhes |
-|-------|-----------|----------|
-| VideoGenerator CLI | ✅ | Replicate Wan 2.6, 1280×720, ~147s — [analysis/test_results.md](../analysis/test_results.md) |
-| Railway health | 🔄 | Aguardando redeploy pós-fix de porta |
-| Testes unitários YouTube | ✅ | `scripts/youtube/test_*.py` |
-| Testes VideoGenerator | ✅ | `tests/test_video_generator.py`, `tests/test_video_apis.py` |
-
-## Estrutura nova (jul/2026)
-
-```
-api/                    # FastAPI bridge (pipeline HTTP)
-scripts/cloud/          # Cliente nuvem + entrypoint Railway
-Dockerfile              # Imagem de produção
-railway.toml            # Config Railway (health, startCommand)
-infra/docker-compose.cloud.yml
-docs/deploy-railway.md
-docs/deploy-nuvem.md
+```json
+{
+  "status": "ok",
+  "auth_configured": true,
+  "git_commit": "...",
+  "persistent_storage": true
+}
 ```
 
-## Próximos passos
+---
 
-1. Confirmar health check Railway após redeploy (`/api/v1/health`)
-2. Validar geração completa na nuvem com `gerar_video.py`
-3. Ativar automação n8n (`infra/ativar-n8n.ps1`) para geração diária no Railway
-4. Dashboard web e CI/CD
+## Automação n8n
+
+- **Ativar:** `.\infra\ativar-n8n.ps1` (Windows) ou `python infra/setup_n8n.py`
+- **Validar Railway:** `python infra/setup_n8n.py --validate`
+- **Guia:** [ATIVAR-N8N.md](ATIVAR-N8N.md)
+- **Notificações:** substituir PLACEHOLDER nos workflows usando [notification_nodes.json](../infra/n8n_workflows/notification_nodes.json)
+
+---
+
+## Testes e qualidade
+
+```bash
+python run_tests.py fast          # CI usa esta suite
+python run_tests.py               # suite padrão
+python run_tests.py cov           # cobertura HTML
+python scripts/validate_providers.py
+python scripts/fix_requirements_encoding.py
+```
+
+| Teste | Resultado |
+|-------|-----------|
+| Suite rápida (`run_tests.py fast`) | ✅ 46 passed |
+| CI GitHub Actions | ⏳ Ativo após merge PR #23 |
+| Railway smoke E2E | ⏳ Aguardando execução manual |
+
+---
+
+## Estrutura relevante (jul/2026)
+
+```
+api/                          # FastAPI bridge
+scripts/cloud/                # entrypoint, smoke test, gerar_video
+scripts/dashboard/            # generator.py (dashboard HTML/JSON)
+scripts/validate_providers.py # ffmpeg + tokens
+infra/n8n_workflows/          # 01, 02, 03 + notification_nodes.json
+.github/workflows/            # ci.yml, railway-smoke.yml
+docs/painel-projeto.html      # painel visual interativo
+docs/CAMINHO-IMEDIATO.md      # guia passo a passo
+docs/railway-volume.md        # volume persistente
+```
+
+---
+
+## PR em aberto
+
+- **#23** — infra Railway, CI, testes, dashboard expandido  
+  https://github.com/triyngtobedev/AI-Commerce-OS/pull/23

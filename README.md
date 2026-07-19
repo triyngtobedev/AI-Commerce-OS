@@ -1,578 +1,337 @@
 # AI-Commerce-OS
 
-> Plataforma de automação com IA para descoberta de oportunidades, produção de vídeos e publicação em múltiplas plataformas.
+> Pipeline automatizado para **canais dark no YouTube** — transforma um tema em vídeo documentário 16:9 (~8 min) com narração, visuais, legendas karaoke e assets prontos para publicação.
 
-## Visão Geral
+## O que o projeto faz
 
-O **AI-Commerce-OS** transforma dados brutos (produtos ou temas) em pacotes completos de conteúdo prontos para publicação. O sistema analisa oportunidades com IA, gera roteiros e narração, busca mídias, monta cenas, renderiza vídeos e exporta tudo de forma automatizada.
+O AI-Commerce-OS executa um pipeline **YouTube Dark** de ponta a ponta:
 
-Atualmente suporta duas plataformas:
+1. **Tema → roteiro** — IA escreve narrativa documental (Gemini → Groq → OpenRouter como fallback)
+2. **Roteiro → cenas** — divide em cenas cronometradas com queries visuais e ritmo emocional
+3. **Cenas → mídia** — arquivos de stock (Wikimedia, Pixabay, Pexels) ou imagens geradas por IA (**Flux Schnell**) animadas com **Ken Burns / parallax**
+4. **Narração** — **Edge TTS** (voz neural PT-BR gratuita), com fallback Azure SSML
+5. **Legendas** — alinhamento por palavra com **Whisper** → legendas **ASS estilo karaoke** (blocos sincronizados + destaque de palavras-chave)
+6. **Render** — composição com **FFmpeg**, color grade e sincronização da timeline
+7. **Export** — `video_final.mp4`, SRT/ASS, thumbnail, capítulos e metadados
 
-| Plataforma | Tipo de conteúdo | Formato | Monetização |
-|---|---|---|---|
-| **TikTok Shop** | Produtos de afiliado | Vertical 9:16 (~30s) | Comissão de afiliado |
-| **YouTube Dark** | Temas de história e curiosidades | Horizontal 16:9 (~8 min) | AdSense |
+Clips **T2V** (máximo **2 cenas por vídeo**) são delegados ao **n8n → Replicate Wan 2.6** quando stock/foto animada não bastam.
 
-O objetivo é reduzir o trabalho manual na criação de conteúdo digital e permitir testes rápidos de novos produtos ou nichos.
-
----
-
-## Arquitetura
-
-O projeto é organizado em **engines modulares** orquestradas por pipelines específicos de cada plataforma. Engines compartilhados (mídia, áudio, renderização) são reutilizados entre os dois fluxos.
-
-```
-                    ┌─────────────────────────────────────┐
-                    │           main.py (CLI)             │
-                    └──────────┬──────────────┬─────────────┘
-                               │              │
-              ┌────────────────┘              └────────────────┐
-              ▼                                                ▼
-   ┌──────────────────────┐                      ┌──────────────────────┐
-   │  Pipeline TikTok Shop │                      │ Pipeline YouTube Dark │
-   └──────────┬───────────┘                      └──────────┬───────────┘
-              │                                              │
-   ┌──────────▼───────────┐                      ┌──────────▼───────────┐
-   │ Coleta de Produtos   │                      │ Coleta / Pesquisa    │
-   │ Análise + Score      │                      │ de Temas             │
-   │ Oportunidade         │                      │ Análise + Score      │
-   │ Decisão              │                      │ Oportunidade         │
-   │ Estratégia Criativa  │                      │ Decisão              │
-   │ Roteiro + Conteúdo   │                      │ Estratégia YouTube   │
-   │ Cenas                │                      │ Roteiro + Conteúdo   │
-   └──────────┬───────────┘                      │ Cenas + Capítulos    │
-              │                                  └──────────┬───────────┘
-              │                                              │
-              └──────────────────┬───────────────────────────┘
-                                 ▼
-              ┌──────────────────────────────────────────────┐
-              │           Engines Compartilhados             │
-              │  Asset Search → Media Pipeline → TTS →       │
-              │  Scene Timeline → Legendas → Renderização  │
-              └──────────────────┬───────────────────────────┘
-                                 ▼
-              ┌──────────────────────────────────────────────┐
-              │  Exportação → (YouTube) Upload + Analytics   │
-              │  Métricas de Produção                        │
-              └──────────────────────────────────────────────┘
-```
-
-### Engines
-
-| Engine | Módulo | Responsabilidade |
-|---|---|---|
-| **AI Router** | `scripts/ai/router.py` | Roteamento Gemini → Groq → OpenRouter (fallback) |
-| **Analyst** | `scripts/ai/analysts/` | Análise de produtos/temas com IA |
-| **Scoring** | `scripts/scoring/` | Pontuação e ranking |
-| **Opportunity** | `scripts/affiliate/`, `scripts/youtube/topic_opportunity.py` | Avaliação de oportunidade comercial |
-| **Decision** | `scripts/decision/decision_engine.py` | Decisão: criar, testar ou descartar |
-| **Creative Strategy** | `scripts/creative/` | DNA criativo (TikTok) |
-| **YouTube Strategy** | `scripts/youtube/youtube_strategy.py` | Estratégia documental (YouTube) |
-| **Script** | `scripts/creative/`, `scripts/youtube/youtube_script.py` | Geração de roteiros |
-| **Content** | `scripts/content/`, `scripts/youtube/youtube_content.py` | Textos, títulos, descrições, tags |
-| **Scenes** | `scripts/video/`, `scripts/youtube/youtube_scenes.py` | Estruturação de cenas |
-| **Asset Search** | `scripts/video/asset_search.py` | Queries de busca de mídia |
-| **Media Pipeline** | `scripts/pipeline/shared_media.py` | Busca e download (Pexels) ou persona |
-| **TTS** | `scripts/audio/` | Narração Azure SSML → Edge-TTS → gTTS (fallback) |
-| **Scene Timeline** | `scripts/video/scene_timeline.py` | Sincronização cenas ↔ áudio |
-| **Subtitles** | `scripts/video/subtitle_generator.py` | Legendas SRT sincronizadas |
-| **Renderer** | `scripts/video/renderer.py` | Montagem final via FFmpeg |
-| **Thumbnail** | `scripts/youtube/thumbnail_generator.py` | Thumbnail YouTube |
-| **Chapters** | `scripts/youtube/chapter_builder.py` | Capítulos para descrição YouTube |
-| **Exporter** | `scripts/publisher/` | Pacote de exportação por plataforma |
-| **YouTube Upload** | `scripts/publisher/youtube_uploader.py` | Publicação OAuth no YouTube |
-| **Analytics** | `scripts/youtube/youtube_analytics.py` | Métricas e insights do canal |
-| **Metrics** | `scripts/metrics/metrics_tracker.py` | Histórico de produção |
-| **Research** | `scripts/research/topic_research_engine.py` | Pesquisa automática de temas |
+Existe também um pipeline legado **TikTok Shop** (9:16, vídeos de afiliados), mas o foco ativo é o fluxo de canal dark no YouTube.
 
 ---
 
-## Fluxo do Pipeline
+## Stack atual
 
-### TikTok Shop
-
-```
-Produto → Coleta → Análise IA → Score → Ranking → Oportunidade
-  → Decisão → Estratégia Criativa → Roteiro → Conteúdo → Cenas
-  → Asset Queries → Mídia (Stock/Persona) → TTS → Legendas
-  → Renderização 9:16 → Exportação → Dashboard
-```
-
-### YouTube Dark
-
-```
-Tema → Coleta/Pesquisa → Análise IA → Score → Ranking → Oportunidade
-  → Decisão → Estratégia → Roteiro → Conteúdo → Cenas → Capítulos
-  → Asset Queries → Mídia (Stock) → TTS → Scene Timeline → Legendas
-  → Renderização 16:9 → Thumbnail → Exportação YouTube
-  → (Opcional) Upload OAuth → Métricas
-```
-
-Cada execução gera uma pasta em `output/<plataforma>/<slug>/` contendo JSONs intermediários, assets, legendas, thumbnail (YouTube) e `video_final.mp4`.
+| Camada | Tecnologia | Função |
+|--------|------------|--------|
+| **API na nuvem** | [FastAPI](https://fastapi.tiangolo.com/) no [Railway](https://railway.app) | Endpoints HTTP para disparo, status de jobs, callbacks de cenas |
+| **Automação local** | [n8n](https://n8n.io/) (Docker) | Agendamento diário + orquestração assíncrona de T2V |
+| **Imagens IA** | Replicate / HF Router → **Flux Schnell** | Still frames quando stock falha |
+| **Vídeo IA** | Replicate → **Wan 2.6** T2V | Até 2 clips cinematográficos por vídeo (720p, 5s) |
+| **Narração** | **Edge TTS** (+ fallback Azure SSML) | Voiceover neural PT-BR |
+| **Sincronia de legendas** | **faster-whisper** | Timestamps reais por palavra a partir do áudio final |
+| **Legendas** | **ASS** (+ export SRT) | Blocos karaoke com destaque de palavras-chave |
+| **Motion** | **Ken Burns / parallax** (FFmpeg) | Anima stills — sem slideshow estático |
+| **Render** | **FFmpeg** | Clips, concat, color grade, mux final |
+| **Roteiro IA** | Gemini, Groq, OpenRouter | Análise, roteiros e metadados |
 
 ---
 
-## Estrutura do Projeto
+## Arquitetura com n8n
+
+O n8n fica nas **bordas** do sistema — dispara o pipeline e orquestra geração T2V cara. O pipeline Python (`main.py`) continua funcionando standalone via CLI.
 
 ```
-AI-Commerce-OS/
-├── main.py                          # Entrada CLI
-├── validar_ativos.py                # Verificação de vídeos gerados
-├── requirements.txt
-├── .env.example
-│
-├── scripts/
-│   ├── ai/                          # Router e providers (Gemini, Groq)
-│   ├── affiliate/                   # Engine de oportunidade (TikTok)
-│   ├── audio/                       # TTS e preparação de texto
-│   ├── content/                     # Geração de conteúdo (TikTok)
-│   ├── core/                        # Platform config, pipeline result
-│   ├── creative/                    # Estratégia criativa e roteiros
-│   ├── dashboard/                   # Geração de dashboard
-│   ├── data_sources/
-│   │   ├── tiktok/                  # Coleta de produtos
-│   │   └── youtube/                 # Coleta de temas
-│   ├── decision/                    # Motor de decisão
-│   ├── metrics/                     # Rastreamento de produção
-│   ├── pipeline/
-│   │   ├── product_pipeline.py      # Pipeline TikTok Shop
-│   │   ├── youtube_pipeline.py      # Pipeline YouTube Dark
-│   │   └── shared_media.py          # Mídia compartilhada
-│   ├── publisher/                   # Exportação e upload YouTube
-│   ├── research/                    # Pesquisa automática de temas
-│   ├── scoring/                     # Pontuação e ranking
-│   ├── utils/                       # Cache IA, prompts, slug
-│   ├── video/                       # Cenas, render, legendas, mídia
-│   └── youtube/                     # Engines específicos YouTube
-│
-├── database/
-│   ├── products.json                # Catálogo de produtos
-│   └── topics_source.json           # Fonte de temas YouTube
-│
-├── prompts/                         # Templates de prompt para IA
-├── api/                             # FastAPI bridge (n8n + nuvem)
-├── scripts/cloud/                   # Cliente Railway + entrypoint Docker
-├── Dockerfile                       # Imagem de produção (Railway)
-├── railway.toml                     # Config deploy Railway
-├── docs/
-│   ├── STATUS.md                    # Snapshot do status atual
-│   ├── deploy-railway.md            # Deploy na nuvem (zero SSH)
-│   ├── deploy-nuvem.md              # Resumo deploy
-│   ├── n8n_integration.md           # Integração n8n
-│   └── youtube_oauth.md             # Guia OAuth do YouTube
-│
-├── output/                          # Artefatos gerados (gitignored)
-├── src/
-│   ├── video_generator.py           # Geração de vídeo IA (fallback automático)
-│   ├── video_upscaler.py            # Upscale pós-geração (Real-ESRGAN / ffmpeg)
-│   └── prompt_builder.py            # Templates de prompt e-commerce
-└── cache/                           # Cache de respostas IA (gitignored)
+┌─────────────┐     POST /api/v1/pipeline/run      ┌──────────────────┐
+│  n8n        │ ─────────────────────────────────► │  FastAPI :8000   │
+│  (Docker)   │                                    │  (Railway/local) │
+│  Schedule   │ ◄── GET /pipeline/status/{id} ──── │                  │
+└──────┬──────┘                                    └────────┬─────────┘
+       │                                                      │
+       │  POST /webhook/scene-generation                      │ subprocess
+       │ ◄─────────────────────────────────────────────────── │ main.py
+       │                                                      │
+       ▼                                                      ▼
+┌─────────────┐     POST /api/v1/scenes/callback   ┌──────────────────┐
+│  n8n        │ ─────────────────────────────────► │  scene_waiter    │
+│  Workflow   │   (video_path, provider, status)   │  (poll + Event)  │
+│  02         │                                    └──────────────────┘
+└──────┬──────┘
+       │
+       ▼
+  Replicate Wan 2.6 T2V
+  (fallback: HF Router → fal.ai Wan2.2)
 ```
+
+| Passo | Componente | Ação |
+|-------|------------|------|
+| 1 | n8n Schedule | `POST /api/v1/pipeline/run` com topic/platform |
+| 2 | FastAPI | Cria job, dispara subprocess `main.py` |
+| 3 | Pipeline | Cenas T2V: `request_scene_generation()` |
+| 4 | n8n Webhook | Orquestra Replicate Wan 2.6 → fallback HF Router |
+| 5 | n8n Callback | `POST /api/v1/scenes/callback` com `video_path` |
+| 6 | scene_waiter | Poll no job store até cena pronta |
+| 7 | Pipeline | Continua render FFmpeg (Ken Burns nas cenas de foto) |
+
+Ative delegação de cenas com `USE_N8N_FOR_SCENES=true` no `.env`.
+
+Referência técnica: [`docs/n8n_integration.md`](docs/n8n_integration.md)
 
 ---
 
-## Instalação
+## Como rodar localmente
 
 ### Pré-requisitos
 
 - **Python 3.10+**
-- **FFmpeg** instalado e disponível no `PATH`
-- Chaves de API (ver seção de configuração)
+- **FFmpeg** no `PATH`
+- **Docker** (para n8n)
+- Chaves de API (veja abaixo)
 
-### Passos
+### 1. Clone e instale
 
 ```bash
-# Clonar o repositório
 git clone https://github.com/triyngtobedev/AI-Commerce-OS.git
 cd AI-Commerce-OS
 
-# Criar ambiente virtual (recomendado)
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Linux/macOS
+source venv/bin/activate   # Linux/macOS
+# venv\Scripts\activate    # Windows
 
-# Instalar dependências
 pip install -r requirements.txt
-
-# Configurar variáveis de ambiente
-copy .env.example .env       # Windows
-# cp .env.example .env       # Linux/macOS
+cp .env.example .env
 ```
 
-Edite o `.env` com suas chaves de API (detalhes abaixo).
+### 2. Configure o `.env`
 
----
-
-## Deploy na Nuvem (Railway)
-
-Gere vídeos **sem travar o PC** — o processamento pesado (FFmpeg, Whisper, render) roda no Railway; você só envia o tema e baixa o MP4.
-
-```powershell
-# 1) Deploy: conecte o repo no railway.app (guia completo abaixo)
-# 2) Configure no .env local:
-#    CLOUD_API_URL=https://seu-app.up.railway.app
-#    CLOUD_API_KEY=<mesma PIPELINE_API_KEY do Railway>
-
-# Atalho interativo
-.\scripts\cloud\configurar_pc.ps1
-
-# Testar conexão
-python scripts/cloud/gerar_video.py --topic "teste de conexão"
-
-# Gerar vídeo completo
-.\scripts\cloud\gerar_video.ps1 -Topic "A verdade sobre a Biblioteca de Alexandria"
-```
-
-### Automação diária (n8n — sem comandos manuais)
-
-Depois do Railway ativo, rode **uma vez**:
-
-```powershell
-.\infra\ativar-n8n.ps1
-```
-
-O n8n dispara **1 vídeo por dia às 8h** automaticamente. Guia: [`docs/ATIVAR-N8N.md`](docs/ATIVAR-N8N.md)
-
-| Recurso | Detalhe |
-|---|---|
-| Custo estimado | ~R$ 25/mês (Railway Hobby + 4 GB RAM) |
-| Tempo típico | 45–120 min por vídeo |
-| Documentação | [`docs/deploy-railway.md`](docs/deploy-railway.md) |
-| Status do projeto | [`docs/STATUS.md`](docs/STATUS.md) |
-
----
-
-## Configuração do Ambiente
-
-Copie `.env.example` para `.env` e preencha:
+Mínimo para produção YouTube Dark:
 
 ```env
-# APIs de IA (pelo menos uma obrigatória)
-GEMINI_API_KEY=sua_chave_gemini
-GROQ_API_KEY=sua_chave_groq
-OPENROUTER_API_KEY=sua_chave_openrouter
+# IA (pelo menos uma obrigatória)
+GEMINI_API_KEY=
+GROQ_API_KEY=
 
-# Mídia stock (Pexels)
-PEXELS_API_KEY=sua_chave_pexels
+# Imagens — Flux Schnell via HF Router
+HF_API_TOKEN=
 
-# Pixabay (fallback de mídia stock, gratuito)
-PIXABAY_API_KEY=
+# T2V — Replicate Wan 2.6 (usado pelo n8n, máx. 2 cenas/vídeo)
+REPLICATE_API_TOKEN=
 
-# Modo de mídia: stock (padrão) | persona
-# persona = gera imagens IA únicas por cena via Pollinations.ai (gratuito, sem chave)
-CONTENT_MODE=stock
+# Narração — Edge TTS funciona sem chave; Azure opcional
+# AZURE_SPEECH_KEY=
+# AZURE_SPEECH_REGION=
 
-# Plataforma padrão: tiktok_shop | youtube_dark
-DEFAULT_PLATFORM=tiktok_shop
+# Whisper (tamanho do modelo)
+WHISPER_MODEL_SIZE=small
 
-# YouTube OAuth (upload + analytics)
+# Integração n8n
+USE_N8N_FOR_SCENES=false
+PIPELINE_API_KEY=sua_chave_secreta
+PIPELINE_API_BASE_URL=http://127.0.0.1:8000
+N8N_CALLBACK_BASE_URL=http://host.docker.internal:8000
+N8N_SCENE_WEBHOOK_URL=http://localhost:5678/webhook/scene-generation
+N8N_WEBHOOK_SECRET=
+
+# YouTube OAuth (upload automático)
 YOUTUBE_CLIENT_ID=
 YOUTUBE_CLIENT_SECRET=
 YOUTUBE_REFRESH_TOKEN=
-
-# Controle de publicação YouTube
-YOUTUBE_AUTO_UPLOAD=false
-YOUTUBE_DRY_RUN=false
-YOUTUBE_PUBLISH_ENABLED=true
-
-# Azure Speech (TTS com SSML — motor principal de narração)
-AZURE_SPEECH_KEY=
-AZURE_SPEECH_REGION=
-
-# Pipeline na nuvem (Railway — opcional, para gerar_video.py)
-CLOUD_API_URL=
-CLOUD_API_KEY=
-PIPELINE_API_KEY=              # mesma chave no Railway e no PC
 ```
 
-| Variável | Descrição |
-|---|---|
-| `GEMINI_API_KEY` | API Google Gemini (provider principal) |
-| `GROQ_API_KEY` | API Groq (fallback automático) |
-| `OPENROUTER_API_KEY` | API OpenRouter (fallback final — modelo free) |
-| `PEXELS_API_KEY` | Busca de vídeos/imagens stock (Pexels) |
-| `PIXABAY_API_KEY` | Fallback de mídia stock gratuito (YouTube Dark) |
-| `CONTENT_MODE` | `stock` usa Pexels/Pixabay; `persona` gera imagens IA por cena via Pollinations.ai (gratuito) + Ken Burns |
-| `YOUTUBE_AUTO_UPLOAD` | Publica automaticamente após produção |
-| `YOUTUBE_DRY_RUN` | Simula upload sem publicar |
-| `YOUTUBE_PUBLISH_ENABLED` | Habilita/desabilita publicação globalmente |
-| `AZURE_SPEECH_KEY` | Chave Azure Cognitive Services Speech (TTS com SSML) |
-| `AZURE_SPEECH_REGION` | Região Azure (ex.: `eastus`, `brazilsouth`) |
+Gere um segredo aleatório:
 
-### Geração de vídeo IA (VideoGenerator)
+```bash
+openssl rand -hex 32
+```
 
-Ordem de fallback automático: **Kling Web (grátis)** → **fal.ai Kling 2.6 Pro** → **Replicate Wan 2.6** → **fal.ai Wan (HF Router)**.
+### 3. Suba o n8n (Docker)
+
+```bash
+cd infra
+cp .env.n8n.example .env.n8n
+docker compose -f docker-compose.local.yml up -d
+```
+
+Abra **http://localhost:5678** e importe os workflows de `infra/n8n_workflows/`.
+
+### 4. Inicie a FastAPI (uvicorn)
+
+```bash
+# na raiz do projeto
+chmod +x api/run_api.sh
+./api/run_api.sh
+```
+
+Health check: `curl http://127.0.0.1:8000/api/v1/health`
+
+### 5. Execute o pipeline
+
+**CLI (sem n8n):**
+
+```bash
+python main.py --platform youtube_dark
+python main.py --platform youtube_dark --research   # descobrir temas automaticamente
+python main.py --platform youtube_dark --upload       # publicar no YouTube
+```
+
+**Via API local (n8n ou manual):**
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/pipeline/run \
+  -H "X-API-Key: SUA_PIPELINE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"platform": "youtube_dark", "topic": "A verdade sobre a Biblioteca de Alexandria"}'
+```
+
+Cada execução grava artefatos em `output/youtube_dark/<slug>/`: `video_final.mp4`, `captions.ass`, `legendas.srt` e JSONs de metadados.
+
+---
+
+## Como disparar na nuvem via API
+
+O processamento pesado (FFmpeg, Whisper, render) roda no **Railway**. Seu PC só envia o pedido e baixa o MP4.
+
+### Configuração (uma vez)
+
+1. Deploy no Railway — guia: [`docs/deploy-railway.md`](docs/deploy-railway.md)
+2. URL de produção: `https://ai-commerce-os-production-b4f9.up.railway.app`
+3. No `.env` local:
 
 ```env
-# Mínimo para primeiro vídeo real (menor fricção):
-HF_API_TOKEN=hf_...          # huggingface.co/settings/tokens
-                             # Permissão: "Make calls to Inference Providers"
-                             # Crédito free: US$ 0,10/mês
-
-# Fallbacks opcionais:
-REPLICATE_API_TOKEN=r8_...   # replicate.com — Wan 2.6 (~$0,25/clip 5s 720p)
-FAL_KEY=fal_...            # fal.ai — Kling 2.6 Pro premium (~$0,35/clip)
-KLING_EMAIL=seu@email.com    # Kling web — 66 créditos/dia (tier grátis, tentado primeiro)
-KLING_PASSWORD=suasenha
-
-VIDEO_OUTPUT_DIR=./output/videos
-VIDEO_TIMEOUT=300
+CLOUD_API_URL=https://ai-commerce-os-production-b4f9.up.railway.app
+CLOUD_API_KEY=<mesmo valor de PIPELINE_API_KEY no Railway>
 ```
 
-**Teste rápido** (gera `./output/videos/test_real.mp4`):
+### Disparar via cliente Python
 
 ```bash
-python -m src.video_generator \
-  --prompt "sneaker product shot, studio lighting, slow zoom" \
-  --output ./output/videos/test_real.mp4
+python scripts/cloud/gerar_video.py --topic "A verdade sobre a Biblioteca de Alexandria"
+python scripts/cloud/gerar_video.py --topic "Seu tema" --production
+python scripts/cloud/gerar_video.py --topic "Seu tema" --template lofi_dark
 ```
 
-**Upscale pós-geração** (480p → 960p): o pipeline aplica automaticamente após geração IA. Requer **ffmpeg** no PATH; **realesrgan-ncnn-vulkan** é opcional (melhor qualidade).
-
-Instalação do Real-ESRGAN (opcional):
+### Disparar via curl (API direta)
 
 ```bash
-# Windows — baixe o release em:
-# https://github.com/xinntao/Real-ESRGAN/releases
-# Extraia e adicione realesrgan-ncnn-vulkan.exe ao PATH
-
-# Linux (exemplo)
-wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip
-unzip realesrgan-ncnn-vulkan-*.zip
-export PATH="$PATH:/caminho/para/realesrgan-ncnn-vulkan"
+curl -X POST https://ai-commerce-os-production-b4f9.up.railway.app/api/v1/pipeline/run \
+  -H "X-API-Key: SUA_CLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"platform": "youtube_dark", "topic": "Seu tema aqui"}'
 ```
 
-Sem Real-ESRGAN, o upscale usa filtro Lanczos do ffmpeg (qualidade inferior, mas funcional).
-
-**Kling Web (Playwright — fallback gratuito):**
+Acompanhe o status:
 
 ```bash
-pip install playwright
-python -m playwright install chromium
+curl https://ai-commerce-os-production-b4f9.up.railway.app/api/v1/pipeline/status/{job_id} \
+  -H "X-API-Key: SUA_CLOUD_API_KEY"
 ```
 
-Fluxo automatizado: `kling.ai/app/video/new` → One-click Sign In → **Sign in with email** → Generate.
-
-Sessão salva em `cache/kling_storage_state.json` após login bem-sucedido (reutilizada nas próximas execuções).
-
-Debug visual (salva screenshots em `debug/`):
-
-```bash
-# Windows PowerShell
-$env:KLING_DEBUG="1"
-$env:PLAYWRIGHT_BROWSERS_PATH="$env:USERPROFILE\AppData\Local\ms-playwright"
-python -m src.video_generator --prompt "test" --output ./output/videos/test_real.mp4
-
-# Browser visível (validação manual)
-$env:KLING_HEADFUL="1"
-```
-
-Validação de tokens e webhook n8n:
-
-```bash
-python scripts/validate_tokens.py
-python scripts/test_n8n_scene_webhook.py
-```
+Automação diária (8h BRT): `.\infra\ativar-n8n.ps1` dispara o Railway a partir do n8n local.
 
 ---
 
-## Autenticação com o YouTube
+## Custo estimado
 
-Necessária para upload automático e analytics. Guia completo em [`docs/youtube_oauth.md`](docs/youtube_oauth.md).
+Pipeline otimizado para **~$0,03 por vídeo** no caminho padrão (sem T2V):
 
-### Configuração rápida
+| Item | Custo | Observação |
+|------|-------|------------|
+| Stock (Wikimedia/Pixabay/Pexels) | $0,00 | Fonte principal para cenas documentais |
+| Flux Schnell (HF Router) | ~$0,00–0,02 | Créditos free tier; fallback quando stock falha |
+| Ken Burns (FFmpeg) | $0,00 | Anima stills localmente |
+| Edge TTS | $0,00 | Vozes neurais gratuitas |
+| Whisper | $0,00 | CPU local (`faster-whisper`) |
+| Gemini/Groq (roteiro) | ~$0,01 | Cache reduz custo em repetições |
+| **Total típico (imagens + Ken Burns)** | **~$0,03** | Sem clips T2V |
+
+**Teto T2V:** no máximo **2 cenas T2V por vídeo** via n8n → Replicate Wan 2.6 (~$0,25/clip, 5s 720p). Com 2 clips T2V o teto sobe para ~$0,53/vídeo; o caminho padrão só com imagens permanece perto de $0,03.
+
+---
+
+## YouTube OAuth — upload automático
+
+O upload automático para o YouTube está configurado via OAuth. Configure as variáveis `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` e `YOUTUBE_REFRESH_TOKEN` no `.env`.
+
+**Fluxo interativo (recomendado):**
 
 ```bash
-# Fluxo OAuth interativo (recomendado)
 python main.py --youtube-auth
+```
 
-# Validar credenciais
+**Script alternativo com JSON de credenciais:**
+
+```bash
+python scripts/youtube/gerar_token.py
+```
+
+**Validar conexão:**
+
+```bash
 python main.py --youtube-validate
-
-# Consultar métricas do canal
-python main.py --youtube-analytics
 ```
 
-Pré-requisitos no Google Cloud: ativar **YouTube Data API v3** e **YouTube Analytics API**, criar credenciais OAuth do tipo "Aplicativo para computador".
-
----
-
-## Como Executar
-
-### TikTok Shop (padrão)
+**Publicar após gerar o vídeo:**
 
 ```bash
-# Pipeline completo para produtos
-python main.py
-
-# Equivalente explícito
-python main.py --platform tiktok_shop
-```
-
-### YouTube Dark
-
-```bash
-# Produzir 1 vídeo a partir dos temas em database/topics_source.json
-python main.py --platform youtube_dark
-
-# Pesquisar novos temas via IA antes de produzir
-python main.py --platform youtube_dark --research
-
-# Produzir e publicar no YouTube (privado)
 python main.py --platform youtube_dark --upload
-
-# Produzir múltiplos vídeos com privacidade pública
-python main.py --platform youtube_dark --max-videos 3 --upload --privacy public
 ```
 
-#### Reprocessamento (`--rerun` / `--force`)
+Guia completo: [`docs/youtube_oauth.md`](docs/youtube_oauth.md)
 
-`--rerun` é alias de `--force` — ambos definem a mesma variável interna (`force=True`).
+---
 
-| Modo | Comando | Comportamento |
-|---|---|---|
-| Normal | `python main.py --platform youtube_dark` | Seleciona apenas temas **não processados**; protege contra duplicação |
-| Desenvolvimento | `python main.py --platform youtube_dark --rerun` | Reprocessa tema já gerado; reutiliza a pasta existente e atualiza artefatos |
+## Estrutura do projeto
 
-Em `--production`, o pipeline resumível também invalida o `stage_cache` para garantir reexecução completa.
-
-### Ambas as plataformas
-
-```bash
-python main.py --platform all
+```
+AI-Commerce-OS/
+├── main.py                     # Entry point CLI
+├── api/                        # FastAPI bridge (n8n + nuvem)
+│   ├── main_api.py
+│   ├── routers/                # pipeline, scenes, youtube, analytics
+│   └── run_api.sh              # launcher uvicorn
+├── src/
+│   ├── n8n_integration/        # scene_client, scene_waiter, config
+│   └── video_generator.py      # Replicate Wan 2.6 / fallbacks Kling
+├── scripts/
+│   ├── pipeline/youtube_pipeline.py
+│   ├── video/                  # scene_renderer, subtitle_engine, whisper_aligner
+│   ├── audio/                  # Edge TTS, narration engine
+│   ├── youtube/                # engines YouTube
+│   └── cloud/                  # gerar_video.py — cliente Railway
+├── infra/
+│   ├── docker-compose.local.yml  # n8n local (HTTP)
+│   └── n8n_workflows/          # trigger + scene orchestrator JSONs
+├── prompts/                    # templates de prompts IA
+├── docs/                       # guias detalhados
+└── output/                     # artefatos gerados (gitignored)
 ```
 
-### Utilitários
+---
 
-```bash
-# Verificar status dos vídeos gerados
-python validar_ativos.py
+## Documentação
 
-# Executar testes unitários (módulos YouTube)
-python -m unittest scripts.youtube.test_youtube_pipeline_e2e -v
-```
-
-### Flags disponíveis
-
-| Flag | Descrição |
-|---|---|
-| `--platform` | `tiktok_shop`, `youtube_dark` ou `all` |
-| `--research` | Pesquisa automática de temas (YouTube) |
-| `--upload` | Publica no YouTube após produção |
-| `--privacy` | `private`, `unlisted` ou `public` (sobrescreve `UPLOAD_VISIBILITY`) |
-| `UPLOAD_VISIBILITY` | Variável `.env`: `private` \| `unlisted` \| `public` — controla visibilidade em produção |
-| `--max-videos` | Limite de vídeos por execução |
-| `--force` / `--rerun` | Reprocessar temas já gerados (aliases — ver seção Reprocessamento) |
-| `--youtube-auth` | Configura OAuth interativamente |
-| `--youtube-validate` | Valida credenciais OAuth |
-| `--youtube-analytics` | Exibe métricas do canal |
-| `--youtube-branding` | Gera assets de identidade visual do canal |
-| `--apply` | Aplica branding no canal via API (com `--youtube-branding`) |
+| Guia | Descrição |
+|------|-----------|
+| [`docs/n8n_integration.md`](docs/n8n_integration.md) | Setup n8n completo (local + VM produção) |
+| [`docs/ATIVAR-N8N.md`](docs/ATIVAR-N8N.md) | Automação diária em um comando |
+| [`docs/deploy-railway.md`](docs/deploy-railway.md) | Deploy na nuvem (Railway) |
+| [`docs/youtube_oauth.md`](docs/youtube_oauth.md) | OAuth e upload YouTube |
+| [`docs/STATUS.md`](docs/STATUS.md) | Snapshot atual do projeto |
+| [`docs/painel-projeto.html`](docs/painel-projeto.html) | Painel visual interativo (vibe coder) |
+| [`docs/CAMINHO-IMEDIATO.md`](docs/CAMINHO-IMEDIATO.md) | Passo a passo: merge, smoke, volume, OAuth, n8n |
+| [`docs/aicommerceos-content-guide.md`](docs/aicommerceos-content-guide.md) | Guia de conteúdo para canal dark |
 
 ---
 
-## Principais Funcionalidades
+## Status
 
-### Pesquisa e Análise
-- Coleta de produtos (TikTok) e temas (YouTube)
-- Pesquisa automática de temas via IA (`--research`)
-- Análise de potencial com scoring e ranking
-- Motor de decisão baseado em score de oportunidade
+Pipeline YouTube Dark funcional de ponta a ponta:
 
-### Inteligência Artificial
-- Roteamento Gemini com fallback Groq
-- Prompts especializados por plataforma em `prompts/`
-- Cache de respostas IA em `cache/` (reduz custos)
+- Stock + Flux Schnell com motion Ken Burns
+- Narração Edge TTS + legendas ASS karaoke sincronizadas por Whisper
+- Render FFmpeg (1920×1080, ~8 min)
+- FastAPI no Railway + orquestração de cenas n8n (Replicate Wan 2.6)
+- YouTube OAuth configurado para upload automático
+- Custo padrão ~$0,03/vídeo
 
-### Produção de Vídeo
-- Geração de cenas, queries de mídia e download automático (Pexels)
-- **VideoGenerator** com fallback Kling Web → fal Kling 2.6 → Replicate Wan 2.6 → HF Wan2.2
-- Upscale automático 480p → 960p (`src/video_upscaler.py`)
-- Narração Azure Speech SDK (SSML por seção) com fallback Edge-TTS e gTTS
-- Sincronização cena-a-cena via scene timeline
-- Legendas SRT e renderização FFmpeg
-- Thumbnail e capítulos (YouTube)
-
-### Publicação e Métricas
-- Exportação de pacote completo por plataforma
-- Upload OAuth no YouTube com controle de privacidade
-- YouTube Analytics com recomendações de otimização
-- Rastreamento de produção em `database/metrics.json`
-
----
-
-## Tecnologias
-
-| Tecnologia | Uso |
-|---|---|
-| **Python 3.10+** | Linguagem principal |
-| **Google Gemini** | Provider principal de IA |
-| **Groq (Llama 3.3)** | Fallback de IA |
-| **Azure Speech SDK** | Narração neural com SSML (motor principal) |
-| **Edge-TTS** | Narração automática (fallback gratuito) |
-| **FFmpeg** | Renderização de vídeo |
-| **Pexels API** | Mídia stock |
-| **Pillow** | Geração de thumbnails |
-| **Google APIs** | YouTube Data, Analytics e OAuth |
-| **python-dotenv** | Gerenciamento de variáveis de ambiente |
-
----
-
-## Status Atual
-
-> Snapshot detalhado: [`docs/STATUS.md`](docs/STATUS.md) (atualizado em jul/2026)
-
-Versão funcional com suporte multi-plataforma, API HTTP e deploy na nuvem.
-
-**Local (CLI)**
-- Análise de produtos e temas com IA
-- Geração de roteiros, conteúdo e cenas
-- Produção automática de vídeos (vertical 9:16 e horizontal 16:9)
-- VideoGenerator com fallback Kling Web → fal → Replicate → HF
-- Narração TTS (Azure → Edge-TTS → gTTS) e legendas sincronizadas
-- Pipeline YouTube Dark end-to-end + upload OAuth + analytics
-- Reprocessamento com `--rerun` / `--force`
-
-**Nuvem e automação**
-- API FastAPI (`/api/v1/pipeline/run`, status, download)
-- Deploy Docker no Railway (`Dockerfile`, `railway.toml`)
-- Cliente local `scripts/cloud/gerar_video.py` (tema → MP4 na pasta `downloads/`)
-- Integração n8n pronta para ativação (`infra/ativar-n8n.ps1` + [`docs/ATIVAR-N8N.md`](docs/ATIVAR-N8N.md))
-
-**Qualidade**
-- Testes unitários YouTube, VideoGenerator e APIs de vídeo
-- Validação de tokens: `python scripts/validate_tokens.py`
-
----
-
-## Roadmap
-
-### Concluído
-- [x] Pipeline TikTok Shop funcional
-- [x] Pipeline YouTube Dark end-to-end
-- [x] Suporte multi-plataforma com engines compartilhados
-- [x] Upload automático YouTube (OAuth)
-- [x] YouTube Analytics
-- [x] Scene timeline e sincronização cena-áudio
-- [x] Pesquisa automática de temas
-- [x] Métricas de produção
-- [x] VideoGenerator multi-provider (Kling, fal, Replicate, HF)
-- [x] Containerização Docker + deploy Railway
-- [x] API HTTP para acionamento remoto do pipeline
-
-### Em progresso
-- [x] Integração n8n (workflows + bridge HTTP + guia de ativação)
-- [ ] Validação end-to-end na nuvem (Railway + `gerar_video.py`)
-
-### Próximos passos
-- [ ] Dashboard web para monitoramento
-- [ ] Otimização baseada em analytics (feedback loop)
-- [ ] Suporte a novos nichos e plataformas
-- [ ] Modo persona reativado para TikTok
-- [ ] Testes automatizados em CI/CD
-
----
-
-## Autor
-
-Projeto desenvolvido como estudo e construção de uma plataforma de automação com IA aplicada ao comércio digital e criação de conteúdo.
+Veja [`docs/STATUS.md`](docs/STATUS.md) para o snapshot mais recente.
