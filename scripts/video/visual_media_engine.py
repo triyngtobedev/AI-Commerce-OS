@@ -28,7 +28,10 @@ import requests
 from scripts.video.media_providers.youtube_cc_provider import try_youtube_cc_footage
 from scripts.video.pexels_provider import search_pexels
 from scripts.video.pixabay_provider import search_pixabay
-from scripts.video.wikimedia_provider import search_wikimedia
+from scripts.video.wikimedia_provider import (
+    create_ken_burns_video,
+    search_wikimedia,
+)
 from scripts.video.media_providers.pollinations_provider import (
     generate_pollinations_image,
     generate_pollinations_video,
@@ -1301,6 +1304,25 @@ def _resolve_scene_media(
                 pid = chosen.get("id")
                 if pid:
                     used_ids.add(pid)
+                duration = float(scene.get("duration_seconds", 10) or 10)
+                if scene_image.exists() and create_ken_burns_video(
+                    scene_image,
+                    scene_video,
+                    duration=min(duration, 12),
+                ):
+                    result.update({
+                        "saved": True,
+                        "media_type": "video",
+                        "source": f"{source}:{query}:ken_burns",
+                        "provedor": source,
+                        "query_enriched": query,
+                        "quality_score": round(score_photo(query, chosen), 3),
+                        "selection_signature": selection_signature(chosen, "photo", source),
+                    })
+                    print(
+                        f"🎬 Cena {scene_num} ({tipo}): imagem stock + Ken Burns — {source}"
+                    )
+                    return result
                 result.update({
                     "saved": True,
                     "media_type": "image",

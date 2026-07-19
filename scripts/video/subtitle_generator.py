@@ -24,18 +24,30 @@ def _resolve_timing_offset(cenas_data, platform: str = "youtube_dark") -> float:
 
 
 def _resolve_audio_duration(cenas_data, product=None) -> float | None:
+    """Resolve duração real do áudio via ffprobe (nunca estimativa)."""
+
+    folder = _output_folder(product) if product else None
+    audio_candidates: list[Path] = []
+
+    if folder:
+        audio_candidates.append(folder / "assets" / "audio" / "narracao.mp3")
+
+    if isinstance(cenas_data, dict):
+        audio_path = cenas_data.get("audio_path")
+        if audio_path:
+            audio_candidates.append(Path(audio_path))
+
+    for audio in audio_candidates:
+        if audio.exists():
+            probed = probe_duration(str(audio))
+            if probed > 0:
+                print(f"  🎧 Legendas: duração real do MP3 (ffprobe) = {probed:.2f}s")
+                return probed
+
     if isinstance(cenas_data, dict):
         duration = cenas_data.get("audio_duration")
         if duration:
             return float(duration)
-
-    if product:
-        folder = _output_folder(product)
-        audio = folder / "assets" / "audio" / "narracao.mp3"
-        if audio.exists():
-            probed = probe_duration(str(audio))
-            if probed > 0:
-                return probed
 
     return None
 

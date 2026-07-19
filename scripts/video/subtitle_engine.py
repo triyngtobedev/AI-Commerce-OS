@@ -2,9 +2,10 @@
 Subtitle Engine — legendas documentais profissionais.
 
 Gera SRT otimizado para YouTube com:
-  - blocos curtos (máx. 2 linhas)
+  - blocos curtos (máx. 8 palavras por linha)
+  - timing sincronizado com duração real do MP3 (ffprobe)
   - área segura inferior
-  - timing proporcional por palavra dentro dos timestamps do áudio
+  - texto sanitizado em português
   - destaque em palavras-chave via ASS (quando suportado)
 """
 
@@ -12,14 +13,33 @@ from __future__ import annotations
 
 import os
 import re
+import unicodedata
 from pathlib import Path
 from typing import Optional
 
 from scripts.core.brand_engine import get_subtitle_style
+from scripts.video.media_probe import probe_duration
 
 # Karaoke word-by-word (template n8n Eli Rigobeli — palavra amarela enquanto falada).
 SUBTITLE_KARAOKE = os.getenv("SUBTITLE_KARAOKE", "true").lower() in {"1", "true", "yes"}
 KARAOKE_HIGHLIGHT_COLOR = os.getenv("SUBTITLE_KARAOKE_COLOR", "gold")
+
+DEFAULT_MAX_WORDS_PER_BLOCK = 8
+
+# Remove caracteres de controle e símbolos fora do português comum.
+_NON_PT_CHARS = re.compile(r"[^\w\s.,!?…:;\"'()-–—áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ0-9]", re.UNICODE)
+
+
+def sanitize_subtitle_text(text: str) -> str:
+    """Remove caracteres inválidos e normaliza encoding para legendas PT-BR."""
+
+    if not text:
+        return ""
+
+    normalized = unicodedata.normalize("NFC", text)
+    cleaned = _NON_PT_CHARS.sub("", normalized)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
 
 
 # Cores ASS (formato &HAABBGGRR) — estilo canais dark YouTube
@@ -93,15 +113,15 @@ def _split_into_lines(text: str, max_chars: int = 42, max_lines: int = 2) -> str
 
 def _chunk_by_words(
     text: str,
-    max_words: int = 5,
+    max_words: int = DEFAULT_MAX_WORDS_PER_BLOCK,
     max_chars: int = 64,
 ) -> list[str]:
     """
-    Divide narração em blocos de legenda por palavras.
+    Divide narração em blocos de legenda por palavras (máx. 8 palavras).
     Prioriza quebras em pontuação forte.
     """
 
-    text = re.sub(r"\s+", " ", text.strip())
+    text = sanitize_subtitle_text(re.sub(r"\s+", " ", text.strip()))
     if not text:
         return []
 
@@ -282,6 +302,44 @@ def validate_srt_timing(
     return True, "ok"
 
 
+def _scale_scenes_to_audio(
+    scenes: list,
+    audio_duration: float,
+    *,
+    timing_offset: float = 0.0,
+) -> list[dict]:
+    """
+    Reescala timestamps das cenas para coincidir com duração real do MP3 (ffprobe).
+    """
+
+    if not scenes or audio_duration <= 0:
+        return scenes
+
+    scaled: list[dict] = []
+    bounds: list[tuple[float, float]] = []
+
+    for scene in scenes:
+        start, end = _scene_bounds(scene)
+        bounds.append((start, end))
+
+    if not bounds:
+        return scenes
+
+    estimated_total = max(end for _, end in bounds) or 1.0
+    scale = audio_duration / estimated_total
+
+    for scene, (start, end) in zip(scenes, bounds):
+        item = dict(scene)
+        item["tempo_inicio"] = round(start * scale, 3)
+        item["tempo_fim"] = round(end * scale, 3)
+        scaled.append(item)
+
+    if scaled:
+        scaled[-1]["tempo_fim"] = round(audio_duration, 3)
+
+    return scaled
+
+
 def generate_scene_subtitles(
     scenes: list,
     style: Optional[dict] = None,
@@ -291,15 +349,17 @@ def generate_scene_subtitles(
 ) -> tuple[str, str]:
     """
     Gera conteúdo SRT e ASS a partir de cenas sincronizadas.
-    timing_offset desloca legendas para alinhar com intro visual do render.
-    Retorna (srt_content, ass_content).
+    Usa duração real do áudio (ffprobe) quando disponível.
     """
 
     style = style or get_subtitle_style()
-    max_words = style.get("max_words_per_block", 5)
+    max_words = style.get("max_words_per_block", DEFAULT_MAX_WORDS_PER_BLOCK)
     max_chars = style.get("max_chars", 58)
     min_chunk_gap = 0.06
     offset = max(0.0, float(timing_offset))
+
+    if audio_duration and audio_duration > 0:
+        scenes = _scale_scenes_to_audio(scenes, audio_duration, timing_offset=offset)
 
     srt_lines = []
     ass_events = []
@@ -308,7 +368,7 @@ def generate_scene_subtitles(
     for scene in scenes:
         inicio, fim = _scene_bounds(scene)
 
-        texto = scene.get("narracao", scene.get("texto", ""))
+        texto = sanitize_subtitle_text(scene.get("narracao", scene.get("texto", "")))
         if not texto:
             continue
 
@@ -338,7 +398,7 @@ def generate_scene_subtitles(
 
             keywords = _extract_keywords(chunk)
             ass_text = _emphasize_keywords(
-                chunk.replace("\n", "\\N"),
+                sanitize_subtitle_text(chunk.replace("\n", "\\N")),
                 keywords,
                 style=style,
             )
@@ -416,7 +476,7 @@ def generate_subtitles_from_words(
     """
 
     style = style or get_subtitle_style()
-    max_words = style.get("max_words_per_block", 5)
+    max_words = style.get("max_words_per_block", DEFAULT_MAX_WORDS_PER_BLOCK)
     max_chars = style.get("max_chars", 58)
     offset = max(0.0, float(timing_offset))
     use_karaoke = SUBTITLE_KARAOKE if karaoke is None else karaoke
@@ -439,11 +499,13 @@ def generate_subtitles_from_words(
 
         if use_karaoke:
             chunk_words = _words_for_time_range(words, start, end)
-            ass_text = _build_karaoke_ass_text(chunk_words) or chunk.replace("\n", "\\N")
+            ass_text = _build_karaoke_ass_text(chunk_words) or sanitize_subtitle_text(
+                chunk.replace("\n", "\\N")
+            )
         else:
             keywords = _extract_keywords(chunk)
             ass_text = _emphasize_keywords(
-                chunk.replace("\n", "\\N"),
+                sanitize_subtitle_text(chunk.replace("\n", "\\N")),
                 keywords,
                 style=style,
             )
@@ -511,8 +573,13 @@ def write_subtitles(
     ass_content = None
 
     # Preferir timestamps reais via transcrição do áudio final (Whisper local).
-    # Ancorar as legendas na fala real elimina o atraso acumulado da estimativa.
     audio_path = output_dir / "assets" / "audio" / "narracao.mp3"
+    if audio_duration is None and audio_path.exists():
+        probed = probe_duration(str(audio_path))
+        if probed > 0:
+            audio_duration = probed
+            print(f"  🎧 Duração real do áudio (ffprobe): {audio_duration:.2f}s")
+
     if audio_path.exists():
         from scripts.video.whisper_aligner import transcribe_words
 

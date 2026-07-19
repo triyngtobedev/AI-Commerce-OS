@@ -22,6 +22,8 @@ class NarrationSection:
     section_key: str = ""
     pause_before: float = 0.0
     pause_after: float = 0.0
+    rate: str = ""
+    pitch: str = ""
 
 
 @dataclass
@@ -32,7 +34,7 @@ class NarrationRequest:
     output_path: Path
     sections: list[NarrationSection] = field(default_factory=list)
     language: str = "pt-BR"
-    voice: str = "pt-BR-AntonioNeural"
+    voice: str = "pt-BR-FranciscaNeural"
     emotion_data: Optional[dict[str, Any]] = None
     ssml_enabled: bool = False
     provider_options: dict[str, Any] = field(default_factory=dict)

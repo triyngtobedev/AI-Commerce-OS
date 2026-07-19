@@ -32,19 +32,25 @@ TIKTOK_SECTIONS = [
 ]
 
 SECTION_PROSODY: Dict[str, Dict[str, str]] = {
-    "hook": {"rate": "+2%", "pitch": "+1Hz"},
-    "contexto": {"rate": "-2%", "pitch": "-1Hz"},
-    "desenvolvimento": {"rate": "-4%", "pitch": "-2Hz"},
-    "revelacao": {"rate": "-8%", "pitch": "-4Hz"},
-    "consequencias": {"rate": "-5%", "pitch": "-2Hz"},
-    "encerramento": {"rate": "+1%", "pitch": "+0Hz"},
-    "problema": {"rate": "-2%", "pitch": "-1Hz"},
-    "teste": {"rate": "-3%", "pitch": "-1Hz"},
-    "resultado": {"rate": "-6%", "pitch": "-3Hz"},
-    "cta": {"rate": "+3%", "pitch": "+2Hz"},
+    "hook": {"rate": "-15%", "pitch": "-15Hz"},
+    "gancho": {"rate": "-15%", "pitch": "-15Hz"},
+    "contexto": {"rate": "-5%", "pitch": "-10Hz"},
+    "desenvolvimento": {"rate": "-5%", "pitch": "-10Hz"},
+    "revelacao": {"rate": "-15%", "pitch": "-15Hz"},
+    "consequencias": {"rate": "-5%", "pitch": "-10Hz"},
+    "encerramento": {"rate": "-5%", "pitch": "-10Hz"},
+    "misterio": {"rate": "-5%", "pitch": "-10Hz"},
+    "evidencia": {"rate": "-5%", "pitch": "-10Hz"},
+    "teoria": {"rate": "-5%", "pitch": "-10Hz"},
+    "contra": {"rate": "-5%", "pitch": "-10Hz"},
+    "chamada": {"rate": "-5%", "pitch": "-10Hz"},
+    "problema": {"rate": "-5%", "pitch": "-10Hz"},
+    "teste": {"rate": "-5%", "pitch": "-10Hz"},
+    "resultado": {"rate": "-8%", "pitch": "-12Hz"},
+    "cta": {"rate": "-5%", "pitch": "-10Hz"},
 }
 
-EMPHASIS_SECTIONS = {"hook", "revelacao"}
+EMPHASIS_SECTIONS = {"hook", "gancho", "revelacao"}
 
 _NUMBER_PATTERN = re.compile(r"\b(\d{1,3}(?:\.\d{3})+|\d+)\b")
 _DATE_PATTERN = re.compile(
@@ -52,6 +58,14 @@ _DATE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _EXCLAMATION_PATTERN = re.compile(r"([^!]*!+)")
+_KEYWORD_PATTERN = re.compile(
+    r"\b("
+    r"verdade|mist[eé]rio|segredo|evid[eê]ncia|revela[cç][aã]o|"
+    r"imposs[ií]vel|inacredit[aá]vel|chocante|surpreendente|"
+    r"nunca|sempre|ningu[eé]m|todos|milh[oõ]es|s[eé]culos"
+    r")\b",
+    re.IGNORECASE,
+)
 
 
 def escape_ssml(text: str) -> str:
@@ -87,6 +101,15 @@ def _emphasize_exclamations(text: str, level: str = "strong") -> str:
     return _EXCLAMATION_PATTERN.sub(_wrap, text)
 
 
+def _emphasize_keywords_in_sentence(text: str, level: str = "strong") -> str:
+    """Destaca palavras-chave dramáticas em cada frase."""
+
+    def _wrap(match: re.Match) -> str:
+        return f'<emphasis level="{level}">{match.group(0)}</emphasis>'
+
+    return _KEYWORD_PATTERN.sub(_wrap, text)
+
+
 def _emphasize_first_sentence(text: str, level: str = "moderate") -> str:
     stripped = text.strip()
     if not stripped:
@@ -113,10 +136,11 @@ def _prepare_section_text(
     emphasis = mapper.emphasis_level(emotion)
 
     escaped = _emphasize_numbers_and_dates(escaped, emphasis)
-    escaped = _emphasize_exclamations(escaped, emphasis)
+    escaped = _emphasize_exclamations(escaped, "strong")
+    escaped = _emphasize_keywords_in_sentence(escaped, "strong")
 
     if section_key in EMPHASIS_SECTIONS or intensity > 0.7:
-        escaped = _emphasize_first_sentence(escaped, emphasis)
+        escaped = _emphasize_first_sentence(escaped, "strong")
 
     return escaped
 
@@ -156,7 +180,6 @@ def build_ssml_from_sections(
     Utiliza exclusivamente EmotionMapper.
     """
 
-    mapper = get_emotion_mapper()
     body_parts: list[str] = []
 
     for index, raw_section in enumerate(sections):
@@ -167,6 +190,8 @@ def build_ssml_from_sections(
             section_key = raw_section.section_key
             pause_before = raw_section.pause_before
             pause_after = raw_section.pause_after
+            section_rate = getattr(raw_section, "rate", "") or ""
+            section_pitch = getattr(raw_section, "pitch", "") or ""
         else:
             text = (raw_section.get("text") or "").strip()
             emotion = raw_section.get("emotion", "calm")
@@ -174,17 +199,23 @@ def build_ssml_from_sections(
             section_key = raw_section.get("section_key", "")
             pause_before = float(raw_section.get("pause_before", 0.0))
             pause_after = float(raw_section.get("pause_after", 0.0))
+            section_rate = raw_section.get("rate", "") or ""
+            section_pitch = raw_section.get("pitch", "") or ""
 
         if not text:
             continue
 
         rate, pitch = _merge_prosody(base_rate, base_pitch, section_key)
+        if section_rate:
+            rate = section_rate
+        if section_pitch:
+            pitch = section_pitch
         content = _prepare_section_text(section_key, text, emotion, intensity)
 
         if pause_before > 0:
             body_parts.append(f'<break time="{int(pause_before * 1000)}ms"/>')
         elif index > 0:
-            body_parts.append(f'<break time="{mapper.break_before(emotion)}"/>')
+            body_parts.append('<break time="500ms"/>')
 
         body_parts.append(_emotion_ssml_block(content, emotion, rate, pitch, intensity))
 
@@ -192,7 +223,7 @@ def build_ssml_from_sections(
             if pause_after > 0:
                 body_parts.append(f'<break time="{int(pause_after * 1000)}ms"/>')
             else:
-                body_parts.append(f'<break time="{mapper.break_after(emotion)}"/>')
+                body_parts.append('<break time="500ms"/>')
 
     if not body_parts:
         return ""

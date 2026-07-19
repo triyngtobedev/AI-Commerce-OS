@@ -4,10 +4,11 @@ Narration Engine — orquestra providers de TTS com fallback centralizado.
 Fluxo:
     NarrationRequest → NarrationEngine → Provider(s) → AudioResult
 
-Para adicionar um novo provider (Google, OpenAI, ElevenLabs):
-    1. Criar classe em scripts/audio/providers/ implementando NarrationProvider
-    2. Registrar na lista DEFAULT_PROVIDERS abaixo
-    3. Nenhuma outra parte do pipeline precisa mudar
+SSML documentário (Azure):
+    - Voz primária: pt-BR-FranciscaNeural
+    - Narração normal: rate="-5%" pitch="-10Hz"
+    - Cenas dramáticas (gancho, revelacao): rate="-15%" pitch="-15Hz"
+    - Pausa de 0,5s entre cenas
 """
 
 from __future__ import annotations
@@ -30,36 +31,45 @@ from scripts.audio.providers import (
 from scripts.audio.tts_text_prep import prepare_text_for_tts
 from scripts.creative.script_parser import parse_script_sections
 
+# Voz e prosódia documentária dramática
+DOCUMENTARY_VOICE = "pt-BR-FranciscaNeural"
+NORMAL_RATE = "-5%"
+NORMAL_PITCH = "-10Hz"
+DRAMATIC_RATE = "-15%"
+DRAMATIC_PITCH = "-15Hz"
+SCENE_PAUSE_SECONDS = 0.5
+DRAMATIC_SECTION_KEYS = frozenset({"gancho", "hook", "revelacao"})
+
 VOICE_PRESETS = {
     "documentario_narrado": {
-        "voice": "pt-BR-AntonioNeural",
-        "rate": "-4%",
-        "pitch": "-3Hz",
+        "voice": DOCUMENTARY_VOICE,
+        "rate": NORMAL_RATE,
+        "pitch": NORMAL_PITCH,
     },
     "misterio_nao_resolvido": {
-        "voice": "pt-BR-AntonioNeural",
-        "rate": "-8%",
-        "pitch": "-5Hz",
+        "voice": DOCUMENTARY_VOICE,
+        "rate": DRAMATIC_RATE,
+        "pitch": DRAMATIC_PITCH,
     },
     "fato_surpreendente": {
-        "voice": "pt-BR-FabioNeural",
+        "voice": DOCUMENTARY_VOICE,
         "rate": "-2%",
-        "pitch": "+0Hz",
+        "pitch": "-5Hz",
     },
     "revelacao_historica": {
-        "voice": "pt-BR-DonatoNeural",
-        "rate": "-5%",
-        "pitch": "-2Hz",
+        "voice": DOCUMENTARY_VOICE,
+        "rate": DRAMATIC_RATE,
+        "pitch": DRAMATIC_PITCH,
     },
     "cronologia_epica": {
-        "voice": "pt-BR-AntonioNeural",
-        "rate": "-3%",
-        "pitch": "-1Hz",
+        "voice": DOCUMENTARY_VOICE,
+        "rate": NORMAL_RATE,
+        "pitch": NORMAL_PITCH,
     },
     "impacto_historico": {
-        "voice": "pt-BR-ThalitaNeural",
-        "rate": "-4%",
-        "pitch": "-2Hz",
+        "voice": DOCUMENTARY_VOICE,
+        "rate": "-8%",
+        "pitch": "-12Hz",
     },
 }
 
@@ -90,11 +100,16 @@ class NarrationEngine:
         if env_voice:
             return {
                 "voice": env_voice,
-                "rate": os.getenv("TTS_RATE", "-4%"),
-                "pitch": os.getenv("TTS_PITCH", "-3Hz"),
+                "rate": os.getenv("TTS_RATE", NORMAL_RATE),
+                "pitch": os.getenv("TTS_PITCH", NORMAL_PITCH),
             }
 
         return dict(DEFAULT_PRESET)
+
+    def _section_prosody(self, section_key: str, preset: dict) -> tuple[str, str]:
+        if section_key in DRAMATIC_SECTION_KEYS:
+            return DRAMATIC_RATE, DRAMATIC_PITCH
+        return preset.get("rate", NORMAL_RATE), preset.get("pitch", NORMAL_PITCH)
 
     def build_request(
         self,
@@ -115,18 +130,26 @@ class NarrationEngine:
             ssml_enabled = True
         elif script_sections:
             parsed = parse_script_sections(script_sections)
-            narration_sections = [
-                NarrationSection(
-                    text=sec["text"],
-                    emotion=sec.get("emotion", "calm"),
-                    intensity=float(sec.get("intensity", 0.5)),
-                    section_key=sec.get("section_key", ""),
-                    pause_before=float(sec.get("pause_before", 0.0)),
-                    pause_after=float(sec.get("pause_after", 0.0)),
+            raw_sections = [sec for sec in parsed.get("sections", []) if sec.get("text")]
+            total = len(raw_sections)
+
+            for index, sec in enumerate(raw_sections):
+                section_key = sec.get("section_key", "")
+                rate, pitch = self._section_prosody(section_key, preset)
+                pause_after = SCENE_PAUSE_SECONDS if index < total - 1 else 0.0
+
+                narration_sections.append(
+                    NarrationSection(
+                        text=sec["text"],
+                        emotion=sec.get("emotion", "calm"),
+                        intensity=float(sec.get("intensity", 0.5)),
+                        section_key=section_key,
+                        pause_before=float(sec.get("pause_before", 0.0)),
+                        pause_after=pause_after,
+                        rate=rate,
+                        pitch=pitch,
+                    )
                 )
-                for sec in parsed.get("sections", [])
-                if sec.get("text")
-            ]
             ssml_enabled = bool(narration_sections)
 
         return NarrationRequest(
@@ -134,8 +157,8 @@ class NarrationEngine:
             output_path=Path(output_path),
             sections=narration_sections,
             voice=preset["voice"],
-            rate=preset.get("rate", "+0%"),
-            pitch=preset.get("pitch", "+0Hz"),
+            rate=preset.get("rate", NORMAL_RATE),
+            pitch=preset.get("pitch", NORMAL_PITCH),
             ssml_enabled=ssml_enabled,
             narration_style=narration_style,
         )
@@ -202,7 +225,9 @@ class NarrationEngine:
         preset = self.resolve_preset(narration_style)
         print(
             f"🎙️ Narration Engine: {preset['voice']} "
-            f"(rate={preset.get('rate')}, pitch={preset.get('pitch')})"
+            f"(normal: rate={NORMAL_RATE}, pitch={NORMAL_PITCH}; "
+            f"dramatic: rate={DRAMATIC_RATE}, pitch={DRAMATIC_PITCH}; "
+            f"scene pause={SCENE_PAUSE_SECONDS}s)"
         )
 
         result = self.synthesize(request)

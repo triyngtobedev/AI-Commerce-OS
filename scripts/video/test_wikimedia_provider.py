@@ -5,16 +5,26 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from scripts.video.wikimedia_provider import search_wikimedia
+from scripts.video.media_providers.wikimedia_provider import search_wikimedia
 
 
 class TestWikimediaProvider(unittest.TestCase):
 
-    def _sample_api_response(self):
+    def _sample_search_response(self):
         return {
             "query": {
-                "pages": {
-                    "1001": {
+                "search": [
+                    {"title": "File:Tunguska_event.jpg", "pageid": 1001},
+                    {"title": "File:Small_thumb.jpg", "pageid": 1002},
+                ],
+            },
+        }
+
+    def _sample_imageinfo_response(self):
+        return {
+            "query": {
+                "pages": [
+                    {
                         "pageid": 1001,
                         "title": "File:Tunguska_event.jpg",
                         "imageinfo": [{
@@ -27,7 +37,7 @@ class TestWikimediaProvider(unittest.TestCase):
                             },
                         }],
                     },
-                    "1002": {
+                    {
                         "pageid": 1002,
                         "title": "File:Small_thumb.jpg",
                         "imageinfo": [{
@@ -37,16 +47,21 @@ class TestWikimediaProvider(unittest.TestCase):
                             "extmetadata": {},
                         }],
                     },
-                },
+                ],
             },
         }
 
-    @patch("scripts.video.wikimedia_provider._SESSION.get")
+    @patch("scripts.video.media_providers.wikimedia_provider._SESSION.get")
     def test_parses_valid_response(self, mock_get):
-        response = MagicMock()
-        response.raise_for_status = MagicMock()
-        response.json.return_value = self._sample_api_response()
-        mock_get.return_value = response
+        search_response = MagicMock()
+        search_response.raise_for_status = MagicMock()
+        search_response.json.return_value = self._sample_search_response()
+
+        info_response = MagicMock()
+        info_response.raise_for_status = MagicMock()
+        info_response.json.return_value = self._sample_imageinfo_response()
+
+        mock_get.side_effect = [search_response, info_response]
 
         result = search_wikimedia("Tunguska event")
 
@@ -60,24 +75,31 @@ class TestWikimediaProvider(unittest.TestCase):
         )
         self.assertIn("Public Domain", photo["credit"])
 
-    @patch("scripts.video.wikimedia_provider._SESSION.get")
+    @patch("scripts.video.media_providers.wikimedia_provider._SESSION.get")
     def test_filters_low_resolution(self, mock_get):
-        response = MagicMock()
-        response.raise_for_status = MagicMock()
-        response.json.return_value = {
+        search_response = MagicMock()
+        search_response.raise_for_status = MagicMock()
+        search_response.json.return_value = {
             "query": {
-                "pages": {
-                    "1002": self._sample_api_response()["query"]["pages"]["1002"],
-                },
+                "search": [{"title": "File:Small_thumb.jpg", "pageid": 1002}],
             },
         }
-        mock_get.return_value = response
+
+        info_response = MagicMock()
+        info_response.raise_for_status = MagicMock()
+        info_response.json.return_value = {
+            "query": {
+                "pages": [self._sample_imageinfo_response()["query"]["pages"][1]],
+            },
+        }
+
+        mock_get.side_effect = [search_response, info_response]
 
         result = search_wikimedia("small image")
 
         self.assertEqual(result["photos"], [])
 
-    @patch("scripts.video.wikimedia_provider._SESSION.get")
+    @patch("scripts.video.media_providers.wikimedia_provider._SESSION.get")
     def test_network_error_returns_empty(self, mock_get):
         mock_get.side_effect = TimeoutError("timeout")
 
@@ -85,7 +107,7 @@ class TestWikimediaProvider(unittest.TestCase):
 
         self.assertEqual(result, {"videos": [], "photos": []})
 
-    @patch("scripts.video.wikimedia_provider._SESSION.get")
+    @patch("scripts.video.media_providers.wikimedia_provider._SESSION.get")
     def test_http_error_returns_empty(self, mock_get):
         response = MagicMock()
         response.raise_for_status.side_effect = requests.HTTPError("403")

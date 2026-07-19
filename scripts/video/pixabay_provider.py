@@ -49,6 +49,44 @@ def _shorten_pixabay_query(query: str, max_len: int = 60) -> str:
     return " ".join(result).strip() or cleaned[:max_len].strip()
 
 
+def test_pixabay_api(query: str = "documentary historical") -> bool:
+    """
+    Smoke test — confirma leitura de PIXABAY_API_KEY e resposta da API.
+    """
+
+    api_key = os.getenv("PIXABAY_API_KEY")
+    if not api_key:
+        _warn_missing_key()
+        print("[Pixabay] Test FAILED — PIXABAY_API_KEY not set")
+        return False
+
+    masked = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "****"
+    print(f"[Pixabay] PIXABAY_API_KEY loaded ({masked})")
+
+    try:
+        response = requests.get(
+            PIXABAY_PHOTO_URL,
+            params={
+                "key": api_key,
+                "q": query,
+                "per_page": 3,
+                "safesearch": "true",
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+        hits = response.json().get("hits", [])
+        ok = len(hits) > 0
+        print(
+            f"[Pixabay] Test search {query!r}: "
+            f"{'OK' if ok else 'FAILED'} ({len(hits)} hit(s))"
+        )
+        return ok
+    except Exception as error:
+        print(f"[Pixabay] Test FAILED — {error}")
+        return False
+
+
 def search_pixabay(
     query: str,
     per_page: int = 15,
@@ -76,6 +114,8 @@ def search_pixabay(
     if not api_key:
         _warn_missing_key()
         return empty
+
+    print(f"[Pixabay] Searching: {query!r}")
 
     query = _shorten_pixabay_query(query)
 
