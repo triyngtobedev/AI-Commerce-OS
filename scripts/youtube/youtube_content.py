@@ -131,6 +131,9 @@ def _apply_narration_from_script(content, script, strategy, topic):
     content["duracao"] = meta["duracao"]
     content["narracao_meta"] = meta
 
+    if script.get("_scenes"):
+        content["template_scenes"] = script["_scenes"]
+
     meta = narration_metadata(narration)
     roteiro_template = (strategy or {}).get("roteiro_template", "")
     if is_lofi_dark(roteiro_template):

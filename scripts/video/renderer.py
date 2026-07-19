@@ -1,5 +1,6 @@
 import subprocess
 import json
+import shutil
 import time
 
 from pathlib import Path
@@ -152,6 +153,66 @@ def update_project_status(
             indent=4
         )
 
+
+
+def concat_video_clips(clip_paths: list, output_path: Path) -> bool:
+    """
+    Concatena clips de vídeo via FFmpeg demuxer (-f concat).
+
+    Tenta stream copy (-c copy) primeiro; se falhar por mismatch de codec,
+    re-encoda com libx264.
+    """
+    paths = [Path(clip) for clip in clip_paths]
+    if not paths:
+        return False
+
+    if len(paths) == 1:
+        shutil.copy2(paths[0], output_path)
+        return output_path.exists()
+
+    list_file = output_path.parent / "concat_list.txt"
+    with open(list_file, "w", encoding="utf-8") as file:
+        for clip in paths:
+            path = str(clip.resolve()).replace("\\", "/")
+            file.write(f"file '{path}'\n")
+
+    base_cmd = [
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", str(list_file),
+    ]
+
+    copy_cmd = [*base_cmd, "-c", "copy", str(output_path)]
+    try:
+        subprocess.run(copy_cmd, check=True, capture_output=True)
+        if output_path.exists():
+            return True
+    except subprocess.CalledProcessError as error:
+        stderr = error.stderr.decode("utf-8", errors="replace") if error.stderr else ""
+        print("⚠️ Concat -c copy falhou, re-encoding com libx264...")
+        if stderr.strip():
+            print(stderr[-500:])
+
+    reencode_cmd = [
+        *base_cmd,
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "21",
+        "-pix_fmt", "yuv420p",
+        "-an",
+        str(output_path),
+    ]
+    try:
+        subprocess.run(reencode_cmd, check=True, capture_output=True)
+        return output_path.exists()
+    except subprocess.CalledProcessError as error:
+        stderr = error.stderr.decode("utf-8", errors="replace") if error.stderr else ""
+        print("❌ FFmpeg concat falhou:")
+        if stderr.strip():
+            print(stderr[-800:])
+        else:
+            print(f"  código de saída: {error.returncode}")
+        return False
 
 
 def _render_legacy_concat(result, folder, width, height, output):

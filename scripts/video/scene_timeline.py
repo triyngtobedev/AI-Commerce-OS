@@ -215,6 +215,14 @@ def _split_durations_evenly(
     return durations
 
 
+TEMPLATE_8_SCENE_TEMPLATE = "documentario_8cenas"
+
+
+def _should_split_scenes(scenes_data: dict) -> bool:
+    """Template de 8 cenas fixas não deve ser dividido em sub-cenas."""
+    return scenes_data.get("roteiro_template") != TEMPLATE_8_SCENE_TEMPLATE
+
+
 def split_long_scenes(
     scenes_data: dict,
     max_duration: float = MAX_SCENE_DURATION,
@@ -226,6 +234,8 @@ def split_long_scenes(
     """
 
     result = dict(scenes_data)
+    if not _should_split_scenes(result):
+        return result
     scenes = list(result.get("cenas", []))
     if not scenes:
         return result
@@ -354,7 +364,8 @@ def sync_scenes_to_audio(
 
         result["cenas"] = base_scenes
         result = apply_timeline_to_scenes(result, timeline)
-        result = split_long_scenes(result)
+        if _should_split_scenes(result):
+            result = split_long_scenes(result)
         return result
 
     weights = [_scene_weight(s) for s in scenes]
@@ -394,7 +405,8 @@ def sync_scenes_to_audio(
     if timeline:
         result = apply_timeline_to_scenes(result, timeline)
 
-    result = split_long_scenes(result)
+    if _should_split_scenes(result):
+        result = split_long_scenes(result)
     return result
 
 

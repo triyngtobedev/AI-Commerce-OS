@@ -530,60 +530,16 @@ def render_scene_clip(
 def concat_scene_clips(
     clip_paths: list,
     output_path: Path,
-    crossfade: float = 0.45,
+    crossfade: float = 0.0,
     scene_types: list | None = None,
     platform: str = "youtube_dark",
     width: int = 1920,
     height: int = 1080,
 ) -> bool:
-    """Concatena clips com crossfade variável por tipo de cena."""
+    """Concatena clips via FFmpeg demuxer (-f concat), sem crossfade."""
+    from scripts.video.renderer import concat_video_clips
 
-    if not clip_paths:
-        return False
-
-    if len(clip_paths) == 1:
-        import shutil
-        shutil.copy2(clip_paths[0], output_path)
-        return output_path.exists()
-
-    kit = get_brand_kit(platform)
-
-    if crossfade > 0:
-        durations = [probe_duration(clip) for clip in clip_paths]
-        if all(duration > crossfade for duration in durations):
-            crossfades = []
-            for index, scene_type in enumerate(scene_types or []):
-                crossfades.append(kit.crossfade_for_scene(scene_type))
-            if _concat_with_variable_crossfade(
-                clip_paths, output_path, crossfades, durations, width, height
-            ):
-                return True
-
-            if _concat_with_crossfade(
-                clip_paths, output_path, crossfade, durations, width, height
-            ):
-                return True
-
-    list_file = output_path.parent / "scene_concat.txt"
-
-    with open(list_file, "w", encoding="utf-8") as file:
-        for clip in clip_paths:
-            path = str(clip.resolve()).replace("\\", "/")
-            file.write(f"file '{path}'\n")
-
-    cmd = [
-        "ffmpeg", "-y",
-        "-f", "concat", "-safe", "0",
-        "-i", str(list_file),
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "21",
-        "-pix_fmt", "yuv420p",
-        "-an",
-        str(output_path),
-    ]
-
-    return _run_ffmpeg(cmd, context="concat simples", output_path=output_path)
+    return concat_video_clips(clip_paths, output_path)
 
 
 def _concat_with_crossfade(
@@ -756,13 +712,9 @@ def render_scenes_video(
         intro_card = temp_dir / "intro_card.jpg"
         intro_clip = temp_dir / "intro.mp4"
         if kit.render_intro_card(intro_card, topic=topic):
-            # Compensação de crossfade: o clip é renderizado com duração extra
-            # igual ao crossfade da transição seguinte. O xfade consome esse
-            # excedente, então a duração visível equivale à duração pretendida
-            # e a timeline do vídeo permanece idêntica à do áudio/legenda.
             if _render_card_clip(
                 intro_card,
-                config.render.intro_seconds + kit.crossfade_for_scene("intro"),
+                config.render.intro_seconds,
                 intro_clip,
                 width,
                 height,
@@ -787,14 +739,7 @@ def render_scenes_video(
             )
 
         clip_out = temp_dir / f"scene_{i + 1:02d}.mp4"
-
-        # Renderiza com duração estendida pelo crossfade da própria cena.
-        # Como o xfade sobrepõe (e portanto encurta) cada transição, essa
-        # compensação garante que a soma pós-crossfade seja exatamente a
-        # duração sincronizada — sem drift acumulado ao longo do vídeo.
-        render_duration = duration + (
-            0.15 if lofi_template else kit.crossfade_for_scene(scene_type)
-        )
+        render_duration = duration
 
         if render_scene_clip(
             media, render_duration, clip_out, width, height,
@@ -834,15 +779,10 @@ def render_scenes_video(
         return None
 
     video_only = temp_dir / "video_track.mp4"
-    render_style = get_render_style(platform)
-
-    crossfade = 0.15 if lofi_template else render_style.crossfade_seconds
 
     if not concat_scene_clips(
         clip_paths,
         video_only,
-        crossfade,
-        scene_types=scene_types,
         platform=platform,
         width=width,
         height=height,

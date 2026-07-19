@@ -146,8 +146,23 @@ def generate_youtube_scenes(
     scene_types = _scene_types_for_strategy(strategy)
     scene_timings = _scene_timings_for_types(scene_types)
     lofi_template = is_lofi_dark((strategy or {}).get("roteiro_template"))
+    template = (strategy or {}).get("roteiro_template", "")
 
-    narration_parts = _split_narration(narracao, scene_types)
+    if template == "documentario_8cenas" and content.get("template_scenes"):
+        template_scenes = content["template_scenes"]
+        narration_parts = []
+        for tipo in scene_types:
+            matched = next(
+                (scene for scene in template_scenes if scene.get("id") == tipo),
+                None,
+            )
+            narration_parts.append(
+                (matched or {}).get("narration", "")
+            )
+        if not any(part.strip() for part in narration_parts):
+            narration_parts = _split_narration(narracao, scene_types)
+    else:
+        narration_parts = _split_narration(narracao, scene_types)
 
 
     cenas = []

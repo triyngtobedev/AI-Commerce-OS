@@ -60,6 +60,22 @@ class TestSceneTimeline(unittest.TestCase):
         self.assertEqual(len(parts), 2)
         self.assertIn(".", parts[0])
 
+    def test_split_long_scenes_skips_documentario_8cenas(self):
+        scenes = {
+            "roteiro_template": "documentario_8cenas",
+            "cenas": [{
+                "tipo": "revelacao",
+                "narracao": " ".join(["Palavra"] * 200),
+                "duration_seconds": 90.0,
+                "tempo_inicio": 0.0,
+                "tempo_fim": 90.0,
+            }],
+            "audio_duration": 90.0,
+        }
+        result = split_long_scenes(scenes)
+        self.assertEqual(len(result["cenas"]), 1)
+        self.assertEqual(result["cenas"][0]["duration_seconds"], 90.0)
+
     def test_split_long_scenes_divides_above_20s(self):
         scenes = {
             "cenas": [{
