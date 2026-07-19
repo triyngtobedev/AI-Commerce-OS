@@ -1699,6 +1699,23 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
         print("⚠️ scenes.cenas inválido — esperava lista; usando []")
         scene_list = []
 
+    footage_error_log = Path("/app/persistent/logs/footage_error.log")
+    footage_error_log.parent.mkdir(parents=True, exist_ok=True)
+
+    def _make_placeholder(scene, i):
+        scene_num = i + 1
+        query_item = _coerce_mapping(
+            queries[i] if i < len(queries) else {},
+            label=f"Cena {scene_num} query",
+        ) or {}
+        scene_image = images_folder / f"scene-{scene_num:02d}.jpg"
+        return _recover_scene_with_placeholder(
+            scene_num,
+            query_item,
+            scene_image,
+            error="footage resolution failed",
+        )
+
     for i, raw_query_item in enumerate(queries):
         scene_num = i + 1
         scene_video = videos_folder / f"scene-{scene_num:02d}.mp4"
@@ -1735,13 +1752,11 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
                 t2v_tracker=t2v_tracker,
             )
         except Exception as e:
-            print(f"TRACEBACK cena {i}: {traceback.format_exc()}")
-            result = _recover_scene_with_placeholder(
-                scene_num,
-                query_item,
-                scene_image,
-                error=str(e),
-            )
+            tb = traceback.format_exc()
+            print(f"[FOOTAGE ERROR] cena {i} full traceback:\n{tb}", flush=True)
+            with open(footage_error_log, "a", encoding="utf-8") as f:
+                f.write(f"=== cena {i} ===\n{tb}\n")
+            result = _make_placeholder(scene_data, i)
 
         signature = result.pop("selection_signature", None)
         if signature:

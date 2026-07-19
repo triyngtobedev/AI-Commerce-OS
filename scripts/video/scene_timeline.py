@@ -4,9 +4,12 @@ Timeline de cenas sincronizada com áudio e Emotional Timeline.
 
 import json
 import math
+import os
 import re
 from pathlib import Path
 from typing import Any, Optional
+
+DISABLE_SCENE_SPLITTING = os.getenv("DISABLE_SCENE_SPLITTING", "true").lower() == "true"
 
 from scripts.core.emotional_timeline import EmotionalTimeline, build_emotional_timeline
 from scripts.video.media_probe import probe_duration
@@ -267,6 +270,10 @@ def _estimate_scene_durations(scenes: list, narracao: str, audio_duration: float
 def _split_narration_at_sentences(text: str, parts: int) -> list[str]:
     """Divide narração em N partes coerentes, preferindo limites de frase."""
 
+    if DISABLE_SCENE_SPLITTING:
+        text = text.strip()
+        return [text] if text else [""]
+
     text = text.strip()
     if not text or parts <= 1:
         return [text] if text else [""]
@@ -297,6 +304,9 @@ def _compute_split_count(
 ) -> int:
     """Calcula quantas sub-cenas manter cada bloco entre min e max segundos."""
 
+    if DISABLE_SCENE_SPLITTING:
+        return 1
+
     if duration <= max_duration:
         return 1
 
@@ -314,6 +324,9 @@ def _split_durations_evenly(
     min_duration: float = MIN_SCENE_DURATION,
 ) -> list[float]:
     """Distribui duração total em partes equilibradas dentro do range 15–20s."""
+
+    if DISABLE_SCENE_SPLITTING:
+        return [round(duration, 2)]
 
     if parts <= 1:
         return [round(duration, 2)]
@@ -338,8 +351,13 @@ TEMPLATE_8_SCENE_TEMPLATE = "documentario_8cenas"
 
 
 def _should_split_scenes(scenes_data: dict) -> bool:
-    """Template de 8 cenas fixas não deve ser dividido em sub-cenas."""
-    return scenes_data.get("roteiro_template") != TEMPLATE_8_SCENE_TEMPLATE
+    """Templates documentários não devem ser divididos em sub-cenas."""
+    if DISABLE_SCENE_SPLITTING:
+        return False
+    template = str(scenes_data.get("roteiro_template") or "").lower()
+    if "documentario" in template:
+        return False
+    return True
 
 
 def split_long_scenes(
@@ -355,7 +373,7 @@ def split_long_scenes(
     result = ensure_scenes_payload(scenes_data) if isinstance(scenes_data, dict) else {
         "cenas": normalize_scene_list(scenes_data),
     }
-    if not _should_split_scenes(result):
+    if DISABLE_SCENE_SPLITTING or not _should_split_scenes(result):
         return result
     scenes = list(result.get("cenas", []))
     if not scenes:

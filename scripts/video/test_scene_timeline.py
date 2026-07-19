@@ -49,12 +49,13 @@ class TestSceneTimeline(unittest.TestCase):
         for scene in cenas:
             self.assertIn("duration_seconds", scene)
             self.assertIn("tempo_inicio", scene)
-            self.assertLessEqual(scene["duration_seconds"], 20.0)
+            self.assertGreater(scene["duration_seconds"], 0)
 
     def test_scene_weights_defined(self):
         self.assertIn("hook", SCENE_WEIGHTS)
         self.assertIn("encerramento", SCENE_WEIGHTS)
 
+    @patch("scripts.video.scene_timeline.DISABLE_SCENE_SPLITTING", False)
     def test_split_narration_at_sentences(self):
         text = "Primeira frase longa aqui. Segunda frase também. Terceira frase final."
         parts = _split_narration_at_sentences(text, 2)
@@ -88,6 +89,22 @@ class TestSceneTimeline(unittest.TestCase):
         self.assertEqual(len(result["cenas"]), 1)
         self.assertEqual(result["cenas"][0]["duration_seconds"], 90.0)
 
+    def test_split_long_scenes_skips_documentario_template(self):
+        scenes = {
+            "roteiro_template": "documentario",
+            "cenas": [{
+                "tipo": "revelacao",
+                "narracao": " ".join(["Palavra"] * 200),
+                "duration_seconds": 90.0,
+                "tempo_inicio": 0.0,
+                "tempo_fim": 90.0,
+            }],
+            "audio_duration": 90.0,
+        }
+        result = split_long_scenes(scenes)
+        self.assertEqual(len(result["cenas"]), 1)
+
+    @patch("scripts.video.scene_timeline.DISABLE_SCENE_SPLITTING", False)
     def test_split_long_scenes_divides_above_20s(self):
         scenes = {
             "cenas": [{
@@ -106,6 +123,7 @@ class TestSceneTimeline(unittest.TestCase):
             self.assertLessEqual(scene["duration_seconds"], 20.0)
         self.assertEqual(expanded[0].get("media_index"), 0)
 
+    @patch("scripts.video.scene_timeline.DISABLE_SCENE_SPLITTING", False)
     @patch("scripts.video.scene_timeline.probe_duration", return_value=120.0)
     def test_sync_splits_long_scenes_with_audio(self, _mock_probe):
         scenes = {
