@@ -89,7 +89,7 @@ def _groq_error_details(error: Exception) -> str:
 
 def _groq_complete(prompt: str, model: str, context_type: str = "") -> str:
     max_tokens = GROQ_MAX_TOKENS.get(context_type, 4096)
-    completion = groq_client.chat.completions.create(
+    completion = _get_groq_client().chat.completions.create(
         messages=[
             {
                 "role": "user",
@@ -173,3 +173,62 @@ def ask_ai(prompt, context_type):
         raise Exception(
             "Nenhuma API de IA disponível."
         ) from (openrouter_error if last_error is None else last_error)
+
+
+def _has_key(name: str) -> bool:
+    return bool(os.getenv(name, "").strip())
+
+
+class AIRouter:
+    """Facade do router — expõe health check para preflight do batch Sprint 30."""
+
+    def health(self) -> dict:
+        from pathlib import Path
+
+        from scripts.core.feature_flags import sprint30_flags_snapshot
+
+        ai = {
+            "gemini": _has_key("GEMINI_API_KEY"),
+            "groq": _has_key("GROQ_API_KEY"),
+            "openrouter": _has_key("OPENROUTER_API_KEY"),
+        }
+        footage = {
+            "pexels": _has_key("PEXELS_API_KEY"),
+            "pixabay": _has_key("PIXABAY_API_KEY"),
+        }
+        tts = {
+            "azure": _has_key("AZURE_SPEECH_KEY") and _has_key("AZURE_SPEECH_REGION"),
+            "edge_fallback": True,
+            "gtts_fallback": True,
+        }
+
+        missing: list[str] = []
+        if not any(ai.values()):
+            missing.append("IA: defina GEMINI_API_KEY, GROQ_API_KEY ou OPENROUTER_API_KEY")
+        if not footage["pexels"]:
+            missing.append("Footage: defina PEXELS_API_KEY")
+        if not tts["azure"]:
+            missing.append(
+                "TTS: defina AZURE_SPEECH_KEY + AZURE_SPEECH_REGION "
+                "(ou aceite fallback Edge/gTTS gratuito)"
+            )
+
+        audio_library = Path("assets/audio/library.json").exists()
+        has_tts = tts["azure"] or tts["edge_fallback"]
+
+        return {
+            "ready_for_batch": any(ai.values()) and footage["pexels"] and has_tts,
+            "ready_for_batch_strict": len(missing) == 0,
+            "ai": ai,
+            "ai_any": any(ai.values()),
+            "footage": footage,
+            "tts": tts,
+            "audio_library": audio_library,
+            "sprint30_flags": sprint30_flags_snapshot(),
+            "missing_required": missing,
+            "hint": "cp .env.sprint30.example .env e preencha as chaves",
+        }
+
+
+def get_client() -> AIRouter:
+    return AIRouter()

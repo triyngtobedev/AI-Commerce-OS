@@ -42,7 +42,13 @@ def sprint30_audio_layer() -> bool:
 
 
 def sprint30_retention_controller() -> bool:
-    return sprint30_enabled() and _flag("SPRINT30_RETENTION_CONTROLLER", default=True)
+    retention = os.getenv("SPRINT30_RETENTION")
+    controller = os.getenv("SPRINT30_RETENTION_CONTROLLER")
+    if retention is not None and retention.strip():
+        enabled = sprint30_enabled() and _parse_bool(retention, default=True)
+    else:
+        enabled = sprint30_enabled() and _flag("SPRINT30_RETENTION_CONTROLLER", default=True)
+    return enabled
 
 
 def sprint30_metrics() -> bool:
@@ -55,6 +61,7 @@ def sprint30_flags_snapshot() -> dict[str, bool]:
         "SPRINT30_VISUAL_SCORE": sprint30_visual_score(),
         "SPRINT30_THUMBNAIL_AB": sprint30_thumbnail_ab(),
         "SPRINT30_AUDIO_LAYER": sprint30_audio_layer(),
+        "SPRINT30_RETENTION": sprint30_retention_controller(),
         "SPRINT30_RETENTION_CONTROLLER": sprint30_retention_controller(),
         "SPRINT30_METRICS": sprint30_metrics(),
     }

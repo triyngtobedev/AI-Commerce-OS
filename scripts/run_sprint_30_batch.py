@@ -9,6 +9,7 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -33,11 +34,34 @@ os.environ.setdefault("SPRINT30_RETENTION_CONTROLLER", "true")
 os.environ.setdefault("SPRINT30_METRICS", "true")
 
 
+def _preflight() -> bool:
+    from scripts.ai.router import get_client
+
+    health = get_client().health()
+    print("\n🔍 Preflight Sprint 30:")
+    print(json.dumps(health, ensure_ascii=False, indent=2))
+
+    if not health["ready_for_batch"]:
+        print("\n❌ Batch abortado — configure .env (veja .env.sprint30.example)")
+        return False
+
+    if health["missing_required"]:
+        print("\n⚠️ Modo relaxado (Edge/gTTS sem Azure):")
+        for item in health["missing_required"]:
+            print(f"   • {item}")
+
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Batch Sprint 30 — YouTube Dark")
     parser.add_argument("--max-videos", type=int, default=8)
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--skip-preflight", action="store_true")
     args = parser.parse_args()
+
+    if not args.skip_preflight and not _preflight():
+        return 1
 
     from scripts.audio.populate_audio_library import populate_audio_library
     from scripts.pipeline.youtube_pipeline import run_youtube_pipeline

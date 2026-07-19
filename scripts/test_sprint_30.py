@@ -49,6 +49,33 @@ class TestFeatureFlags(unittest.TestCase):
         reload(flags)
         self.assertTrue(flags.sprint30_visual_score())
 
+    @patch.dict(os.environ, {"SPRINT30_RETENTION": "false", "SPRINT30_ENABLED": "true"})
+    def test_retention_alias(self):
+        from importlib import reload
+        import scripts.core.feature_flags as flags
+        reload(flags)
+        self.assertFalse(flags.sprint30_retention_controller())
+
+
+class TestAIRouterHealth(unittest.TestCase):
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_health_not_ready_without_keys(self):
+        from scripts.ai.router import get_client
+        health = get_client().health()
+        self.assertFalse(health["ready_for_batch"])
+        self.assertFalse(health["ai_any"])
+
+    @patch.dict(
+        os.environ,
+        {"GEMINI_API_KEY": "x", "PEXELS_API_KEY": "y"},
+        clear=True,
+    )
+    def test_health_ready_minimal(self):
+        from scripts.ai.router import get_client
+        health = get_client().health()
+        self.assertTrue(health["ready_for_batch"])
+
 
 class TestSprint30Metrics(unittest.TestCase):
 
