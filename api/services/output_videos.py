@@ -8,10 +8,10 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-# Ordem de busca: Railway runtime, volume persistente, dev local
+# Ordem de busca: volume persistente Railway, legado efêmero, dev local
 OUTPUT_SEARCH_ROOTS = (
-    Path("/app/output"),
     Path("/app/persistent/output"),
+    Path("/app/output"),
     PROJECT_ROOT / "output",
 )
 

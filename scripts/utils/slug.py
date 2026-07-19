@@ -1,7 +1,11 @@
+import os
 import re
 import unicodedata
 
 from pathlib import Path
+
+PERSISTENT_OUTPUT_ROOT = Path("/app/persistent/output")
+DEFAULT_LOCAL_OUTPUT = Path("output")
 
 
 def slugify(text):
@@ -44,7 +48,28 @@ def slugify(text):
     return text.strip("-")
 
 
-def product_output_dir(product, base="output"):
+def get_output_base() -> Path:
+    """
+    Diretório base de saída do pipeline.
+
+    Prioridade:
+      1. OUTPUT_DIR (Railway entrypoint define /app/persistent/output)
+      2. /app/persistent/output quando o volume estiver montado
+      3. output/ relativo (dev local)
+    """
+    configured = os.getenv("OUTPUT_DIR", "").strip()
+    if configured:
+        base = Path(configured)
+    elif PERSISTENT_OUTPUT_ROOT.parent.is_dir():
+        base = PERSISTENT_OUTPUT_ROOT
+    else:
+        base = DEFAULT_LOCAL_OUTPUT
+
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def product_output_dir(product, base=None):
     """
     Retorna o diretório de saída padronizado do produto.
     """
@@ -52,13 +77,18 @@ def product_output_dir(product, base="output"):
     return content_output_dir(product, base)
 
 
-def content_output_dir(subject, base="output", platform=None):
+def content_output_dir(subject, base=None, platform=None):
     """
     Retorna o diretório de saída padronizado do conteúdo.
 
     Quando platform é informada, prefixa o slug para evitar
     colisão entre pipelines (ex: tiktok/produto-x vs youtube/produto-x).
     """
+
+    if base is None:
+        base = get_output_base()
+    else:
+        base = Path(base)
 
     name = subject.get(
         "nome",
@@ -68,6 +98,9 @@ def content_output_dir(subject, base="output", platform=None):
     slug = slugify(name)
 
     if platform:
-        return Path(base) / platform / slug
+        path = base / platform / slug
+    else:
+        path = base / slug
 
-    return Path(base) / slug
+    path.mkdir(parents=True, exist_ok=True)
+    return path

@@ -122,6 +122,13 @@ def _configure_free_providers() -> None:
     os.environ.setdefault("SPRINT30_METRICS", "true")
 
 
+def _configure_persistent_output() -> None:
+    """Grava artefatos no volume persistente Railway (sobrevive a redeploys)."""
+    output_dir = Path("/app/persistent/output")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    os.environ["OUTPUT_DIR"] = str(output_dir)
+
+
 def _preflight_keys() -> None:
     from scripts.ai.router import get_client
 
@@ -207,6 +214,7 @@ def run_test_video(topic: str, *, force: bool = False) -> Path:
 
     _load_env()
     _check_ffmpeg()
+    _configure_persistent_output()
     _configure_free_providers()
     _preflight_keys()
 
