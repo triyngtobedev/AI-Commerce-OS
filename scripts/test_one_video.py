@@ -112,6 +112,7 @@ def _configure_free_providers() -> None:
     os.environ.pop("AZURE_SPEECH_KEY", None)
     os.environ.pop("AZURE_SPEECH_REGION", None)
     os.environ.setdefault("DEFAULT_PLATFORM", "youtube_dark")
+    os.environ.setdefault("ENABLE_AI_SCRIPT", "false")
     os.environ.setdefault("YOUTUBE_AUTO_UPLOAD", "false")
     os.environ.setdefault("SPRINT30_ENABLED", "true")
     os.environ.setdefault("SPRINT30_VISUAL_SCORE", "true")
@@ -198,7 +199,10 @@ def _resolve_video_path(topic: str, results: list) -> Path | None:
 def run_test_video(topic: str, *, force: bool = False) -> Path:
     _banner("YouTube Dark — teste de 1 vídeo (free providers)")
     print(f"Tema: {topic}")
-    print("Providers: Groq | Wikimedia+Pixabay | Edge TTS")
+    enable_ai = os.getenv("ENABLE_AI_SCRIPT", "false").lower() in ("true", "1", "yes")
+    script_source = "AI" if enable_ai else "TEMPLATE"
+    print(f"Script source: {script_source}")
+    print("Providers: Groq | YouTube CC → Wikimedia+Pixabay | Edge TTS")
     print(f"Etapas: {' → '.join(STAGE_ORDER)}")
 
     _load_env()

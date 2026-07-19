@@ -38,6 +38,27 @@ DARK5_SCRIPT_SECTIONS = [
     "encerramento",
 ]
 
+TEMPLATE_8_SCENE_SECTIONS = [
+    "gancho",
+    "contexto",
+    "misterio",
+    "evidencia",
+    "teoria",
+    "contra",
+    "revelacao",
+    "chamada",
+]
+
+TEMPLATE_8_SECTION_TRANSITIONS = {
+    "contexto": "Mas para entender o que aconteceu, precisamos voltar no tempo.",
+    "misterio": "E é aqui que a história começa a ficar estranha.",
+    "evidencia": "Mas existem evidências que ninguém consegue ignorar.",
+    "teoria": "Diante dos fatos, uma teoria começa a tomar forma.",
+    "contra": "Porém, nem todo mundo aceita essa explicação.",
+    "revelacao": "Quando juntamos todas as peças, a imagem muda completamente.",
+    "chamada": None,
+}
+
 DARK5_SECTION_TRANSITIONS = {
     "contexto": "Mas a lista começa pelo número 5.",
     "fato_5": "Agora, o número 4.",
@@ -64,6 +85,8 @@ def _script_sections_for(script: dict) -> list[str]:
     meta_template = (script.get("_meta") or {}).get("roteiro_template")
     if is_lofi_dark(meta_template) or script.get("reflexao_1"):
         return LOFI_DARK_SCRIPT_SECTIONS
+    if meta_template == "documentario_8cenas" or script.get("misterio"):
+        return TEMPLATE_8_SCENE_SECTIONS
     if any(script.get(key) for key in ("fato_1", "fato_5")):
         return DARK5_SCRIPT_SECTIONS
     return SCRIPT_SECTIONS
@@ -73,6 +96,8 @@ def _transitions_for(script: dict) -> dict:
     meta_template = (script.get("_meta") or {}).get("roteiro_template")
     if is_lofi_dark(meta_template) or script.get("reflexao_1"):
         return LOFI_DARK_SECTION_TRANSITIONS
+    if meta_template == "documentario_8cenas" or script.get("misterio"):
+        return TEMPLATE_8_SECTION_TRANSITIONS
     if any(script.get(key) for key in ("fato_1", "fato_5")):
         return DARK5_SECTION_TRANSITIONS
     return SECTION_TRANSITIONS

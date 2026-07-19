@@ -11,7 +11,14 @@ _groq_client = None
 
 GROQ_MODEL_DEFAULT = "llama-3.1-8b-instant"
 GROQ_MODEL_SCRIPT = "llama-3.3-70b-versatile"
-OPENROUTER_MODEL = "mistralai/mistral-7b-instruct-v0.2"
+OPENROUTER_MODEL = "mistralai/mistral-7b-instruct-v0.3"
+OPENROUTER_FALLBACK_MODELS = [
+    "mistralai/mistral-7b-instruct-v0.3",
+    "groq/gemma2-9b-it",
+]
+
+MAX_PROMPT_TOKENS = 3500
+_CHARS_PER_TOKEN = 4
 
 SCRIPT_GENERATION_CONTEXTS = {"script_generation"}
 
@@ -67,6 +74,20 @@ def _groq_error_details(error: Exception) -> str:
     return f"status={status} error={str(error)[:500]}"
 
 
+def _truncate_prompt(prompt: str, max_tokens: int = MAX_PROMPT_TOKENS) -> str:
+    """Trunca prompt que excede limite de tokens (estimativa por caracteres)."""
+    max_chars = max_tokens * _CHARS_PER_TOKEN
+    if len(prompt) <= max_chars:
+        return prompt
+
+    estimated_tokens = len(prompt) // _CHARS_PER_TOKEN
+    print(
+        f"[AI Router] Prompt truncado de ~{estimated_tokens} para "
+        f"{max_tokens} tokens"
+    )
+    return prompt[:max_chars]
+
+
 def _groq_models_for(context_type: str) -> list[str]:
     models = [GROQ_MODEL_DEFAULT]
     if context_type in SCRIPT_GENERATION_CONTEXTS:
@@ -100,11 +121,22 @@ def _openrouter_complete(prompt: str) -> str:
     if not os.getenv("OPENROUTER_API_KEY", "").strip():
         raise Exception("OPENROUTER_API_KEY não configurada")
 
-    print("[OpenRouter] Tentando fallback OpenRouter...")
-    return openrouter_generate(prompt, model=OPENROUTER_MODEL)
+    last_error = None
+    for model in OPENROUTER_FALLBACK_MODELS:
+        print(f"[OpenRouter] Tentando fallback OpenRouter ({model})...")
+        try:
+            return openrouter_generate(prompt, model=model)
+        except Exception as error:
+            last_error = error
+            print(f"[OpenRouter/{model}] {error}")
+
+    raise Exception(
+        f"OpenRouter indisponível após {len(OPENROUTER_FALLBACK_MODELS)} modelos"
+    ) from last_error
 
 
 def ask_ai(prompt, context_type):
+    prompt = _truncate_prompt(prompt)
     last_error = None
 
     for model in _groq_models_for(context_type):
@@ -157,6 +189,7 @@ class AIRouter:
             "openrouter": _has_key("OPENROUTER_API_KEY"),
         }
         footage = {
+            "youtube_cc": True,
             "wikimedia": True,
             "pexels": _has_key("PEXELS_API_KEY"),
             "pixabay": _has_key("PIXABAY_API_KEY"),

@@ -2,12 +2,13 @@
 Visual Media Engine — busca e geração de mídia por cena (footage-first).
 
 Cadeia de fallback por cena (youtube_dark):
-  1. Stock ranqueado — Media Search Orchestrator (Wikimedia → Pixabay → Pexels)
-  2. Foto stock + Ken Burns / fallback editorial (mapa, timeline, gráfico)
-  3. T2V seletivo — máx. 2 cenas/vídeo (n8n ou VideoGenerator local: Kling → fal → Replicate → HF).
+  1. YouTube Creative Commons — yt-dlp (CC licenciado)
+  2. Stock ranqueado — Media Search Orchestrator (Wikimedia → Pixabay → Pexels)
+  3. Foto stock + Ken Burns / fallback editorial (mapa, timeline, gráfico)
+  4. T2V seletivo — máx. 2 cenas/vídeo (n8n ou VideoGenerator local: Kling → fal → Replicate → HF).
      Cenas preferir_imagem pulam T2V e usam imagem + Ken Burns (~$0,03/imagem vs ~$0,25/clip T2V).
-  4. Imagem IA documental — Replicate Flux → Pollinations → HF (bloqueado em cenas críticas)
-  5. Placeholder ilustrativo — se tudo falhar
+  5. Imagem IA documental — Replicate Flux → Pollinations → HF (bloqueado em cenas críticas)
+  6. Placeholder ilustrativo — se tudo falhar
 
 Todos os assets passam pelo Asset Rights Ledger antes do render.
 """
@@ -24,6 +25,7 @@ from typing import Any
 
 import requests
 
+from scripts.video.media_providers.youtube_cc_provider import try_youtube_cc_footage
 from scripts.video.pexels_provider import search_pexels
 from scripts.video.pixabay_provider import search_pixabay
 from scripts.video.wikimedia_provider import search_wikimedia
@@ -271,7 +273,7 @@ def _search_providers_chain(
     photos_only: bool = False,
     skip_wikimedia: bool = False,
 ) -> tuple[dict, str]:
-    """Busca Wikimedia → Pixabay → Pexels até encontrar mídia."""
+    """Busca YouTube CC → Wikimedia → Pixabay → Pexels até encontrar mídia."""
 
     query = _truncate_query(localize_search_query(query))
 
@@ -1166,7 +1168,28 @@ def _resolve_scene_media(
     topic = subject.get("nome", "")
     platform = subject.get("_output_platform", "youtube_dark")
 
-    # --- Prioridade 1: Media Search Orchestrator (footage-first) ---
+    # --- Prioridade 1: YouTube Creative Commons (yt-dlp) ---
+    cc_query = busca or fallback or tematica or atmosfera
+    if cc_query and not preferir_imagem:
+        cc_result = try_youtube_cc_footage(
+            cc_query,
+            scene_id=f"scene-{scene_num:02d}",
+            output_path=scene_video,
+            ledger=ledger,
+            scene_num=scene_num,
+        )
+        if cc_result and cc_result.get("saved"):
+            result.update(cc_result)
+            result["scene"] = scene_num
+            result["tipo"] = tipo
+            result["query_enriched"] = cc_query
+            print(
+                f"🎬 Cena {scene_num} ({tipo}): vídeo YouTube CC "
+                f"— {cc_result.get('attribution', {}).get('title', cc_query)[:60]}"
+            )
+            return result
+
+    # --- Prioridade 2: Media Search Orchestrator (footage-first) ---
     orchestrated = _try_orchestrated_stock(
         scene_num, query_item, scene, scene_video, scene_image, used_ids,
         topic=topic,

@@ -3,7 +3,7 @@ import os
 import requests
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-OPENROUTER_MODEL = "mistralai/mistral-7b-instruct-v0.2"
+OPENROUTER_MODEL = "mistralai/mistral-7b-instruct-v0.3"
 
 
 def generate(prompt: str, model: str = OPENROUTER_MODEL) -> str:

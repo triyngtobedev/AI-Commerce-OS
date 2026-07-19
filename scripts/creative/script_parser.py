@@ -47,6 +47,17 @@ LOFI_DARK_SECTION_KEYS = [
     "encerramento",
 ]
 
+TEMPLATE_8_SCENE_KEYS = [
+    "gancho",
+    "contexto",
+    "misterio",
+    "evidencia",
+    "teoria",
+    "contra",
+    "revelacao",
+    "chamada",
+]
+
 TIKTOK_SECTION_KEYS = [
     "hook",
     "problema",
@@ -83,7 +94,11 @@ DEFAULT_EMOTION_BY_SECTION: dict[str, str] = {
     "resultado": "impact",
     "cta": "impact",
     "gancho": "impact",
-    "roteiro": "calm",
+    "misterio": "mystery",
+    "evidencia": "calm",
+    "teoria": "calm",
+    "contra": "warning",
+    "chamada": "impact",
 }
 
 DEFAULT_INTENSITY_BY_EMOTION: dict[str, float] = {
@@ -262,6 +277,8 @@ def _sections_from_keyed_dict(script: dict) -> list[dict[str, Any]]:
         keys = DARK5_SECTION_KEYS
     elif any(key in script for key in LOFI_DARK_SECTION_KEYS[1:3]):
         keys = LOFI_DARK_SECTION_KEYS
+    elif any(key in script for key in TEMPLATE_8_SCENE_KEYS):
+        keys = TEMPLATE_8_SCENE_KEYS
     elif any(key in script for key in YOUTUBE_SECTION_KEYS):
         keys = YOUTUBE_SECTION_KEYS
     elif any(key in script for key in TIKTOK_SECTION_KEYS):

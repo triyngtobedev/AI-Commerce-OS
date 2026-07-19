@@ -27,6 +27,11 @@ from scripts.decision.decision_engine import decide_action
 
 from scripts.youtube.youtube_strategy import generate_youtube_strategy
 from scripts.youtube.youtube_script import generate_youtube_script
+from scripts.youtube.script_template import (
+    finalize_template_script,
+    generate_script_from_template,
+    template_visual_queries,
+)
 from scripts.youtube.youtube_content import generate_youtube_content
 from scripts.youtube.youtube_scenes import generate_youtube_scenes
 from scripts.youtube.chapter_builder import build_chapters
@@ -309,12 +314,32 @@ def run_youtube_pipeline(
             )
 
 
-            script = generate_youtube_script(
-                topic,
-                analysis,
-                opportunity,
-                strategy,
+            enable_ai_script = os.getenv("ENABLE_AI_SCRIPT", "false").lower() in (
+                "true",
+                "1",
+                "yes",
             )
+
+            if enable_ai_script:
+                script = generate_youtube_script(
+                    topic,
+                    analysis,
+                    opportunity,
+                    strategy,
+                )
+                script_source = "AI"
+            else:
+                topic_name = topic.get("nome", str(topic))
+                script = generate_script_from_template(topic_name)
+                script = finalize_template_script(script, topic, strategy)
+                strategy = dict(strategy)
+                strategy["roteiro_template"] = "documentario_8cenas"
+                strategy["queries_contexto"] = template_visual_queries(script)
+                script_source = "TEMPLATE"
+
+            print(f"📜 Fonte do roteiro: {script_source}")
+            script.setdefault("_meta", {})
+            script["_meta"]["script_source"] = script_source
 
             script, retention_report = run_retention_pipeline(
                 script,
