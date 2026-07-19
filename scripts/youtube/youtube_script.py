@@ -4,6 +4,8 @@ Script Generator para YouTube.
 Gera roteiro documentário longo via IA.
 """
 
+import os
+
 from scripts.ai.router import ask_ai
 from scripts.core.director_engine import direct_script
 from scripts.core.emotional_timeline import build_emotional_timeline
@@ -24,6 +26,8 @@ from scripts.youtube.narration_utils import (
 )
 
 WORDS_PER_SECTION_EXPANSION = 200
+MAX_NARRATION_CHARS = int(os.getenv("MAX_NARRATION_CHARS", "0"))
+NARRATION_CHAR_REWRITE_TARGET = int(os.getenv("NARRATION_CHAR_REWRITE_TARGET", "2400"))
 
 SECTIONS_TO_EXPAND = [
     "desenvolvimento",
@@ -233,6 +237,21 @@ Estratégia completa:
     narration = stitch_script_to_narration(script)
     word_count = count_words(narration)
 
+    if MAX_NARRATION_CHARS > 0 and len(narration) > MAX_NARRATION_CHARS:
+        print(
+            f"⚠️ Narração longa ({len(narration)} chars > {MAX_NARRATION_CHARS}) "
+            f"— reescrevendo (padrão template n8n / limite TTS)"
+        )
+        script = _rewrite_narration_length(
+            script,
+            topic,
+            strategy,
+            max_chars=MAX_NARRATION_CHARS,
+            target_chars=min(NARRATION_CHAR_REWRITE_TARGET, MAX_NARRATION_CHARS),
+        )
+        narration = stitch_script_to_narration(script)
+        word_count = count_words(narration)
+
     for warning in validate_narration(
         narration,
         min_words=min_words,
@@ -298,6 +317,53 @@ Estratégia completa:
 
 
     return directed_script
+
+
+def _rewrite_narration_length(
+    script,
+    topic,
+    strategy,
+    *,
+    max_chars: int,
+    target_chars: int,
+):
+    """
+    Encurta roteiro quando excede limite de caracteres (ElevenLabs / TTS).
+
+    Padrão do template n8n dark: IF chars > 2500 → reescrever entre 2300–2400.
+    """
+
+    narration = stitch_script_to_narration(script)
+    tom = strategy.get("tom_narracao", YOUTUBE_DARK.narration_style)
+    topic_name = topic.get("nome", "")
+
+    rewrite_prompt = f"""
+TASK: REWRITE_SCRIPT_LENGTH
+
+Rewrite the script JSON below keeping structure, impact and style, but fit the
+full narration text between {max(max_chars - 200, 1800)} and {target_chars} characters.
+
+Rules:
+- Do NOT exceed {target_chars} characters in the stitched narration.
+- Keep facts, dates and narrative tension.
+- Tom: {tom}
+- Topic: {topic_name}
+- Return valid JSON only (same section keys).
+
+Current narration ({len(narration)} chars):
+{narration}
+
+Script JSON:
+{script}
+"""
+
+    response = ask_ai(rewrite_prompt, "script_rewrite")
+    rewritten = safe_parse_json(response)
+
+    if isinstance(rewritten, dict):
+        return clean_script_phrases(rewritten)
+
+    return script
 
 
 def _rewrite_banned_script(script, topic, strategy, _original_prompt, banned):

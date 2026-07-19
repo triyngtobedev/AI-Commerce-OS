@@ -4,21 +4,25 @@ Visual Media Engine — busca e geração de mídia por cena.
 Cadeia de fallback por cena (youtube_dark):
   1. Stock — Wikimedia (prioridade histórica) → Pixabay → Pexels
   2. T2V — n8n (USE_N8N_FOR_SCENES) ou VideoGenerator local (Kling → fal → Replicate → HF)
+     Limitado por MAX_T2V_SCENES_PER_VIDEO (default 2). Cenas preferir_imagem pulam T2V
+     e usam imagem + Ken Burns (padrão template n8n FFmpeg, ~$0,03/imagem vs ~$0,25/clip T2V).
   3. Pollinations IA — bloqueado em hook/revelação/encerramento
-  4. Hugging Face SDXL — imagem (se HF_TOKEN configurado)
-  5. Placeholder ilustrativo — se tudo falhar
-
-Cenas documentais (preferir_imagem=True) priorizam foto stock, mas
-ainda tentam Replicate T2V antes de cair em Pollinations.
+  4. Replicate Flux Schnell — imagem (~$0,003/img, Black Forest Labs via Replicate)
+  5. Hugging Face FLUX.1-schnell — imagem (se HF_TOKEN configurado)
+  6. Placeholder ilustrativo — se tudo falhar
 """
 
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
+
+import requests
 
 from scripts.video.pexels_provider import search_pexels
 from scripts.video.pixabay_provider import search_pixabay
@@ -66,6 +70,34 @@ from scripts.video.media_downloader import (
     select_photo_url,
     select_video_file_with_fallback,
 )
+
+REPLICATE_PREDICTIONS_URL = "https://api.replicate.com/v1/predictions"
+REPLICATE_FLUX_MODEL = os.getenv("REPLICATE_FLUX_MODEL", "black-forest-labs/flux-schnell")
+MAX_T2V_SCENES_PER_VIDEO = int(os.getenv("MAX_T2V_SCENES_PER_VIDEO", "2"))
+REPLICATE_FLUX_POLL_INTERVAL = float(os.getenv("REPLICATE_FLUX_POLL_INTERVAL", "2"))
+REPLICATE_FLUX_TIMEOUT = float(os.getenv("REPLICATE_FLUX_TIMEOUT", "120"))
+
+_t2v_scenes_used = 0
+
+
+def _reset_t2v_budget() -> None:
+    """Reinicia contador de cenas T2V pagas por execução de pipeline."""
+
+    global _t2v_scenes_used
+    _t2v_scenes_used = 0
+
+
+def _t2v_budget_available() -> bool:
+    """True enquanto houver slots T2V disponíveis neste vídeo."""
+
+    return _t2v_scenes_used < MAX_T2V_SCENES_PER_VIDEO
+
+
+def _consume_t2v_budget() -> None:
+    """Registra consumo de um slot T2V."""
+
+    global _t2v_scenes_used
+    _t2v_scenes_used += 1
 from scripts.video.media_quality import (
     MIN_IMAGE_HEIGHT,
     MIN_IMAGE_HEIGHT_FALLBACK,
@@ -457,6 +489,68 @@ def _try_hf_image(prompt: str, scene_image: Path) -> bool:
         return False
 
 
+def _try_replicate_flux_image(prompt: str, scene_image: Path) -> bool:
+    """
+    Gera imagem via Replicate Flux Schnell (~$0,003/img).
+
+    Modelo recomendado em templates n8n dark (Black Forest Labs / flux-schnell).
+    """
+    token = os.getenv("REPLICATE_API_TOKEN", "")
+    if not token:
+        return False
+
+    headers = {
+        "Authorization": f"Token {token}",
+        "Content-Type": "application/json",
+    }
+    create_url = f"https://api.replicate.com/v1/models/{REPLICATE_FLUX_MODEL}/predictions"
+    payload = {
+        "input": {
+            "prompt": prompt,
+            "aspect_ratio": "16:9",
+            "output_format": "jpg",
+            "output_quality": 80,
+            "go_fast": True,
+            "num_outputs": 1,
+        }
+    }
+
+    try:
+        response = requests.post(create_url, headers=headers, json=payload, timeout=60)
+        if response.status_code >= 400:
+            return False
+
+        prediction_id = response.json().get("id")
+        if not prediction_id:
+            return False
+
+        status_url = f"{REPLICATE_PREDICTIONS_URL}/{prediction_id}"
+        deadline = time.time() + REPLICATE_FLUX_TIMEOUT
+
+        while time.time() < deadline:
+            poll = requests.get(status_url, headers=headers, timeout=30)
+            if poll.status_code >= 400:
+                return False
+
+            body = poll.json()
+            status = body.get("status", "")
+            if status == "succeeded":
+                output = body.get("output")
+                image_url = output[0] if isinstance(output, list) and output else output
+                if isinstance(image_url, str) and image_url.startswith("http"):
+                    return download_file(image_url, scene_image)
+                return False
+
+            if status in ("failed", "canceled"):
+                return False
+
+            time.sleep(REPLICATE_FLUX_POLL_INTERVAL)
+
+        return False
+    except (requests.RequestException, OSError, TypeError, ValueError):
+        return False
+
+
 def _try_ai_image(
     prompt: str,
     scene_image: Path,
@@ -487,6 +581,9 @@ def _try_ai_image(
         generated = generate_pollinations_image(ai_prompt, scene_image)
         if generated:
             provider = "pollinations"
+    if not generated and _try_replicate_flux_image(ai_prompt, scene_image):
+        generated = True
+        provider = "replicate_flux"
     if not generated and _try_hf_image(ai_prompt, scene_image):
         generated = True
         provider = "huggingface"
@@ -938,7 +1035,7 @@ def _resolve_scene_media(
                 print(f"🖼️ Cena {scene_num} ({tipo}): imagem stock — {source}")
                 return result
 
-    # Stock falhou — n8n T2V (se habilitado) ou VideoGenerator local.
+    # Stock falhou — T2V pago (limitado) ou imagem IA + Ken Burns (template n8n).
     if not stock_video_found and not result.get("saved"):
         print(
             f"  ⚠️ Cena {scene_num}: stock sem mídia adequada — "
@@ -961,9 +1058,22 @@ def _resolve_scene_media(
         ai_video_saved = False
         ai_video_provider = ""
 
+        skip_t2v = preferir_imagem or not _t2v_budget_available()
+        if preferir_imagem:
+            print(
+                f"  💰 Cena {scene_num}: preferir_imagem — "
+                f"pulando T2V (imagem + Ken Burns, estilo template n8n)"
+            )
+        elif not _t2v_budget_available():
+            print(
+                f"  💰 Cena {scene_num}: orçamento T2V esgotado "
+                f"({MAX_T2V_SCENES_PER_VIDEO}/vídeo) — usando imagem + Ken Burns"
+            )
+
         # I2V e-commerce: sempre local (n8n orquestra só T2V documental).
         i2v_ecommerce = (
-            image_url
+            not skip_t2v
+            and image_url
             and (fal_kling_is_configured() or replicate_is_configured())
             and product_name
         )
@@ -982,7 +1092,7 @@ def _resolve_scene_media(
                 visual_direction=visual_direction,
                 allow_pollinations=allow_pollinations,
             )
-        elif use_n8n_for_scenes():
+        elif not skip_t2v and use_n8n_for_scenes():
             print(f"[n8n] delegando T2V cena {scene_num} ao orquestrador n8n")
             fallback = generate_scene_video_fallback(
                 scene_description=scene_description,
@@ -996,7 +1106,7 @@ def _resolve_scene_media(
             if fallback and fallback.get("local_path"):
                 ai_video_saved = True
                 ai_video_provider = fallback.get("api_used", "n8n")
-        else:
+        elif not skip_t2v:
             ai_video_saved, ai_video_provider = _try_ai_video(
                 busca,
                 scene_video,
@@ -1012,6 +1122,7 @@ def _resolve_scene_media(
                 allow_pollinations=allow_pollinations,
             )
         if ai_video_saved:
+            _consume_t2v_budget()
             result.update({
                 "saved": True,
                 "media_type": "ai_video",
@@ -1040,7 +1151,12 @@ def _resolve_scene_media(
             "source": f"{ai_provider}:image",
             "provedor": ai_provider,
         })
-        label = "Pollinations" if ai_provider == "pollinations" else "Hugging Face"
+        provider_labels = {
+            "pollinations": "Pollinations",
+            "replicate_flux": "Replicate Flux",
+            "huggingface": "Hugging Face",
+        }
+        label = provider_labels.get(ai_provider, ai_provider)
         print(f"🤖 Cena {scene_num} ({tipo}): imagem {label}")
         return result
 
@@ -1089,6 +1205,8 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
     Pipeline de mídia scene-aware com seleção por relevância e fallback IA.
     Salva arquivos como scene-01.mp4, scene-02.jpg, etc.
     """
+
+    _reset_t2v_budget()
 
     folder = _output_folder(subject) / "assets"
     videos_folder = folder / "videos"
