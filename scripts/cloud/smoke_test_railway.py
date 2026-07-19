@@ -145,15 +145,20 @@ def check_auth(base_url: str, api_key: str, result: CheckResult) -> None:
         warn(f"Chave inválida → {status}")
 
     if api_key:
+        # UUID válido mas inexistente — confirma que a chave passa e a API responde 404
+        fake_job_id = "00000000-0000-0000-0000-000000000001"
         status, _ = http_get(
-            f"{base_url}/api/v1/pipeline/status/job-inexistente",
+            f"{base_url}/api/v1/pipeline/status/{fake_job_id}",
             {"X-API-Key": api_key},
         )
         if status in (200, 404):
             ok(f"Chave correta → {status} (aceita)")
             result.passed.append("aceita chave válida")
+        elif status == 400:
+            fail(f"Chave correta → {status} — job_id deve ser UUID válido (bug no smoke test)")
+            result.failed.append(f"chave válida retornou {status}")
         else:
-            fail(f"Chave correta → {status} (esperado 200/404)")
+            fail(f"Chave correta → {status} (esperado 404)")
             result.failed.append(f"chave válida recusada com {status}")
     else:
         warn("PIPELINE_API_KEY não fornecida — pulando teste com chave válida")
