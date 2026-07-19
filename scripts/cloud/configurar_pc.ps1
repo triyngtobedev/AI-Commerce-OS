@@ -34,8 +34,8 @@ if (-not $CloudUrl) {
 
 if (-not $ApiKey) {
     Write-Host ""
-    Write-Host "Cole a PIPELINE_API_KEY (mesma do painel Railway):"
-    $ApiKey = Read-Host "CLOUD_API_KEY"
+    Write-Host "Cole a PIPELINE_API_KEY (mesma do painel Railway — Service ou Shared Variables):"
+    $ApiKey = Read-Host "PIPELINE_API_KEY"
 }
 
 $CloudUrl = $CloudUrl.Trim().TrimEnd("/")
@@ -62,10 +62,12 @@ function Set-EnvVar {
 }
 
 Set-EnvVar -Path $EnvFile -Name "CLOUD_API_URL" -Value $CloudUrl
+# Nome canonico + alias de compatibilidade — sempre o mesmo valor
+Set-EnvVar -Path $EnvFile -Name "PIPELINE_API_KEY" -Value $ApiKey
 Set-EnvVar -Path $EnvFile -Name "CLOUD_API_KEY" -Value $ApiKey
 
 Write-Host ""
-Write-Host "Salvo em $EnvFile" -ForegroundColor Green
+Write-Host "Salvo em $EnvFile (PIPELINE_API_KEY e CLOUD_API_KEY sincronizadas)" -ForegroundColor Green
 Write-Host ""
 Write-Host "Teste a conexao:" -ForegroundColor Cyan
 Write-Host "  python scripts/cloud/gerar_video.py --topic `"teste de conexao`"" -ForegroundColor White

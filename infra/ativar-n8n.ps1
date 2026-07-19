@@ -66,14 +66,19 @@ function Test-RailwayApiKey {
 
         if ($status -eq 401) {
             Write-Host ""
-            Write-Host "ERRO 401 - chave local NAO bate com o Railway." -ForegroundColor Red
+            Write-Host "ERRO 401 - a chave local e diferente da chave configurada no Railway." -ForegroundColor Red
+            Write-Host ""
+            Write-Host "  A chave enviada no header X-API-Key nao coincide com PIPELINE_API_KEY do Railway."
             Write-Host ""
             Write-Host "  1. Abra railway.app -> seu projeto -> Variables"
-            Write-Host "  2. Copie o valor de PIPELINE_API_KEY"
-            Write-Host "  3. Cole no .env do PC (CLOUD_API_KEY e PIPELINE_API_KEY = mesmo valor):"
-            Write-Host "     CLOUD_API_KEY=cole_aqui"
+            Write-Host "     Verifique Service Variables E Shared Variables (ambiente production)"
+            Write-Host "  2. Copie o valor de PIPELINE_API_KEY do Railway"
+            Write-Host "  3. Cole no .env do PC — PIPELINE_API_KEY e CLOUD_API_KEY devem ter"
+            Write-Host "     EXATAMENTE o mesmo valor:"
             Write-Host "     PIPELINE_API_KEY=cole_aqui"
-            Write-Host "  4. Rode .\infra\ativar-n8n.ps1 de novo"
+            Write-Host "     CLOUD_API_KEY=cole_aqui"
+            Write-Host "  4. Atalho: .\scripts\cloud\configurar_pc.ps1 (grava as duas automaticamente)"
+            Write-Host "  5. Rode .\infra\ativar-n8n.ps1 de novo"
             Write-Host ""
             exit 1
         }
@@ -100,17 +105,17 @@ if (-not (Test-Path $EnvMain)) {
 $envMain = Read-EnvFile $EnvMain
 $cloudUrl = $envMain["CLOUD_API_URL"]
 
-# Mesma ordem do gerar_video.py: CLOUD_API_KEY -> PIPELINE_API_KEY
-$apiKey = $envMain["CLOUD_API_KEY"]
+# Nome canonico: PIPELINE_API_KEY (CLOUD_API_KEY e alias de compatibilidade)
+$apiKey = $envMain["PIPELINE_API_KEY"]
 if (-not $apiKey) {
-    $apiKey = $envMain["PIPELINE_API_KEY"]
+    $apiKey = $envMain["CLOUD_API_KEY"]
 }
 
 $cloudKey = $envMain["CLOUD_API_KEY"]
 $pipelineKey = $envMain["PIPELINE_API_KEY"]
 if ($cloudKey -and $pipelineKey -and ($cloudKey -ne $pipelineKey)) {
-    Write-Warning "CLOUD_API_KEY e PIPELINE_API_KEY diferem no .env - usando CLOUD_API_KEY"
-    $apiKey = $cloudKey
+    Write-Warning "CLOUD_API_KEY e PIPELINE_API_KEY diferem no .env - usando PIPELINE_API_KEY (nome canonico)"
+    $apiKey = $pipelineKey
 }
 
 if (-not $cloudUrl) {
