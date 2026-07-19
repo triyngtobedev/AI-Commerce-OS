@@ -14,7 +14,32 @@ os.environ.setdefault("GROQ_API_KEY", "test-groq-key")
 router = importlib.import_module("scripts.ai.router")
 
 
+class TestGeminiQuotaShared(unittest.TestCase):
+    def setUp(self):
+        from scripts.ai.gemini_quota import reset_gemini_metrics
+        reset_gemini_metrics(reset_quota=True)
+
+    @patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-openrouter-key"})
+    @patch.object(router, "openrouter_generate")
+    @patch.object(router, "_groq_complete")
+    @patch.object(router, "gemini_generate")
+    def test_daily_quota_marks_shared_state(
+        self, mock_gemini, mock_groq, mock_openrouter
+    ):
+        from scripts.ai.gemini_quota import is_gemini_quota_exhausted
+
+        mock_gemini.side_effect = Exception("limit: 0 daily quota")
+        mock_groq.return_value = "Resposta do Groq"
+        mock_openrouter.return_value = "Resposta do OpenRouter"
+
+        router.ask_ai("test prompt", "analysis")
+        self.assertTrue(is_gemini_quota_exhausted())
+
+
 class TestAiRouterFallback(unittest.TestCase):
+    def setUp(self):
+        from scripts.ai.gemini_quota import reset_gemini_metrics
+        reset_gemini_metrics(reset_quota=True)
     @patch.object(router, "time")
     @patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-openrouter-key"})
     @patch.object(router, "openrouter_generate")

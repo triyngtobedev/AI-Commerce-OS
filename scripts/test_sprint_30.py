@@ -14,6 +14,7 @@ from scripts.core.feature_flags import (
 )
 from scripts.metrics.sprint_30_metrics import append_metrics, build_metrics_record
 from scripts.scoring.visual_relevance_scorer import (
+    TOP_CANDIDATES,
     compute_final_score,
     rank_candidates_with_visual_score,
     scene_hash,
@@ -101,6 +102,20 @@ class TestSprint30Metrics(unittest.TestCase):
 
 class TestVisualRelevanceScorer(unittest.TestCase):
 
+    @patch.dict(os.environ, {"VISUAL_SCORE_TOP_N": "2"}, clear=False)
+    def test_top_candidates_default_two(self):
+        from importlib import reload
+        import scripts.scoring.visual_relevance_scorer as scorer
+        reload(scorer)
+        self.assertEqual(scorer.TOP_CANDIDATES, 2)
+
+    @patch.dict(os.environ, {"VISUAL_SCORE_TOP_N": "8"}, clear=False)
+    def test_top_candidates_configurable(self):
+        from importlib import reload
+        import scripts.scoring.visual_relevance_scorer as scorer
+        reload(scorer)
+        self.assertEqual(scorer.TOP_CANDIDATES, 8)
+
     def test_compute_final_score_weights(self):
         scores = {
             "conceptual_match": 80,
@@ -149,6 +164,62 @@ class TestVisualRelevanceScorer(unittest.TestCase):
         )
         self.assertEqual(len(ranked), 2)
         self.assertIn("visual_score", ranked[0])
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_rank_skips_gemini_when_quota_exhausted(self):
+        from scripts.ai.gemini_quota import mark_gemini_quota_exhausted, reset_gemini_metrics
+        from importlib import reload
+        import scripts.scoring.visual_relevance_scorer as scorer
+
+        reset_gemini_metrics(reset_quota=True)
+        mark_gemini_quota_exhausted(Exception("limit: 0"))
+        reload(scorer)
+
+        scene = {"tipo": "hook", "narracao": "ancient ruins mystery"}
+        candidates = [
+            {
+                "item": {"id": "1", "tags": ["ancient", "ruins"], "width": 1920, "height": 1080},
+                "provider": "pexels",
+                "media_type": "video",
+                "score": 0.7,
+            },
+        ]
+        ranked = scorer.rank_candidates_with_visual_score(
+            candidates, scene, use_cache=False,
+        )
+        self.assertEqual(len(ranked), 1)
+        self.assertIn("quota Gemini esgotada", ranked[0]["visual_breakdown"]["reason"])
+
+
+class TestGeminiQuotaMetrics(unittest.TestCase):
+
+    def test_metrics_track_calls_and_fallbacks(self):
+        from scripts.ai.gemini_quota import (
+            get_gemini_metrics,
+            record_gemini_call,
+            reset_gemini_metrics,
+        )
+
+        reset_gemini_metrics()
+        record_gemini_call(stage="visual_score", model="gemini-2.0-flash-lite")
+        record_gemini_call(stage="text_generation", model="gemini-2.0-flash-lite")
+        record_gemini_call(stage="thumbnail", model="gemini-2.0-flash-lite", fallback=True)
+
+        metrics = get_gemini_metrics()
+        self.assertEqual(metrics["gemini_total_calls"], 3)
+        self.assertEqual(metrics["gemini_calls_by_stage"]["visual_score"], 1)
+        self.assertEqual(metrics["gemini_calls_by_stage"]["text_generation"], 1)
+        self.assertEqual(metrics["gemini_quota_fallbacks"], 1)
+
+
+class TestThumbnailAbFlag(unittest.TestCase):
+
+    @patch.dict(os.environ, {"SPRINT30_ENABLED": "true"}, clear=True)
+    def test_thumbnail_ab_disabled_by_default(self):
+        from importlib import reload
+        import scripts.core.feature_flags as flags
+        reload(flags)
+        self.assertFalse(flags.sprint30_thumbnail_ab())
 
 
 class TestRetentionController(unittest.TestCase):

@@ -4,6 +4,13 @@ import time
 from dotenv import load_dotenv
 from groq import Groq
 
+from scripts.ai.gemini_quota import (
+    handle_gemini_error,
+    is_daily_quota_exhausted,
+    is_gemini_quota_exhausted,
+    mark_gemini_quota_exhausted,
+    record_gemini_call,
+)
 from scripts.ai.providers.gemini import generate as gemini_generate
 from scripts.ai.providers.openrouter import generate as openrouter_generate
 
@@ -41,9 +48,6 @@ GROQ_MAX_TOKENS = {
     "content_generation": 4096,
 }
 
-_gemini_daily_quota_exhausted = False
-
-
 def _gemini_model_for(context_type: str) -> str:
     if context_type in PRIMARY_GEMINI_CONTEXTS:
         return GEMINI_MODEL_PRIMARY
@@ -62,11 +66,6 @@ def _is_rate_limit_error(error: Exception) -> bool:
             "too many requests",
         )
     )
-
-
-def _is_daily_quota_exhausted(error: Exception) -> bool:
-    """Quota diária zerada — retry imediato no Groq, sem esperar 60s."""
-    return "limit: 0" in str(error).lower()
 
 
 def _is_request_too_large(error: Exception) -> bool:
@@ -118,25 +117,32 @@ def _openrouter_complete(prompt: str) -> str:
 
 
 def ask_ai(prompt, context_type):
-    global _gemini_daily_quota_exhausted
     gemini_model = _gemini_model_for(context_type)
 
-    if not _gemini_daily_quota_exhausted:
+    if not is_gemini_quota_exhausted():
         print("[AI Router] Tentando: gemini")
         try:
-            return gemini_generate(prompt, model=gemini_model)
+            result = gemini_generate(prompt, model=gemini_model)
+            record_gemini_call(stage="text_generation", model=gemini_model)
+            return result
         except Exception as gemini_error:
             print(
                 f"⚠️ Gemini indisponível ({gemini_model}, {gemini_error}), tentando Groq..."
             )
-            if _is_daily_quota_exhausted(gemini_error):
-                print("[Gemini] Quota diária zerada — pulando Gemini nas próximas chamadas")
-                _gemini_daily_quota_exhausted = True
-            elif _is_rate_limit_error(gemini_error):
+            if is_daily_quota_exhausted(gemini_error):
+                mark_gemini_quota_exhausted(gemini_error)
+            else:
+                handle_gemini_error(gemini_error, stage="text_generation")
+            if _is_rate_limit_error(gemini_error) and not is_daily_quota_exhausted(gemini_error):
                 print("[Gemini] Quota/rate limit detectado — aguardando 60s...")
                 time.sleep(60)
     else:
         print("[AI Router] Gemini quota esgotada — usando Groq direto")
+        record_gemini_call(
+            stage="text_generation",
+            model=gemini_model,
+            fallback=True,
+        )
 
     # 2. Tenta Groq com fallback de modelos
     last_error = None

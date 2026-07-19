@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from scripts.core.feature_flags import sprint30_flags_snapshot, sprint30_metrics
+from scripts.ai.gemini_quota import get_gemini_metrics
 
 METRICS_FILE = Path("sprint_30_metrics.jsonl")
 
@@ -119,6 +120,7 @@ def build_metrics_record(
     record.update(_thumbnail_metrics(output_dir))
     record.update(_retention_predictions(retention if isinstance(retention, dict) else {}))
     record.update(_audio_metrics(output_dir, result))
+    record.update(get_gemini_metrics())
 
     actions = _read_json(output_dir / "retention_actions.json")
     if isinstance(actions, dict):

@@ -56,6 +56,7 @@ from scripts.core.feature_flags import (
     sprint30_thumbnail_ab,
 )
 from scripts.metrics.sprint_30_metrics import record_sprint_30_metrics
+from scripts.ai.gemini_quota import reset_gemini_metrics
 from scripts.youtube.lofi_dark_config import is_lofi_dark
 from scripts.youtube.template_override import apply_template_override, get_template_override
 
@@ -209,6 +210,7 @@ def run_youtube_pipeline(
     for topic in selected:
 
         try:
+            reset_gemini_metrics()
 
             topic = resolve_topic_for_production(
                 topic,
