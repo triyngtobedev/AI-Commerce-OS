@@ -2,6 +2,7 @@
 
 import unittest
 
+from scripts.creative.script_parser import extract_section_text
 from scripts.youtube.narration_utils import (
     validate_sentence_length,
     validate_scene_hooks,
@@ -47,6 +48,16 @@ class TestNarrationDarkRules(unittest.TestCase):
 
     def test_max_words_constant(self):
         self.assertEqual(MAX_WORDS_PER_SENTENCE, 12)
+
+    def test_extract_section_text_from_dict(self):
+        section = {
+            "text": "Em 1908, algo explodiu na Sibéria.",
+            "emotion": "impact",
+        }
+        self.assertEqual(
+            extract_section_text(section),
+            "Em 1908, algo explodiu na Sibéria.",
+        )
 
     def test_stitch_script_accepts_dict_sections(self):
         script = {
