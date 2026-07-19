@@ -4,7 +4,9 @@ import unittest
 
 from scripts.creative.script_parser import (
     enrich_script_with_emotions,
+    extract_section_text,
     parse_script_sections,
+    sync_script_from_keyed_sections,
 )
 
 
@@ -70,6 +72,24 @@ class TestScriptParser(unittest.TestCase):
     def test_empty_script(self):
         parsed = parse_script_sections({})
         self.assertEqual(parsed["sections"], [])
+
+    def test_extract_section_text_prefers_narracao(self):
+        self.assertEqual(
+            extract_section_text({"narracao": "Texto narrado."}),
+            "Texto narrado.",
+        )
+
+    def test_sync_script_from_keyed_sections_rebuilds_sections(self):
+        script = {
+            "hook": {"text": " ".join(["hook"] * 50)},
+            "contexto": {"text": " ".join(["contexto"] * 200)},
+            "desenvolvimento": {"text": " ".join(["dev"] * 300)},
+            "sections": [{"text": "stale short", "section_key": "hook"}],
+        }
+        synced = sync_script_from_keyed_sections(script)
+        self.assertGreater(len(synced["sections"]), 1)
+        full = " ".join(section["text"] for section in synced["sections"])
+        self.assertGreater(len(full.split()), 500)
 
 
 if __name__ == "__main__":

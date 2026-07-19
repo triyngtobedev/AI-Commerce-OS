@@ -6,6 +6,7 @@ from scripts.youtube.narration_utils import (
     validate_sentence_length,
     validate_scene_hooks,
     strip_pause_markers,
+    stitch_script_to_narration,
     MAX_WORDS_PER_SENTENCE,
 )
 
@@ -46,6 +47,31 @@ class TestNarrationDarkRules(unittest.TestCase):
 
     def test_max_words_constant(self):
         self.assertEqual(MAX_WORDS_PER_SENTENCE, 12)
+
+    def test_stitch_script_accepts_dict_sections(self):
+        script = {
+            "hook": {
+                "text": " ".join(["impacto"] * 40),
+                "emotion": "impact",
+            },
+            "contexto": {
+                "narracao": " ".join(["contexto"] * 200),
+            },
+            "desenvolvimento": {
+                "text": " ".join(["desenvolvimento"] * 300),
+            },
+            "revelacao": {
+                "text": " ".join(["revelacao"] * 200),
+            },
+            "consequencias": {
+                "text": " ".join(["consequencias"] * 200),
+            },
+            "encerramento": {
+                "text": " ".join(["encerramento"] * 60),
+            },
+        }
+        narration = stitch_script_to_narration(script)
+        self.assertGreater(len(narration.split()), 900)
 
 
 if __name__ == "__main__":

@@ -102,6 +102,35 @@ REPLICATE_FLUX_TIMEOUT = float(os.getenv("REPLICATE_FLUX_TIMEOUT", "120"))
 _t2v_scenes_used = 0
 
 
+def _coerce_mapping(value: Any, *, label: str = "objeto") -> dict | None:
+    """
+    Normaliza dict ou string JSON para mapping.
+    Retorna None se o valor não puder ser usado como dict.
+    """
+
+    if value is None:
+        return None
+
+    if isinstance(value, dict):
+        return value
+
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+        print(f"  ⚠️ {label}: string ignorada (não é JSON de objeto)")
+        return None
+
+    print(f"  ⚠️ {label}: tipo {type(value).__name__} ignorado")
+    return None
+
+
 def _reset_t2v_budget() -> None:
     """Reinicia contador de cenas T2V pagas por execução de pipeline."""
 
@@ -379,8 +408,7 @@ def _download_scene_photo(photo: dict, path: Path) -> bool:
 def _story_params(query_item: dict | None) -> tuple[Any, str, str, str, str, list]:
     """Extrai sinais story-aware da query (neutros entre providers)."""
 
-    if not query_item:
-        return None, "calm", "", "", "", []
+    query_item = _coerce_mapping(query_item, label="query_item") or {}
 
     visual_intent = resolve_visual_intent({
         "visual_intent": query_item.get("visual_intent", "general_narrative"),
@@ -921,6 +949,8 @@ def _register_asset_in_ledger(
     if ledger is None:
         return True
 
+    item = _coerce_mapping(item, label=f"Cena {scene_num} ledger item") or {}
+
     record = ledger.register_asset(
         source=provider,
         provider=provider,
@@ -955,6 +985,9 @@ def _try_orchestrated_stock(
     ledger: AssetRightsLedger | None = None,
 ) -> dict | None:
     """Busca via Media Search Orchestrator e seleciona melhor asset seguro."""
+
+    query_item = _coerce_mapping(query_item, label=f"Cena {scene_num} query") or {}
+    scene = _coerce_mapping(scene, label=f"Cena {scene_num} scene") or {}
 
     candidates = search_and_rank_scene(
         query_item,
@@ -1002,8 +1035,14 @@ def _try_orchestrated_stock(
     )
 
     for rank, candidate in enumerate(scored_candidates[:5], 1):
-        item = candidate["item"]
-        provider = candidate["provider"]
+        if not isinstance(candidate, dict):
+            continue
+
+        item = _coerce_mapping(candidate.get("item"), label=f"Cena {scene_num} asset")
+        if item is None:
+            continue
+
+        provider = candidate.get("provider", "")
         media_type = candidate["media_type"]
         score = candidate["score"]
         query = candidate["query"]
@@ -1095,6 +1134,10 @@ def _resolve_scene_media(
 ) -> dict:
     """Resolve mídia para uma cena com fallback completo."""
 
+    query_item = _coerce_mapping(query_item, label=f"Cena {scene_num} query") or {}
+    scene = _coerce_mapping(scene, label=f"Cena {scene_num} scene") or {}
+    subject = _coerce_mapping(subject, label="subject") or {}
+
     busca = query_item.get("busca", "")
     fallback = query_item.get("busca_fallback", "")
     tematica = query_item.get("busca_tematica", "")
@@ -1120,8 +1163,8 @@ def _resolve_scene_media(
     }
 
     scene = scene or {}
-    topic = (subject or {}).get("nome", "")
-    platform = (subject or {}).get("_output_platform", "youtube_dark")
+    topic = subject.get("nome", "")
+    platform = subject.get("_output_platform", "youtube_dark")
 
     # --- Prioridade 1: Media Search Orchestrator (footage-first) ---
     orchestrated = _try_orchestrated_stock(
@@ -1483,6 +1526,55 @@ def _resolve_scene_media(
     raise RuntimeError(f"Cena {scene_num}: nenhuma mídia disponível após cadeia completa")
 
 
+def _empty_scene_result(scene_num: int, *, error: str = "") -> dict:
+    """Resultado mínimo para cena que falhou na resolução de mídia."""
+
+    return {
+        "scene": scene_num,
+        "tipo": "",
+        "query": "",
+        "query_enriched": "",
+        "source": "none",
+        "provedor": "none",
+        "media_type": "none",
+        "saved": False,
+        "quality_score": 0.0,
+        "error": error,
+    }
+
+
+def _recover_scene_with_placeholder(
+    scene_num: int,
+    query_item: dict,
+    scene_image: Path,
+    *,
+    error: str,
+) -> dict:
+    """Tenta placeholder ilustrativo para não abortar o pipeline inteiro."""
+
+    result = _empty_scene_result(scene_num, error=error)
+    query_item = _coerce_mapping(query_item, label=f"Cena {scene_num} query") or {}
+    busca = query_item.get("busca") or query_item.get("visual_goal") or f"scene {scene_num}"
+    tipo = query_item.get("tipo", "")
+
+    result.update({
+        "tipo": tipo,
+        "query": busca,
+        "query_enriched": busca,
+    })
+
+    if _generate_placeholder_image(busca, scene_image, scene_num, allow_pollinations=True):
+        result.update({
+            "saved": True,
+            "media_type": "placeholder",
+            "source": "generated:placeholder:recovery",
+            "provedor": "generated",
+        })
+        print(f"🖼️ Cena {scene_num} ({tipo or 'unknown'}): placeholder de recuperação")
+
+    return result
+
+
 def run_visual_media_pipeline(subject, scenes, queries) -> str:
     """
     Pipeline footage-first com orchestrator, rights ledger e T2V seletivo.
@@ -1490,6 +1582,12 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
     """
 
     _reset_t2v_budget()
+
+    subject = _coerce_mapping(subject, label="subject") or (subject if isinstance(subject, dict) else {})
+    scenes = _coerce_mapping(scenes, label="scenes") or (scenes if isinstance(scenes, dict) else {})
+    if not isinstance(queries, list):
+        print("⚠️ queries inválido — esperava lista; usando []")
+        queries = []
 
     folder = _output_folder(subject) / "assets"
     output_root = _output_folder(subject)
@@ -1507,27 +1605,42 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
     t2v_tracker = T2VTracker()
 
     scene_list = scenes.get("cenas", []) if isinstance(scenes, dict) else []
+    if not isinstance(scene_list, list):
+        print("⚠️ scenes.cenas inválido — esperava lista; usando []")
+        scene_list = []
 
-    for i, query_item in enumerate(queries):
+    for i, raw_query_item in enumerate(queries):
         scene_num = i + 1
         scene_video = videos_folder / f"scene-{scene_num:02d}.mp4"
         scene_image = images_folder / f"scene-{scene_num:02d}.jpg"
-        scene_data = scene_list[i] if i < len(scene_list) else {}
 
-        result = _resolve_scene_media(
-            scene_num,
-            query_item,
-            scene_video,
-            scene_image,
-            used_ids,
-            saved_assets=saved_assets,
-            recent_selections=recent_selections[-2:],
-            rejections=rejections,
-            subject=subject,
-            scene=scene_data,
-            ledger=ledger,
-            t2v_tracker=t2v_tracker,
-        )
+        query_item = _coerce_mapping(raw_query_item, label=f"Cena {scene_num} query") or {}
+        scene_data = scene_list[i] if i < len(scene_list) else {}
+        scene_data = _coerce_mapping(scene_data, label=f"Cena {scene_num} scene") or {}
+
+        try:
+            result = _resolve_scene_media(
+                scene_num,
+                query_item,
+                scene_video,
+                scene_image,
+                used_ids,
+                saved_assets=saved_assets,
+                recent_selections=recent_selections[-2:],
+                rejections=rejections,
+                subject=subject,
+                scene=scene_data,
+                ledger=ledger,
+                t2v_tracker=t2v_tracker,
+            )
+        except Exception as error:
+            print(f"  ⚠️ Cena {scene_num}: erro na resolução de mídia ({error})")
+            result = _recover_scene_with_placeholder(
+                scene_num,
+                query_item,
+                scene_image,
+                error=str(error),
+            )
 
         signature = result.pop("selection_signature", None)
         if signature:

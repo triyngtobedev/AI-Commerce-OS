@@ -11,7 +11,7 @@ from scripts.core.director_engine import direct_script
 from scripts.core.emotional_timeline import build_emotional_timeline
 from scripts.core.platform_config import YOUTUBE_DARK
 from scripts.core.visual_intent_engine import apply_visual_intents
-from scripts.creative.script_parser import enrich_script_with_emotions
+from scripts.creative.script_parser import enrich_script_with_emotions, extract_section_text, sync_script_from_keyed_sections
 from scripts.youtube.narration_utils import (
     count_words,
     validate_narration,
@@ -277,6 +277,7 @@ Estratégia completa:
             script = expand_script_in_sections(
                 script, topic, strategy, target_words, roteiro_template
             )
+            script = sync_script_from_keyed_sections(script)
         except Exception as e:
             print(
                 f"⚠️ Expansão falhou ({e}) — continuando com roteiro atual"
@@ -290,6 +291,7 @@ Estratégia completa:
             f"(alvo: {target_seconds}s) — sem expansão"
         )
 
+    script = sync_script_from_keyed_sections(script)
     script = enrich_script_with_emotions(script)
 
     directed_script, director_decision = direct_script(script, strategy)
@@ -434,9 +436,9 @@ Texto atual ({section_key}):
     parsed = safe_parse_json(response)
 
     if isinstance(parsed, dict) and parsed.get(section_key):
-        return parsed[section_key]
+        return extract_section_text(parsed[section_key])
 
-    return section_text
+    return extract_section_text(section_text)
 
 
 def expand_script_in_sections(script, topic, strategy, target_words, roteiro_template="documentario"):
@@ -474,7 +476,7 @@ def expand_script_in_sections(script, topic, strategy, target_words, roteiro_tem
                 f"📝 Expandindo seção '{section}' (+~{words_to_add} palavras)..."
             )
 
-            old_text = script.get(section) or ""
+            old_text = extract_section_text(script.get(section))
 
             try:
                 new_text = expand_single_section(
@@ -488,6 +490,7 @@ def expand_script_in_sections(script, topic, strategy, target_words, roteiro_tem
                 print(f"⚠️ Falha ao expandir '{section}': {e}")
                 continue
 
+            new_text = extract_section_text(new_text)
             if count_words(new_text) > count_words(old_text):
                 script[section] = new_text
                 made_progress = True

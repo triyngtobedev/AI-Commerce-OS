@@ -6,6 +6,7 @@ Metadados de conteúdo não reescrevem a narração.
 """
 
 from scripts.core.platform_config import YOUTUBE_DARK
+from scripts.creative.script_parser import extract_section_text
 from scripts.youtube.lofi_dark_config import (
     LOFI_DARK_MAX_WORDS_PER_SENTENCE,
     LOFI_DARK_MIN_NARRATION_WORDS,
@@ -125,7 +126,7 @@ def stitch_script_to_narration(script: dict, use_transitions: bool = False) -> s
     transitions = _transitions_for(script)
 
     for key in sections:
-        text = (script.get(key) or "").strip()
+        text = extract_section_text(script.get(key))
 
         if not text:
             continue
@@ -160,7 +161,13 @@ def clean_script_phrases(script: dict) -> dict:
     }
 
     for key, text in script.items():
-        if key.startswith("_") or not isinstance(text, str):
+        if key.startswith("_"):
+            cleaned[key] = text
+            continue
+
+        if isinstance(text, dict):
+            text = extract_section_text(text)
+        elif not isinstance(text, str):
             cleaned[key] = text
             continue
 
@@ -186,6 +193,10 @@ def detect_banned_phrases(script: dict) -> list[str]:
     found = []
 
     for key, text in script.items():
+        if key.startswith("_"):
+            continue
+
+        text = extract_section_text(text) if isinstance(text, dict) else text
         if not isinstance(text, str):
             continue
 
@@ -217,7 +228,11 @@ def validate_sentence_length(
     warnings = []
 
     for key, text in script.items():
-        if key.startswith("_") or not isinstance(text, str):
+        if key.startswith("_"):
+            continue
+
+        text = extract_section_text(text) if isinstance(text, dict) else text
+        if not isinstance(text, str):
             continue
 
         clean = re.sub(r"\[PAUSA\]", "", text, flags=re.IGNORECASE)
@@ -253,7 +268,7 @@ def validate_scene_hooks(script: dict) -> list[str]:
         if key == "encerramento":
             continue
 
-        text = (script.get(key) or "").strip()
+        text = extract_section_text(script.get(key))
         if not text:
             continue
 

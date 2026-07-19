@@ -140,6 +140,38 @@ DEFAULT_CAMERA_BY_SECTION: dict[str, str] = {
     "encerramento": "slow_pull",
 }
 
+NARRATIVE_TEXT_KEYS = ("text", "narracao", "narrative", "conteudo", "content", "value")
+
+
+def extract_section_text(value: Any) -> str:
+    """
+    Extrai texto narrativo de seção em string ou dict (JSON estruturado do LLM).
+    """
+
+    if value is None:
+        return ""
+
+    if isinstance(value, str):
+        return value.strip()
+
+    if isinstance(value, dict):
+        for key in NARRATIVE_TEXT_KEYS:
+            candidate = value.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
+            if isinstance(candidate, dict):
+                nested = extract_section_text(candidate)
+                if nested:
+                    return nested
+
+        for candidate in value.values():
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
+
+        return ""
+
+    return str(value).strip()
+
 
 def _resolve_visual_intent(
     section_key: str,
@@ -188,7 +220,7 @@ def _normalize_section(raw: Any, index: int = 0) -> dict[str, Any]:
         }
 
     if isinstance(raw, dict):
-        text = (raw.get("text") or raw.get("narracao") or "").strip()
+        text = extract_section_text(raw.get("text") or raw.get("narracao") or raw)
         emotion = raw.get("emotion") or raw.get("tom") or "calm"
         intensity = float(raw.get("intensity", DEFAULT_INTENSITY_BY_EMOTION.get(emotion, 0.5)))
         section_key = raw.get("section_key") or raw.get("key") or f"section_{index}"
@@ -251,24 +283,34 @@ def _sections_from_keyed_dict(script: dict) -> list[dict[str, Any]]:
 
         if isinstance(raw, str):
             text = raw.strip()
-            if not text:
-                continue
-            emotion = DEFAULT_EMOTION_BY_SECTION.get(key, "calm")
-            sections.append({
-                "text": text,
-                "emotion": emotion,
-                "intensity": DEFAULT_INTENSITY_BY_EMOTION.get(emotion, 0.5),
-                "section_key": key,
-                "visual_intent": _resolve_visual_intent(key, emotion),
-                "camera_motion": _resolve_camera_motion(key, emotion),
-                "pause_before": 0.0,
-                "pause_after": 0.0,
-            })
         elif isinstance(raw, dict):
+            text = extract_section_text(raw)
+        else:
+            text = extract_section_text(raw)
+
+        if not text:
+            continue
+
+        if isinstance(raw, dict) and any(
+            field in raw for field in ("emotion", "intensity", "visual_intent", "camera_motion")
+        ):
             section = _normalize_section(raw, index)
             section["section_key"] = key
             if section["text"]:
                 sections.append(section)
+            continue
+
+        emotion = DEFAULT_EMOTION_BY_SECTION.get(key, "calm")
+        sections.append({
+            "text": text,
+            "emotion": emotion,
+            "intensity": DEFAULT_INTENSITY_BY_EMOTION.get(emotion, 0.5),
+            "section_key": key,
+            "visual_intent": _resolve_visual_intent(key, emotion),
+            "camera_motion": _resolve_camera_motion(key, emotion),
+            "pause_before": 0.0,
+            "pause_after": 0.0,
+        })
 
     return sections
 
@@ -333,6 +375,21 @@ def parse_script_sections(script: dict | list | str | None) -> dict[str, Any]:
         "format": fmt,
         "full_text": " ".join(s["text"] for s in sections),
     }
+
+
+def sync_script_from_keyed_sections(script: dict) -> dict:
+    """
+    Reconstrói sections[] a partir das chaves narrativas de topo.
+
+    Após expansão por seção, o array sections[] pode ficar desatualizado
+    enquanto hook/contexto/desenvolvimento etc. já foram ampliados.
+    """
+
+    updated = dict(script)
+    keyed_sections = _sections_from_keyed_dict(updated)
+    if keyed_sections:
+        updated["sections"] = keyed_sections
+    return updated
 
 
 def enrich_script_with_emotions(script: dict) -> dict:
