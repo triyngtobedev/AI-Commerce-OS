@@ -1,0 +1,35 @@
+name: Railway Smoke Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      railway_url:
+        description: URL base do Railway (ex. https://meu-app.railway.app)
+        required: true
+        type: string
+      skip_job:
+        description: Pular submissão de job (apenas health + auth)
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Railway smoke test
+        env:
+          RAILWAY_URL: ${{ inputs.railway_url }}
+          PIPELINE_API_KEY: ${{ secrets.PIPELINE_API_KEY }}
+        run: |
+          ARGS="--url $RAILWAY_URL"
+          if [ "${{ inputs.skip_job }}" = "true" ]; then
+            ARGS="$ARGS --skip-job"
+          fi
+          python scripts/cloud/smoke_test_railway.py $ARGS

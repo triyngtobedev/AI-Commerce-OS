@@ -151,3 +151,5 @@ class HealthResponse(BaseModel):
     version: str
     service: str = "ai-commerce-os-pipeline-api"
     auth_configured: bool = False
+    git_commit: str | None = None
+    persistent_storage: bool = False

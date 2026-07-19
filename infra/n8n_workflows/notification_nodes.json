@@ -1,0 +1,110 @@
+{
+  "_instrucoes": "Cole os nós abaixo nos workflows 01 e 03 substituindo os nós PLACEHOLDER de notificação. Escolha apenas um canal (Telegram OU Slack OU Email).",
+
+  "telegram_sucesso": {
+    "parameters": {
+      "resource": "message",
+      "operation": "sendMessage",
+      "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+      "text": "✅ *ai-commerce-os* — Pipeline concluído\n\n*Tópico:* {{ $json.topic }}\n*Template:* {{ $json.template }}\n*Job ID:* {{ $json.job_id }}\n*Duração:* {{ $json.duration_seconds }}s\n*Upload YT:* {{ $json.youtube_url || 'não enviado' }}",
+      "additionalFields": {
+        "parse_mode": "Markdown"
+      }
+    },
+    "name": "Telegram — sucesso",
+    "type": "n8n-nodes-base.telegram",
+    "typeVersion": 1,
+    "credentials": {
+      "telegramApi": {
+        "name": "Telegram Bot"
+      }
+    }
+  },
+
+  "telegram_falha": {
+    "parameters": {
+      "resource": "message",
+      "operation": "sendMessage",
+      "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+      "text": "❌ *ai-commerce-os* — Pipeline falhou\n\n*Job ID:* {{ $json.job_id }}\n*Status:* {{ $json.status }}\n*Erro:* {{ $json.error || 'ver stdout_tail' }}\n\nVerifique: {{ $env.RAILWAY_URL }}/api/v1/pipeline/status/{{ $json.job_id }}",
+      "additionalFields": {
+        "parse_mode": "Markdown"
+      }
+    },
+    "name": "Telegram — falha",
+    "type": "n8n-nodes-base.telegram",
+    "typeVersion": 1,
+    "credentials": {
+      "telegramApi": {
+        "name": "Telegram Bot"
+      }
+    }
+  },
+
+  "slack_sucesso": {
+    "parameters": {
+      "operation": "postMessage",
+      "channel": "={{ $env.SLACK_CHANNEL_ID }}",
+      "text": "",
+      "blocksUi": {
+        "blocksValues": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": ":white_check_mark: *Pipeline concluído*\n*Tópico:* {{ $json.topic }}\n*Template:* {{ $json.template }}\n*Job:* `{{ $json.job_id }}`\n*YT:* {{ $json.youtube_url || '_não enviado_' }}"
+            }
+          }
+        ]
+      }
+    },
+    "name": "Slack — sucesso",
+    "type": "n8n-nodes-base.slack",
+    "typeVersion": 2,
+    "credentials": {
+      "slackApi": {
+        "name": "Slack"
+      }
+    }
+  },
+
+  "slack_falha": {
+    "parameters": {
+      "operation": "postMessage",
+      "channel": "={{ $env.SLACK_CHANNEL_ID }}",
+      "text": ":x: *Pipeline falhou* — Job `{{ $json.job_id }}` | Status: {{ $json.status }}\nErro: {{ $json.error || 'ver logs no Railway' }}"
+    },
+    "name": "Slack — falha",
+    "type": "n8n-nodes-base.slack",
+    "typeVersion": 2,
+    "credentials": {
+      "slackApi": {
+        "name": "Slack"
+      }
+    }
+  },
+
+  "email_relatorio_semanal": {
+    "parameters": {
+      "fromEmail": "={{ $env.EMAIL_FROM }}",
+      "toEmail": "={{ $env.EMAIL_TO }}",
+      "subject": "ai-commerce-os — Relatório semanal {{ $now.format('DD/MM/YYYY') }}",
+      "emailType": "text",
+      "message": "={{ $json.report_content }}"
+    },
+    "name": "Email — relatório semanal",
+    "type": "n8n-nodes-base.emailSend",
+    "typeVersion": 2,
+    "credentials": {
+      "smtp": {
+        "name": "SMTP"
+      }
+    }
+  },
+
+  "_variaveis_necessarias": {
+    "Telegram": ["TELEGRAM_BOT_TOKEN (credencial n8n)", "TELEGRAM_CHAT_ID (var de ambiente n8n)"],
+    "Slack": ["SLACK_BOT_TOKEN (credencial n8n)", "SLACK_CHANNEL_ID (var de ambiente n8n)"],
+    "Email": ["SMTP host/user/pass (credencial n8n)", "EMAIL_FROM", "EMAIL_TO"]
+  }
+}

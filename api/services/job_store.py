@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sqlite3
 import threading
 from datetime import datetime, timezone
@@ -32,7 +33,11 @@ class JobStore:
 
     def __init__(self, db_path: Path | str | None = None) -> None:
         if db_path is None:
-            db_path = Path(__file__).resolve().parents[2] / "database" / "pipeline_jobs.db"
+            env_path = os.getenv("DATABASE_PATH", "").strip()
+            if env_path:
+                db_path = Path(env_path)
+            else:
+                db_path = Path(__file__).resolve().parents[2] / "database" / "pipeline_jobs.db"
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()

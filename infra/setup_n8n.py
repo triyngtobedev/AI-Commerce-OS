@@ -353,7 +353,9 @@ def main() -> int:
     setup_owner(client)
     cred_ids = ensure_credentials(client, env_main)
 
-    wf_files = sorted(WORKFLOWS_DIR.glob("*.json"))
+    wf_files = sorted(
+        p for p in WORKFLOWS_DIR.glob("*.json") if p.name != "notification_nodes.json"
+    )
     if not wf_files:
         print("Nenhum workflow em infra/n8n_workflows/", file=sys.stderr)
         return 1
@@ -378,5 +380,50 @@ def main() -> int:
     return 0
 
 
+def validate_railway_connection(env_main: dict[str, str]) -> bool:
+    """Valida conexão com Railway via health check."""
+    api_base = resolve_pipeline_api_url(env_main)
+    api_key = resolve_api_key(env_main)
+    url = f"{api_base.rstrip('/')}/api/v1/health"
+    print(f"\nValidando Railway: {url}")
+    try:
+        req = urllib.request.Request(url, headers={"X-API-Key": api_key} if api_key else {})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            body = json.loads(resp.read())
+            print(f"  OK — HTTP 200 | auth_configured={body.get('auth_configured')}")
+            if body.get("persistent_storage"):
+                print("  Volume persistente: montado")
+            return True
+    except urllib.error.HTTPError as exc:
+        print(f"  ERRO HTTP {exc.code}")
+        return False
+    except urllib.error.URLError as exc:
+        print(f"  ERRO de conexão: {exc.reason}")
+        return False
+
+
+def validate_youtube_oauth() -> None:
+    """Verifica presença de credenciais YouTube."""
+    env_youtube = ROOT / ".env.youtube"
+    print("\nYouTube OAuth:")
+    if not env_youtube.exists():
+        print("  .env.youtube não encontrado")
+        print("  Execute: python scripts/youtube/gerar_token.py")
+        return
+    env = load_env(env_youtube)
+    for var in ("YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN"):
+        status = "OK" if env.get(var) else "ausente"
+        print(f"  {var}: {status}")
+
+
+def run_validate_only() -> int:
+    env_main = load_env(ENV_MAIN)
+    ok_railway = validate_railway_connection(env_main)
+    validate_youtube_oauth()
+    return 0 if ok_railway else 1
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] in ("--validate", "-v"):
+        raise SystemExit(run_validate_only())
     raise SystemExit(main())
