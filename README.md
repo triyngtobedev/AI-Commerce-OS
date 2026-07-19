@@ -1,50 +1,50 @@
 # AI-Commerce-OS
 
-> Automated pipeline for **dark YouTube channels** — turns a topic into a finished 16:9 documentary-style video (~8 min) with narration, visuals, karaoke subtitles, and export-ready assets.
+> Pipeline automatizado para **canais dark no YouTube** — transforma um tema em vídeo documentário 16:9 (~8 min) com narração, visuais, legendas karaoke e assets prontos para publicação.
 
-## What It Does
+## O que o projeto faz
 
-AI-Commerce-OS runs an end-to-end **YouTube Dark** production pipeline:
+O AI-Commerce-OS executa um pipeline **YouTube Dark** de ponta a ponta:
 
-1. **Topic → script** — AI writes a documentary narrative (Gemini → Groq → OpenRouter fallback)
-2. **Script → scenes** — breaks into timed scenes with visual queries and emotional pacing
-3. **Scenes → media** — stock archives (Wikimedia, Pixabay, Pexels) or AI-generated stills (**Flux Schnell**) animated with **Ken Burns / parallax**
-4. **Narration** — **Edge TTS** (free neural PT-BR) with Azure SSML fallback
-5. **Subtitles** — **Whisper** word alignment → **ASS karaoke-style** captions (word-timed blocks + keyword highlights)
-6. **Render** — **FFmpeg** compositing, color grade, scene timeline sync
-7. **Export** — `video_final.mp4`, SRT/ASS, thumbnail, chapters, metadata
+1. **Tema → roteiro** — IA escreve narrativa documental (Gemini → Groq → OpenRouter como fallback)
+2. **Roteiro → cenas** — divide em cenas cronometradas com queries visuais e ritmo emocional
+3. **Cenas → mídia** — arquivos de stock (Wikimedia, Pixabay, Pexels) ou imagens geradas por IA (**Flux Schnell**) animadas com **Ken Burns / parallax**
+4. **Narração** — **Edge TTS** (voz neural PT-BR gratuita), com fallback Azure SSML
+5. **Legendas** — alinhamento por palavra com **Whisper** → legendas **ASS estilo karaoke** (blocos sincronizados + destaque de palavras-chave)
+6. **Render** — composição com **FFmpeg**, color grade e sincronização da timeline
+7. **Export** — `video_final.mp4`, SRT/ASS, thumbnail, capítulos e metadados
 
-Optional **T2V clips** (max **2 scenes per video**) are delegated to **n8n → Replicate Wan 2.6** when stock/photo animation is not enough.
+Clips **T2V** (máximo **2 cenas por vídeo**) são delegados ao **n8n → Replicate Wan 2.6** quando stock/foto animada não bastam.
 
-A legacy **TikTok Shop** pipeline (9:16 affiliate videos) still exists but the active focus is the dark YouTube channel workflow.
-
----
-
-## Tech Stack
-
-| Layer | Technology | Role |
-|-------|------------|------|
-| **API bridge** | [FastAPI](https://fastapi.tiangolo.com/) + uvicorn | HTTP endpoints for n8n triggers, job status, scene callbacks |
-| **Automation** | [n8n](https://n8n.io/) (Docker) | Scheduled pipeline runs + async T2V orchestration |
-| **Image AI** | Replicate / HF Router → **Flux Schnell** | Scene stills when stock fails |
-| **Video AI** | Replicate → **Wan 2.6** T2V | Up to 2 cinematic clips per video (720p, 5s) |
-| **Narration** | **Edge TTS** (+ Azure SSML fallback) | Neural PT-BR voiceover |
-| **Subtitle sync** | **faster-whisper** | Real word timestamps from final audio |
-| **Subtitles** | **ASS** (+ SRT export) | Karaoke-style blocks with keyword color highlights |
-| **Motion** | **Ken Burns / parallax** (FFmpeg) | Animates still images — no static slideshows |
-| **Render** | **FFmpeg** | Scene clips, concat, color grade, final mux |
-| **Script AI** | Gemini, Groq, OpenRouter | Analysis, scripts, content metadata |
+Existe também um pipeline legado **TikTok Shop** (9:16, vídeos de afiliados), mas o foco ativo é o fluxo de canal dark no YouTube.
 
 ---
 
-## n8n Integration Architecture
+## Stack atual
 
-n8n sits at the **edges** of the system — it triggers the pipeline and orchestrates expensive T2V generation. The Python pipeline (`main.py`) keeps working standalone via CLI.
+| Camada | Tecnologia | Função |
+|--------|------------|--------|
+| **API na nuvem** | [FastAPI](https://fastapi.tiangolo.com/) no [Railway](https://railway.app) | Endpoints HTTP para disparo, status de jobs, callbacks de cenas |
+| **Automação local** | [n8n](https://n8n.io/) (Docker) | Agendamento diário + orquestração assíncrona de T2V |
+| **Imagens IA** | Replicate / HF Router → **Flux Schnell** | Still frames quando stock falha |
+| **Vídeo IA** | Replicate → **Wan 2.6** T2V | Até 2 clips cinematográficos por vídeo (720p, 5s) |
+| **Narração** | **Edge TTS** (+ fallback Azure SSML) | Voiceover neural PT-BR |
+| **Sincronia de legendas** | **faster-whisper** | Timestamps reais por palavra a partir do áudio final |
+| **Legendas** | **ASS** (+ export SRT) | Blocos karaoke com destaque de palavras-chave |
+| **Motion** | **Ken Burns / parallax** (FFmpeg) | Anima stills — sem slideshow estático |
+| **Render** | **FFmpeg** | Clips, concat, color grade, mux final |
+| **Roteiro IA** | Gemini, Groq, OpenRouter | Análise, roteiros e metadados |
+
+---
+
+## Arquitetura com n8n
+
+O n8n fica nas **bordas** do sistema — dispara o pipeline e orquestra geração T2V cara. O pipeline Python (`main.py`) continua funcionando standalone via CLI.
 
 ```
 ┌─────────────┐     POST /api/v1/pipeline/run      ┌──────────────────┐
 │  n8n        │ ─────────────────────────────────► │  FastAPI :8000   │
-│  (Docker)   │                                    │  (uvicorn)       │
+│  (Docker)   │                                    │  (Railway/local) │
 │  Schedule   │ ◄── GET /pipeline/status/{id} ──── │                  │
 └──────┬──────┘                                    └────────┬─────────┘
        │                                                      │
@@ -63,34 +63,32 @@ n8n sits at the **edges** of the system — it triggers the pipeline and orchest
   (fallback: HF Router → fal.ai Wan2.2)
 ```
 
-### Flow (step by step)
+| Passo | Componente | Ação |
+|-------|------------|------|
+| 1 | n8n Schedule | `POST /api/v1/pipeline/run` com topic/platform |
+| 2 | FastAPI | Cria job, dispara subprocess `main.py` |
+| 3 | Pipeline | Cenas T2V: `request_scene_generation()` |
+| 4 | n8n Webhook | Orquestra Replicate Wan 2.6 → fallback HF Router |
+| 5 | n8n Callback | `POST /api/v1/scenes/callback` com `video_path` |
+| 6 | scene_waiter | Poll no job store até cena pronta |
+| 7 | Pipeline | Continua render FFmpeg (Ken Burns nas cenas de foto) |
 
-| Step | Component | Action |
-|------|-----------|--------|
-| 1 | n8n Schedule | `POST /api/v1/pipeline/run` with topic/platform |
-| 2 | FastAPI | Creates job, spawns `main.py` subprocess |
-| 3 | Pipeline | For scenes needing T2V: `request_scene_generation()` |
-| 4 | n8n Webhook | Orchestrates Replicate Wan 2.6 → HF Router fallback |
-| 5 | n8n Callback | `POST /api/v1/scenes/callback` with `video_path` |
-| 6 | scene_waiter | Polls job store until scene is ready |
-| 7 | Pipeline | Continues FFmpeg render (Ken Burns for photo scenes) |
+Ative delegação de cenas com `USE_N8N_FOR_SCENES=true` no `.env`.
 
-Enable n8n scene delegation with `USE_N8N_FOR_SCENES=true` in `.env`.
-
-Technical reference: [`docs/n8n_integration.md`](docs/n8n_integration.md)
+Referência técnica: [`docs/n8n_integration.md`](docs/n8n_integration.md)
 
 ---
 
-## Local Setup
+## Como rodar localmente
 
-### Prerequisites
+### Pré-requisitos
 
 - **Python 3.10+**
-- **FFmpeg** on `PATH`
-- **Docker** (for n8n)
-- API keys (see below)
+- **FFmpeg** no `PATH`
+- **Docker** (para n8n)
+- Chaves de API (veja abaixo)
 
-### 1. Clone and install
+### 1. Clone e instale
 
 ```bash
 git clone https://github.com/triyngtobedev/AI-Commerce-OS.git
@@ -104,44 +102,49 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-### 2. Configure `.env`
+### 2. Configure o `.env`
 
-Minimum for YouTube Dark production:
+Mínimo para produção YouTube Dark:
 
 ```env
-# AI (at least one required)
+# IA (pelo menos uma obrigatória)
 GEMINI_API_KEY=
 GROQ_API_KEY=
 
-# Image fallback — Flux Schnell via HF Router (free tier ~$0.10/mo)
+# Imagens — Flux Schnell via HF Router
 HF_API_TOKEN=
 
-# T2V — Replicate Wan 2.6 (used by n8n, max 2 scenes/video)
+# T2V — Replicate Wan 2.6 (usado pelo n8n, máx. 2 cenas/vídeo)
 REPLICATE_API_TOKEN=
 
-# Narration — Edge TTS works with no key; Azure optional
+# Narração — Edge TTS funciona sem chave; Azure opcional
 # AZURE_SPEECH_KEY=
 # AZURE_SPEECH_REGION=
 
-# Whisper subtitle alignment (optional model size)
+# Whisper (tamanho do modelo)
 WHISPER_MODEL_SIZE=small
 
-# n8n integration
+# Integração n8n
 USE_N8N_FOR_SCENES=false
-PIPELINE_API_KEY=your_secret_key
+PIPELINE_API_KEY=sua_chave_secreta
 PIPELINE_API_BASE_URL=http://127.0.0.1:8000
 N8N_CALLBACK_BASE_URL=http://host.docker.internal:8000
 N8N_SCENE_WEBHOOK_URL=http://localhost:5678/webhook/scene-generation
 N8N_WEBHOOK_SECRET=
+
+# YouTube OAuth (upload automático)
+YOUTUBE_CLIENT_ID=
+YOUTUBE_CLIENT_SECRET=
+YOUTUBE_REFRESH_TOKEN=
 ```
 
-Generate a random secret:
+Gere um segredo aleatório:
 
 ```bash
 openssl rand -hex 32
 ```
 
-### 3. Start n8n (Docker)
+### 3. Suba o n8n (Docker)
 
 ```bash
 cd infra
@@ -149,122 +152,184 @@ cp .env.n8n.example .env.n8n
 docker compose -f docker-compose.local.yml up -d
 ```
 
-Open **http://localhost:5678** and import workflows from `infra/n8n_workflows/`.
+Abra **http://localhost:5678** e importe os workflows de `infra/n8n_workflows/`.
 
-### 4. Start FastAPI (uvicorn)
+### 4. Inicie a FastAPI (uvicorn)
 
 ```bash
-# from project root
+# na raiz do projeto
 chmod +x api/run_api.sh
 ./api/run_api.sh
 ```
 
 Health check: `curl http://127.0.0.1:8000/api/v1/health`
 
-### 5. Run the pipeline
+### 5. Execute o pipeline
 
-**CLI (no n8n):**
+**CLI (sem n8n):**
 
 ```bash
 python main.py --platform youtube_dark
-python main.py --platform youtube_dark --research   # auto-discover topics
-python main.py --platform youtube_dark --upload       # publish to YouTube
+python main.py --platform youtube_dark --research   # descobrir temas automaticamente
+python main.py --platform youtube_dark --upload       # publicar no YouTube
 ```
 
-**Via API (n8n or manual):**
+**Via API local (n8n ou manual):**
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/pipeline/run \
-  -H "X-API-Key: YOUR_PIPELINE_API_KEY" \
+  -H "X-API-Key: SUA_PIPELINE_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"platform": "youtube_dark", "topic": "A verdade sobre a Biblioteca de Alexandria"}'
 ```
 
-Each run writes artifacts to `output/youtube_dark/<slug>/` including `video_final.mp4`, `captions.ass`, `legendas.srt`, and metadata JSONs.
+Cada execução grava artefatos em `output/youtube_dark/<slug>/`: `video_final.mp4`, `captions.ass`, `legendas.srt` e JSONs de metadados.
 
 ---
 
-## Cost Breakdown
+## Como disparar na nuvem via API
 
-The pipeline is optimized for **~$0.03 per video** on the default path:
+O processamento pesado (FFmpeg, Whisper, render) roda no **Railway**. Seu PC só envia o pedido e baixa o MP4.
 
-| Item | Cost | Notes |
-|------|------|-------|
-| Stock media (Wikimedia/Pixabay/Pexels) | $0.00 | Primary source for documentary scenes |
-| Flux Schnell images (HF Router) | ~$0.00–0.02 | Free tier credits; fallback when stock fails |
-| Ken Burns animation | $0.00 | FFmpeg — animates stills locally |
-| Edge TTS narration | $0.00 | Free neural voices |
-| Whisper alignment | $0.00 | Local CPU (`faster-whisper`) |
-| Gemini/Groq script AI | ~$0.01 | Cached responses reduce repeat cost |
-| **Typical total (images + Ken Burns)** | **~$0.03** | No T2V clips used |
+### Configuração (uma vez)
 
-**T2V budget cap:** at most **2 T2V scenes per video**, routed through n8n → Replicate Wan 2.6 (~$0.25/clip, 5s 720p). Remaining scenes use stock photos + Ken Burns. With 2 T2V clips the upper bound is ~$0.53/video; the default image-only path stays near $0.03.
+1. Deploy no Railway — guia: [`docs/deploy-railway.md`](docs/deploy-railway.md)
+2. URL de produção: `https://ai-commerce-os-production-b4f9.up.railway.app`
+3. No `.env` local:
+
+```env
+CLOUD_API_URL=https://ai-commerce-os-production-b4f9.up.railway.app
+CLOUD_API_KEY=<mesmo valor de PIPELINE_API_KEY no Railway>
+```
+
+### Disparar via cliente Python
+
+```bash
+python scripts/cloud/gerar_video.py --topic "A verdade sobre a Biblioteca de Alexandria"
+python scripts/cloud/gerar_video.py --topic "Seu tema" --production
+python scripts/cloud/gerar_video.py --topic "Seu tema" --template lofi_dark
+```
+
+### Disparar via curl (API direta)
+
+```bash
+curl -X POST https://ai-commerce-os-production-b4f9.up.railway.app/api/v1/pipeline/run \
+  -H "X-API-Key: SUA_CLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"platform": "youtube_dark", "topic": "Seu tema aqui"}'
+```
+
+Acompanhe o status:
+
+```bash
+curl https://ai-commerce-os-production-b4f9.up.railway.app/api/v1/pipeline/status/{job_id} \
+  -H "X-API-Key: SUA_CLOUD_API_KEY"
+```
+
+Automação diária (8h BRT): `.\infra\ativar-n8n.ps1` dispara o Railway a partir do n8n local.
 
 ---
 
-## Project Structure
+## Custo estimado
+
+Pipeline otimizado para **~$0,03 por vídeo** no caminho padrão (sem T2V):
+
+| Item | Custo | Observação |
+|------|-------|------------|
+| Stock (Wikimedia/Pixabay/Pexels) | $0,00 | Fonte principal para cenas documentais |
+| Flux Schnell (HF Router) | ~$0,00–0,02 | Créditos free tier; fallback quando stock falha |
+| Ken Burns (FFmpeg) | $0,00 | Anima stills localmente |
+| Edge TTS | $0,00 | Vozes neurais gratuitas |
+| Whisper | $0,00 | CPU local (`faster-whisper`) |
+| Gemini/Groq (roteiro) | ~$0,01 | Cache reduz custo em repetições |
+| **Total típico (imagens + Ken Burns)** | **~$0,03** | Sem clips T2V |
+
+**Teto T2V:** no máximo **2 cenas T2V por vídeo** via n8n → Replicate Wan 2.6 (~$0,25/clip, 5s 720p). Com 2 clips T2V o teto sobe para ~$0,53/vídeo; o caminho padrão só com imagens permanece perto de $0,03.
+
+---
+
+## YouTube OAuth — upload automático
+
+O upload automático para o YouTube está configurado via OAuth. Configure as variáveis `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` e `YOUTUBE_REFRESH_TOKEN` no `.env`.
+
+**Fluxo interativo (recomendado):**
+
+```bash
+python main.py --youtube-auth
+```
+
+**Script alternativo com JSON de credenciais:**
+
+```bash
+python scripts/youtube/gerar_token.py
+```
+
+**Validar conexão:**
+
+```bash
+python main.py --youtube-validate
+```
+
+**Publicar após gerar o vídeo:**
+
+```bash
+python main.py --platform youtube_dark --upload
+```
+
+Guia completo: [`docs/youtube_oauth.md`](docs/youtube_oauth.md)
+
+---
+
+## Estrutura do projeto
 
 ```
 AI-Commerce-OS/
-├── main.py                     # CLI entry point
-├── api/                        # FastAPI bridge (n8n + cloud)
+├── main.py                     # Entry point CLI
+├── api/                        # FastAPI bridge (n8n + nuvem)
 │   ├── main_api.py
 │   ├── routers/                # pipeline, scenes, youtube, analytics
-│   └── run_api.sh              # uvicorn launcher
+│   └── run_api.sh              # launcher uvicorn
 ├── src/
 │   ├── n8n_integration/        # scene_client, scene_waiter, config
-│   └── video_generator.py      # Replicate Wan 2.6 / Kling fallbacks
+│   └── video_generator.py      # Replicate Wan 2.6 / fallbacks Kling
 ├── scripts/
 │   ├── pipeline/youtube_pipeline.py
 │   ├── video/                  # scene_renderer, subtitle_engine, whisper_aligner
 │   ├── audio/                  # Edge TTS, narration engine
-│   └── youtube/                # YouTube-specific engines
+│   ├── youtube/                # engines YouTube
+│   └── cloud/                  # gerar_video.py — cliente Railway
 ├── infra/
 │   ├── docker-compose.local.yml  # n8n local (HTTP)
 │   └── n8n_workflows/          # trigger + scene orchestrator JSONs
-├── prompts/                    # AI prompt templates
-├── docs/                       # Detailed guides
-└── output/                     # Generated artifacts (gitignored)
+├── prompts/                    # templates de prompts IA
+├── docs/                       # guias detalhados
+└── output/                     # artefatos gerados (gitignored)
 ```
 
 ---
 
-## Documentation
+## Documentação
 
-| Guide | Description |
-|-------|-------------|
-| [`docs/n8n_integration.md`](docs/n8n_integration.md) | Full n8n setup (local + production VM) |
-| [`docs/ATIVAR-N8N.md`](docs/ATIVAR-N8N.md) | One-command daily automation |
-| [`docs/deploy-railway.md`](docs/deploy-railway.md) | Cloud deploy (Railway) |
-| [`docs/youtube_oauth.md`](docs/youtube_oauth.md) | YouTube upload OAuth |
-| [`docs/STATUS.md`](docs/STATUS.md) | Current project snapshot |
-| [`docs/aicommerceos-content-guide.md`](docs/aicommerceos-content-guide.md) | Dark channel content guide |
-
----
-
-## Cloud Deploy (Optional)
-
-Run heavy processing (FFmpeg, Whisper, render) on [Railway](https://railway.app) instead of your local machine:
-
-```bash
-# After Railway deploy (see docs/deploy-railway.md):
-python scripts/cloud/gerar_video.py --topic "Seu tema aqui"
-```
-
-Set `CLOUD_API_URL` and `CLOUD_API_KEY` in `.env` to match your Railway deployment.
-
-Daily automation: `.\infra\ativar-n8n.ps1` (Windows) triggers Railway from local n8n at 8h BRT.
+| Guia | Descrição |
+|------|-----------|
+| [`docs/n8n_integration.md`](docs/n8n_integration.md) | Setup n8n completo (local + VM produção) |
+| [`docs/ATIVAR-N8N.md`](docs/ATIVAR-N8N.md) | Automação diária em um comando |
+| [`docs/deploy-railway.md`](docs/deploy-railway.md) | Deploy na nuvem (Railway) |
+| [`docs/youtube_oauth.md`](docs/youtube_oauth.md) | OAuth e upload YouTube |
+| [`docs/STATUS.md`](docs/STATUS.md) | Snapshot atual do projeto |
+| [`docs/aicommerceos-content-guide.md`](docs/aicommerceos-content-guide.md) | Guia de conteúdo para canal dark |
 
 ---
 
 ## Status
 
-Functional end-to-end YouTube Dark pipeline with:
+Pipeline YouTube Dark funcional de ponta a ponta:
 
-- Stock + Flux Schnell images with Ken Burns motion
-- Edge TTS narration + Whisper-synced ASS karaoke subtitles
-- FFmpeg render (1920×1080, ~8 min)
-- FastAPI HTTP bridge + n8n scene orchestration (Replicate Wan 2.6)
-- Optional Railway cloud deploy and YouTube OAuth upload
+- Stock + Flux Schnell com motion Ken Burns
+- Narração Edge TTS + legendas ASS karaoke sincronizadas por Whisper
+- Render FFmpeg (1920×1080, ~8 min)
+- FastAPI no Railway + orquestração de cenas n8n (Replicate Wan 2.6)
+- YouTube OAuth configurado para upload automático
+- Custo padrão ~$0,03/vídeo
 
-See [`docs/STATUS.md`](docs/STATUS.md) for the latest snapshot.
+Veja [`docs/STATUS.md`](docs/STATUS.md) para o snapshot mais recente.
