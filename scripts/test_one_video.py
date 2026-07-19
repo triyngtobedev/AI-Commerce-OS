@@ -160,8 +160,8 @@ def _stage_tracker():
         def inner(*args, **kwargs):
             state["current"] = stage
             _stage_label(stage)
-            if stage == "footage" and len(args) > 1 and isinstance(args[1], dict):
-                cenas = args[1].get("cenas", [])
+            if stage == "footage" and args and isinstance(args[0], list):
+                cenas = args[0]
                 first = cenas[0] if cenas else None
                 print(
                     f"[DEBUG] footage: first scene type={type(first).__name__} "
@@ -178,7 +178,7 @@ def _stage_tracker():
         (pipeline, "generate_youtube_script", "script"),
         (pipeline, "generate_youtube_scenes", "scenes"),
         (pipeline, "create_audio", "audio"),
-        (pipeline, "run_media_pipeline", "footage"),
+        (pipeline, "get_footage_for_scenes", "footage"),
         (pipeline, "render_video_project", "render"),
     ]
 
