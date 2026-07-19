@@ -1,56 +1,24 @@
 """
-Visual Relevance Scorer — avaliação multimodal de candidatos por cena.
+Visual Relevance Scorer — ranking heurístico de candidatos por cena.
 
 Score determinístico cacheado por (asset_id, scene_hash).
-Modelo padrão: gemini-2.0-flash-lite (multimodal, free tier).
-Gemini atua como desempate/editor final sobre candidatos pré-filtrados pelo orchestrator.
+Sem chamadas de API: keyword match entre a cena e filename/tags/description do asset.
 """
 
 from __future__ import annotations
 
 import hashlib
-import os
-import tempfile
-from pathlib import Path
+import re
 from typing import Any, Optional
 
-from scripts.ai.gemini_quota import (
-    handle_gemini_error,
-    is_gemini_quota_exhausted,
-    record_gemini_call,
-)
 from scripts.utils.ai_cache import load_cache, save_cache
-from scripts.utils.json_parser import safe_parse_json
-from scripts.video.media_downloader import download_file, select_photo_url
 
-VISUAL_SCORE_MODEL = os.getenv("VISUAL_SCORE_MODEL", "gemini-2.0-flash-lite")
 HARD_PENALTY = 40
 MIN_VIDEO_WIDTH = 1920
 MIN_VIDEO_HEIGHT = 1080
 MIN_PHOTO_WIDTH = 1600
-TOP_CANDIDATES = int(os.getenv("VISUAL_SCORE_TOP_N", "2"))
+TOP_CANDIDATES = int(__import__("os").getenv("VISUAL_SCORE_TOP_N", "2"))
 FALLBACK_KEEP = 3
-
-_SCORE_PROMPT = """Avalie a relevância visual deste asset para a cena documentária.
-
-Frase da cena: "{scene_phrase}"
-Tipo de mídia: {media_type}
-
-Penalize HARD (-40 cada, inclua em hard_penalty_reasons):
-- pessoa olhando para câmera sorrindo (stock genérico)
-- watermark visível
-- baixa resolução perceptível
-
-Retorne APENAS JSON estrito:
-{{
-  "relevance": 0-100,
-  "literal_match": 0-100,
-  "conceptual_match": 0-100,
-  "visual_quality": 0-100,
-  "on_brand_documentary": 0-100,
-  "hard_penalty_reasons": [],
-  "reason": "1 frase"
-}}"""
 
 
 def scene_hash(scene: dict) -> str:
@@ -97,25 +65,6 @@ def _resolution_penalty(item: dict, media_type: str) -> tuple[int, list[str]]:
     return 0, reasons
 
 
-def preview_url(item: dict, media_type: str) -> Optional[str]:
-    if media_type in ("photo", "image"):
-        return select_photo_url(item)
-
-    image = item.get("image")
-    if image:
-        return image
-
-    pictures = item.get("video_pictures") or []
-    if pictures:
-        first = pictures[0]
-        if isinstance(first, dict):
-            return first.get("picture") or first.get("nr")
-        if isinstance(first, str):
-            return first
-
-    return select_photo_url(item)
-
-
 def compute_final_score(scores: dict, metadata_penalty: int = 0) -> float:
     conceptual = float(scores.get("conceptual_match", 0))
     literal = float(scores.get("literal_match", 0))
@@ -129,86 +78,72 @@ def compute_final_score(scores: dict, metadata_penalty: int = 0) -> float:
     return max(0.0, min(100.0, final))
 
 
+def _asset_search_text(item: dict) -> str:
+    tags = item.get("tags", [])
+    if isinstance(tags, list):
+        tags_text = " ".join(str(t) for t in tags)
+    else:
+        tags_text = str(tags or "")
+
+    parts = [
+        tags_text,
+        item.get("alt", ""),
+        item.get("description", ""),
+        item.get("title", ""),
+        item.get("url", ""),
+        item.get("pageURL", ""),
+        item.get("page_url", ""),
+        item.get("credit", ""),
+        item.get("photographer", ""),
+    ]
+    user = item.get("user")
+    if isinstance(user, dict):
+        parts.append(user.get("name", ""))
+
+    return " ".join(str(p) for p in parts if p).lower()
+
+
+def _scene_keywords(scene_text: str) -> list[str]:
+    words = re.findall(r"[a-zà-ú0-9]{3,}", scene_text.lower())
+    seen: set[str] = set()
+    keywords: list[str] = []
+    for word in words:
+        if word not in seen:
+            seen.add(word)
+            keywords.append(word)
+    return keywords
+
+
 def _heuristic_score(
     scene_text: str,
     item: dict,
     *,
     orchestrator_score: float = 0.0,
     metadata_penalty: int = 0,
-    reason: str = "heuristic fallback (sem Gemini)",
+    reason: str = "keyword heuristic",
 ) -> dict:
-    tags = " ".join(item.get("tags", [])).lower()
-    text = scene_text.lower()
-    overlap = sum(1 for word in text.split() if len(word) > 4 and word in tags)
-    base = max(orchestrator_score * 100, 40.0) + overlap * 5
+    haystack = _asset_search_text(item)
+    keywords = _scene_keywords(scene_text)
+    overlap = sum(1 for word in keywords if word in haystack)
+
+    base = max(orchestrator_score * 100, 35.0)
+    literal = min(100.0, base + overlap * 8)
+    conceptual = min(100.0, base + overlap * 6)
+    quality = min(100.0, 50 + (int(item.get("width", 0) or 0) / 40))
+    on_brand = min(100.0, base * 0.8 + overlap * 4)
+
     scores = {
-        "relevance": min(100.0, base),
-        "literal_match": min(100.0, base * 0.9),
-        "conceptual_match": min(100.0, base * 0.85),
-        "visual_quality": min(100.0, 50 + (item.get("width", 0) / 40)),
-        "on_brand_documentary": min(100.0, base * 0.8),
+        "relevance": min(100.0, (literal + conceptual) / 2),
+        "literal_match": literal,
+        "conceptual_match": conceptual,
+        "visual_quality": quality,
+        "on_brand_documentary": on_brand,
         "hard_penalty_reasons": [],
         "reason": reason,
+        "keyword_overlap": overlap,
     }
     scores["final_score"] = compute_final_score(scores, metadata_penalty)
     return scores
-
-
-def _call_gemini_multimodal(
-    scene_text: str,
-    image_path: Path,
-    *,
-    media_type: str,
-) -> Optional[dict]:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        return None
-
-    if is_gemini_quota_exhausted():
-        record_gemini_call(
-            stage="visual_score",
-            model=VISUAL_SCORE_MODEL,
-            fallback=True,
-        )
-        print("[Visual Score] Quota Gemini esgotada — heuristic fallback")
-        return None
-
-    try:
-        from google import genai
-        from google.genai import types
-
-        client = genai.Client(api_key=api_key)
-        image_bytes = image_path.read_bytes()
-        mime = "image/jpeg"
-        if image_path.suffix.lower() == ".png":
-            mime = "image/png"
-
-        prompt = _SCORE_PROMPT.format(
-            scene_phrase=scene_text[:400],
-            media_type=media_type,
-        )
-
-        response = client.models.generate_content(
-            model=VISUAL_SCORE_MODEL,
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_text(text=prompt),
-                        types.Part.from_bytes(data=image_bytes, mime_type=mime),
-                    ],
-                )
-            ],
-        )
-        record_gemini_call(stage="visual_score", model=VISUAL_SCORE_MODEL)
-        parsed = safe_parse_json(response.text)
-        if isinstance(parsed, dict):
-            return parsed
-    except Exception as error:
-        handle_gemini_error(error, stage="visual_score")
-        return None
-
-    return None
 
 
 def score_candidate(
@@ -232,33 +167,16 @@ def score_candidate(
             return cached
 
     meta_penalty, meta_reasons = _resolution_penalty(item, media_type)
-    url = preview_url(item, media_type)
+    scores = _heuristic_score(
+        phrase,
+        item,
+        orchestrator_score=orchestrator_score,
+        metadata_penalty=meta_penalty,
+    )
 
-    scores: Optional[dict] = None
-    fallback_reason = "heuristic fallback (sem Gemini)"
-    if is_gemini_quota_exhausted():
-        fallback_reason = "heuristic fallback (quota Gemini esgotada)"
-
-    if url and not is_gemini_quota_exhausted():
-        with tempfile.TemporaryDirectory() as tmp:
-            preview_path = Path(tmp) / "preview.jpg"
-            if _download_preview(url, preview_path):
-                scores = _call_gemini_multimodal(
-                    phrase, preview_path, media_type=media_type,
-                )
-
-    if not scores:
-        scores = _heuristic_score(
-            phrase,
-            item,
-            orchestrator_score=orchestrator_score,
-            metadata_penalty=meta_penalty,
-            reason=fallback_reason,
-        )
-    else:
-        if meta_reasons:
-            existing = scores.get("hard_penalty_reasons") or []
-            scores["hard_penalty_reasons"] = list(set(existing + meta_reasons))
+    if meta_reasons:
+        existing = scores.get("hard_penalty_reasons") or []
+        scores["hard_penalty_reasons"] = list(set(existing + meta_reasons))
         scores["final_score"] = compute_final_score(scores, meta_penalty)
 
     scores["asset_id"] = asset_cache_key(item, media_type, provider)
@@ -272,14 +190,6 @@ def score_candidate(
         save_cache("visual_score", cache_name, scores, prefix="vs")
 
     return scores
-
-
-def _download_preview(url: str, dest: Path) -> bool:
-    try:
-        download_file(url, dest, timeout=20)
-        return dest.exists() and dest.stat().st_size > 1024
-    except Exception:
-        return False
 
 
 def rank_candidates_with_visual_score(

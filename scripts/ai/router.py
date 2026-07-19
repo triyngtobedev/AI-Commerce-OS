@@ -1,43 +1,19 @@
 import os
-import time
 
 from dotenv import load_dotenv
 from groq import Groq
 
-from scripts.ai.gemini_quota import (
-    handle_gemini_error,
-    is_daily_quota_exhausted,
-    is_gemini_quota_exhausted,
-    mark_gemini_quota_exhausted,
-    record_gemini_call,
-)
-from scripts.ai.providers.gemini import generate as gemini_generate
 from scripts.ai.providers.openrouter import generate as openrouter_generate
 
 load_dotenv()
 
 _groq_client = None
 
+GROQ_MODEL_DEFAULT = "llama-3.1-8b-instant"
+GROQ_MODEL_SCRIPT = "llama-3.3-70b-versatile"
+OPENROUTER_MODEL = "mistralai/mistral-7b-instruct-v0.2"
 
-def _get_groq_client() -> Groq:
-    global _groq_client
-    if _groq_client is None:
-        api_key = os.getenv("GROQ_API_KEY", "").strip()
-        if not api_key:
-            raise Exception("GROQ_API_KEY não configurada")
-        _groq_client = Groq(api_key=api_key)
-    return _groq_client
-
-GROQ_MODELS_FALLBACK = [
-    "llama-3.3-70b-versatile",   # primário (12k TPM)
-    "llama-3.1-8b-instant",      # substituto do llama3-8b (maior contexto)
-    "gemma2-9b-it",              # terceiro fallback
-]
-
-GEMINI_MODEL_PRIMARY = "gemini-2.0-flash"
-GEMINI_MODEL_LITE = "gemini-2.0-flash-lite"
-
-PRIMARY_GEMINI_CONTEXTS = {"script_generation"}
+SCRIPT_GENERATION_CONTEXTS = {"script_generation"}
 
 GROQ_MAX_TOKENS = {
     "script_generation": 16384,
@@ -48,10 +24,15 @@ GROQ_MAX_TOKENS = {
     "content_generation": 4096,
 }
 
-def _gemini_model_for(context_type: str) -> str:
-    if context_type in PRIMARY_GEMINI_CONTEXTS:
-        return GEMINI_MODEL_PRIMARY
-    return GEMINI_MODEL_LITE
+
+def _get_groq_client() -> Groq:
+    global _groq_client
+    if _groq_client is None:
+        api_key = os.getenv("GROQ_API_KEY", "").strip()
+        if not api_key:
+            raise Exception("GROQ_API_KEY não configurada")
+        _groq_client = Groq(api_key=api_key)
+    return _groq_client
 
 
 def _is_rate_limit_error(error: Exception) -> bool:
@@ -86,6 +67,13 @@ def _groq_error_details(error: Exception) -> str:
     return f"status={status} error={str(error)[:500]}"
 
 
+def _groq_models_for(context_type: str) -> list[str]:
+    models = [GROQ_MODEL_DEFAULT]
+    if context_type in SCRIPT_GENERATION_CONTEXTS:
+        models.append(GROQ_MODEL_SCRIPT)
+    return models
+
+
 def _groq_complete(prompt: str, model: str, context_type: str = "") -> str:
     max_tokens = GROQ_MAX_TOKENS.get(context_type, 4096)
     completion = _get_groq_client().chat.completions.create(
@@ -113,41 +101,13 @@ def _openrouter_complete(prompt: str) -> str:
         raise Exception("OPENROUTER_API_KEY não configurada")
 
     print("[OpenRouter] Tentando fallback OpenRouter...")
-    return openrouter_generate(prompt)
+    return openrouter_generate(prompt, model=OPENROUTER_MODEL)
 
 
 def ask_ai(prompt, context_type):
-    gemini_model = _gemini_model_for(context_type)
-
-    if not is_gemini_quota_exhausted():
-        print("[AI Router] Tentando: gemini")
-        try:
-            result = gemini_generate(prompt, model=gemini_model)
-            record_gemini_call(stage="text_generation", model=gemini_model)
-            return result
-        except Exception as gemini_error:
-            print(
-                f"⚠️ Gemini indisponível ({gemini_model}, {gemini_error}), tentando Groq..."
-            )
-            if is_daily_quota_exhausted(gemini_error):
-                mark_gemini_quota_exhausted(gemini_error)
-            else:
-                handle_gemini_error(gemini_error, stage="text_generation")
-            if _is_rate_limit_error(gemini_error) and not is_daily_quota_exhausted(gemini_error):
-                print("[Gemini] Quota/rate limit detectado — aguardando 60s...")
-                time.sleep(60)
-    else:
-        print("[AI Router] Gemini quota esgotada — usando Groq direto")
-        record_gemini_call(
-            stage="text_generation",
-            model=gemini_model,
-            fallback=True,
-        )
-
-    # 2. Tenta Groq com fallback de modelos
     last_error = None
 
-    for model in GROQ_MODELS_FALLBACK:
+    for model in _groq_models_for(context_type):
         print(f"[AI Router] Tentando: groq/{model}")
         try:
             return _groq_complete(prompt, model, context_type)
@@ -158,7 +118,7 @@ def ask_ai(prompt, context_type):
             if _is_request_too_large(error):
                 print(
                     f"[Groq] Prompt grande demais para {model}, "
-                    "tentando modelo com contexto maior..."
+                    "tentando próximo modelo..."
                 )
                 continue
 
@@ -168,8 +128,7 @@ def ask_ai(prompt, context_type):
 
             print(f"[Groq/{model}] Falha — tentando próximo modelo...")
 
-    # 3. Tenta OpenRouter
-    print("[AI Router] Tentando: openrouter")
+    print(f"[AI Router] Tentando: openrouter/{OPENROUTER_MODEL}")
     print("⚠️ Groq indisponível, tentando OpenRouter...")
     try:
         return _openrouter_complete(prompt)
@@ -194,7 +153,6 @@ class AIRouter:
         from scripts.core.feature_flags import sprint30_flags_snapshot
 
         ai = {
-            "gemini": _has_key("GEMINI_API_KEY"),
             "groq": _has_key("GROQ_API_KEY"),
             "openrouter": _has_key("OPENROUTER_API_KEY"),
         }
@@ -211,7 +169,7 @@ class AIRouter:
 
         missing: list[str] = []
         if not any(ai.values()):
-            missing.append("IA: defina GEMINI_API_KEY, GROQ_API_KEY ou OPENROUTER_API_KEY")
+            missing.append("IA: defina GROQ_API_KEY ou OPENROUTER_API_KEY")
         if not (footage["pexels"] or footage["pixabay"]):
             missing.append(
                 "Footage opcional: PEXELS_API_KEY ou PIXABAY_API_KEY "

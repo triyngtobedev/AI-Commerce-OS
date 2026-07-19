@@ -1,4 +1,4 @@
-"""Testes do fallback Gemini → Groq → OpenRouter."""
+"""Testes do fallback Groq → OpenRouter."""
 
 import importlib
 import os
@@ -14,56 +14,25 @@ os.environ.setdefault("GROQ_API_KEY", "test-groq-key")
 router = importlib.import_module("scripts.ai.router")
 
 
-class TestGeminiQuotaShared(unittest.TestCase):
-    def setUp(self):
-        from scripts.ai.gemini_quota import reset_gemini_metrics
-        reset_gemini_metrics(reset_quota=True)
-
-    @patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-openrouter-key"})
-    @patch.object(router, "openrouter_generate")
-    @patch.object(router, "_groq_complete")
-    @patch.object(router, "gemini_generate")
-    def test_daily_quota_marks_shared_state(
-        self, mock_gemini, mock_groq, mock_openrouter
-    ):
-        from scripts.ai.gemini_quota import is_gemini_quota_exhausted
-
-        mock_gemini.side_effect = Exception("limit: 0 daily quota")
-        mock_groq.return_value = "Resposta do Groq"
-        mock_openrouter.return_value = "Resposta do OpenRouter"
-
-        router.ask_ai("test prompt", "analysis")
-        self.assertTrue(is_gemini_quota_exhausted())
-
-
 class TestAiRouterFallback(unittest.TestCase):
-    def setUp(self):
-        from scripts.ai.gemini_quota import reset_gemini_metrics
-        reset_gemini_metrics(reset_quota=True)
-    @patch.object(router, "time")
     @patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-openrouter-key"})
     @patch.object(router, "openrouter_generate")
     @patch.object(router, "_groq_complete")
-    @patch.object(router, "gemini_generate")
-    def test_fallback_to_openrouter_when_gemini_and_groq_fail(
-        self, mock_gemini, mock_groq, mock_openrouter, _mock_time
+    def test_fallback_to_openrouter_when_groq_fails(
+        self, mock_groq, mock_openrouter
     ):
-        mock_gemini.side_effect = Exception("Gemini quota exceeded")
         mock_groq.side_effect = Exception("Groq rate limit 429")
         mock_openrouter.return_value = "Resposta do OpenRouter"
 
         result = router.ask_ai("test prompt", "analysis")
 
         self.assertEqual(result, "Resposta do OpenRouter")
-        mock_gemini.assert_called_once()
-        self.assertEqual(mock_groq.call_count, 3)
-        mock_openrouter.assert_called_once_with("test prompt")
+        mock_groq.assert_called_once_with("test prompt", "llama-3.1-8b-instant", "analysis")
+        mock_openrouter.assert_called_once_with("test prompt", model=router.OPENROUTER_MODEL)
 
     @patch.dict("os.environ", {"OPENROUTER_API_KEY": ""}, clear=False)
     @patch.object(router, "_groq_complete")
-    @patch.object(router, "gemini_generate")
-    def test_raises_when_all_providers_fail(self, mock_gemini, mock_groq):
-        mock_gemini.side_effect = Exception("Gemini down")
+    def test_raises_when_all_providers_fail(self, mock_groq):
         mock_groq.side_effect = Exception("Groq down")
 
         with self.assertRaises(Exception) as ctx:
@@ -74,16 +43,27 @@ class TestAiRouterFallback(unittest.TestCase):
     @patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-openrouter-key"})
     @patch.object(router, "openrouter_generate")
     @patch.object(router, "_groq_complete")
-    @patch.object(router, "gemini_generate")
-    def test_gemini_success_skips_fallbacks(
-        self, mock_gemini, mock_groq, mock_openrouter
-    ):
-        mock_gemini.return_value = "Resposta do Gemini"
+    def test_groq_success_skips_openrouter(self, mock_groq, mock_openrouter):
+        mock_groq.return_value = "Resposta do Groq"
 
         result = router.ask_ai("test prompt", "analysis")
 
-        self.assertEqual(result, "Resposta do Gemini")
-        mock_groq.assert_not_called()
+        self.assertEqual(result, "Resposta do Groq")
+        mock_openrouter.assert_not_called()
+
+    @patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-openrouter-key"})
+    @patch.object(router, "openrouter_generate")
+    @patch.object(router, "_groq_complete")
+    def test_script_generation_tries_both_groq_models(self, mock_groq, mock_openrouter):
+        mock_groq.side_effect = [
+            Exception("Groq rate limit 429"),
+            "Resposta do Groq 70B",
+        ]
+
+        result = router.ask_ai("test prompt", "script_generation")
+
+        self.assertEqual(result, "Resposta do Groq 70B")
+        self.assertEqual(mock_groq.call_count, 2)
         mock_openrouter.assert_not_called()
 
 

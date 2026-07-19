@@ -69,7 +69,7 @@ class TestAIRouterHealth(unittest.TestCase):
 
     @patch.dict(
         os.environ,
-        {"GEMINI_API_KEY": "x"},
+        {"GROQ_API_KEY": "x"},
         clear=True,
     )
     def test_health_ready_minimal(self):
@@ -165,14 +165,10 @@ class TestVisualRelevanceScorer(unittest.TestCase):
         self.assertEqual(len(ranked), 2)
         self.assertIn("visual_score", ranked[0])
 
-    @patch.dict(os.environ, {}, clear=True)
-    def test_rank_skips_gemini_when_quota_exhausted(self):
-        from scripts.ai.gemini_quota import mark_gemini_quota_exhausted, reset_gemini_metrics
+    def test_rank_uses_keyword_heuristic(self):
         from importlib import reload
         import scripts.scoring.visual_relevance_scorer as scorer
 
-        reset_gemini_metrics(reset_quota=True)
-        mark_gemini_quota_exhausted(Exception("limit: 0"))
         reload(scorer)
 
         scene = {"tipo": "hook", "narracao": "ancient ruins mystery"}
@@ -188,7 +184,8 @@ class TestVisualRelevanceScorer(unittest.TestCase):
             candidates, scene, use_cache=False,
         )
         self.assertEqual(len(ranked), 1)
-        self.assertIn("quota Gemini esgotada", ranked[0]["visual_breakdown"]["reason"])
+        self.assertIn("keyword heuristic", ranked[0]["visual_breakdown"]["reason"])
+        self.assertGreater(ranked[0]["visual_breakdown"].get("keyword_overlap", 0), 0)
 
 
 class TestGeminiQuotaMetrics(unittest.TestCase):

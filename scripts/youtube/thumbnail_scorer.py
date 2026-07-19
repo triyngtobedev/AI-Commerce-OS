@@ -1,36 +1,16 @@
 """
 Thumbnail Scorer — estima CTR e legibilidade de variações de thumbnail.
+
+Thumbnail scoring disabled — Gemini removed.
+SPRINT30_THUMBNAIL_AB=false (default) skips this path; heuristic contrast only when called.
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any, Optional
 
-from scripts.ai.gemini_quota import (
-    handle_gemini_error,
-    is_gemini_quota_exhausted,
-    record_gemini_call,
-)
-from scripts.utils.json_parser import safe_parse_json
-
-THUMBNAIL_SCORE_MODEL = os.getenv("VISUAL_SCORE_MODEL", "gemini-2.0-flash-lite")
 MIN_TEXT_LEGIBILITY = 70
-
-_SCORE_PROMPT = """Avalie esta thumbnail para YouTube dark documentário.
-
-Título do vídeo: "{title}"
-Variação: {variant} — {concept}
-
-Retorne APENAS JSON:
-{{
-  "ctr_estimate": 0-100,
-  "clarity": 0-100,
-  "curiosity_gap": 0-100,
-  "text_legibility": 0-100,
-  "reason": "1 frase"
-}}"""
 
 
 def _heuristic_score(path: Path, *, variant: str) -> dict:
@@ -44,69 +24,8 @@ def _heuristic_score(path: Path, *, variant: str) -> dict:
         "clarity": min(100.0, base),
         "curiosity_gap": min(100.0, base * 0.85 + variant_boost),
         "text_legibility": min(100.0, 55 + variant_boost * 3),
-        "reason": "heuristic contrast score",
+        "reason": "heuristic contrast score (Gemini removed)",
     }
-
-
-def _call_gemini_score(
-    image_path: Path,
-    *,
-    title: str,
-    variant: str,
-    concept: str,
-) -> Optional[dict]:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        return None
-
-    if is_gemini_quota_exhausted():
-        record_gemini_call(
-            stage="thumbnail",
-            model=THUMBNAIL_SCORE_MODEL,
-            fallback=True,
-        )
-        print("[Thumbnail Score] Quota Gemini esgotada — heuristic fallback")
-        return None
-
-    try:
-        from google import genai
-        from google.genai import types
-
-        client = genai.Client(api_key=api_key)
-        mime = "image/jpeg"
-        if image_path.suffix.lower() == ".png":
-            mime = "image/png"
-
-        prompt = _SCORE_PROMPT.format(
-            title=title[:120],
-            variant=variant,
-            concept=concept[:120],
-        )
-
-        response = client.models.generate_content(
-            model=THUMBNAIL_SCORE_MODEL,
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_text(text=prompt),
-                        types.Part.from_bytes(
-                            data=image_path.read_bytes(),
-                            mime_type=mime,
-                        ),
-                    ],
-                )
-            ],
-        )
-        record_gemini_call(stage="thumbnail", model=THUMBNAIL_SCORE_MODEL)
-        parsed = safe_parse_json(response.text)
-        if isinstance(parsed, dict):
-            return parsed
-    except Exception as error:
-        handle_gemini_error(error, stage="thumbnail")
-        return None
-
-    return None
 
 
 def score_thumbnail(
@@ -118,14 +37,7 @@ def score_thumbnail(
 ) -> dict:
     """Pontua uma thumbnail. Retorna breakdown + composite score."""
 
-    scores = _call_gemini_score(
-        image_path,
-        title=title,
-        variant=variant,
-        concept=concept,
-    )
-    if not scores:
-        scores = _heuristic_score(image_path, variant=variant)
+    scores = _heuristic_score(image_path, variant=variant)
 
     composite = (
         float(scores.get("ctr_estimate", 0)) * 0.35

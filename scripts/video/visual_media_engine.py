@@ -90,7 +90,6 @@ from scripts.scoring.visual_relevance_scorer import (
     rank_candidates_with_visual_score,
 )
 from scripts.core.feature_flags import sprint30_visual_score
-from scripts.ai.gemini_quota import is_gemini_quota_exhausted
 from scripts.video.editorial_fallback import execute_editorial_fallback
 from scripts.video.t2v_decision import T2VDecision, T2VTracker, evaluate_t2v_decision
 
@@ -971,9 +970,7 @@ def _try_orchestrated_stock(
         print(f"  ⚠️ Cena {scene_num}: orchestrator retornou 0 candidatos")
         return None
 
-    use_visual_score = sprint30_visual_score() and not is_gemini_quota_exhausted()
-    if sprint30_visual_score() and is_gemini_quota_exhausted():
-        print("  ⚠️ Quota Gemini esgotada — visual score via orchestrator (sem Gemini)")
+    use_visual_score = sprint30_visual_score()
 
     scored_candidates = rank_candidates_with_visual_score(
         candidates,

@@ -3,7 +3,7 @@
 Roda o pipeline YouTube Dark completo para UM vídeo de teste.
 
 Providers gratuitos apenas:
-  LLM     → Gemini + Groq
+  LLM     → Groq (+ OpenRouter fallback)
   Footage → Wikimedia + Pixabay (sem Pexels)
   TTS     → Edge TTS (fallback gratuito)
 
@@ -11,6 +11,10 @@ Uso:
   python3 scripts/test_one_video.py
   python3 scripts/test_one_video.py --topic "Outro Tema"
   python3 scripts/test_one_video.py --force
+
+Railway (WebSocket pode cair — rode detached e acompanhe o log):
+  nohup python3 scripts/test_one_video.py >> /app/persistent/logs/test_video.log 2>&1 &
+  python3 scripts/check_video_progress.py
 """
 
 from __future__ import annotations
@@ -23,6 +27,8 @@ import traceback
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
+
+LOG_PATH = Path("/app/persistent/logs/test_video.log")
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -42,6 +48,33 @@ def _load_env() -> None:
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
+
+
+class _TeeStream:
+    """Espelha stdout/stderr para arquivo persistente (Railway WebSocket)."""
+
+    def __init__(self, stream, log_file):
+        self._stream = stream
+        self._log_file = log_file
+
+    def write(self, data):
+        self._stream.write(data)
+        self._log_file.write(data)
+        self._log_file.flush()
+
+    def flush(self):
+        self._stream.flush()
+        self._log_file.flush()
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+
+def _setup_persistent_logging() -> None:
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    log_file = LOG_PATH.open("a", encoding="utf-8")
+    sys.stdout = _TeeStream(sys.stdout, log_file)
+    sys.stderr = _TeeStream(sys.stderr, log_file)
 
 DEFAULT_TOPIC = "Os Mistérios das Pirâmides de Gizé"
 
@@ -95,7 +128,7 @@ def _preflight_keys() -> None:
     if not health.get("ai_any"):
         raise RuntimeError(
             "Nenhuma chave de IA configurada. "
-            "Defina GEMINI_API_KEY e/ou GROQ_API_KEY (env vars ou .env local)."
+            "Defina GROQ_API_KEY (env vars ou .env local)."
         )
 
     footage = health.get("footage", {})
@@ -165,7 +198,7 @@ def _resolve_video_path(topic: str, results: list) -> Path | None:
 def run_test_video(topic: str, *, force: bool = False) -> Path:
     _banner("YouTube Dark — teste de 1 vídeo (free providers)")
     print(f"Tema: {topic}")
-    print("Providers: Gemini+Groq | Wikimedia+Pixabay | Edge TTS")
+    print("Providers: Groq | Wikimedia+Pixabay | Edge TTS")
     print(f"Etapas: {' → '.join(STAGE_ORDER)}")
 
     _load_env()
@@ -204,6 +237,8 @@ def run_test_video(topic: str, *, force: bool = False) -> Path:
 
 
 def main() -> int:
+    _setup_persistent_logging()
+
     parser = argparse.ArgumentParser(
         description="Pipeline YouTube Dark — um vídeo de teste (providers gratuitos)",
     )
