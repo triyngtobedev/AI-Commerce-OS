@@ -102,5 +102,155 @@
         "angulo_sugerido": "fato_surpreendente",
         "gancho": "Durante a Segunda Guerra Mundial, existiu uma unidade militar americana composta por artistas, designers e ilusionistas, cujo trabalho era... fingir. Eles usaram tanques infláveis e trilhas sonoras falsas para enganar o exército nazista. Conheça a inacreditável história do 'Ghost Army'.",
         "porque_funciona": "A premissa da 'guerra de engano' é extremamente fascinante e pouco conhecida do grande público. Forte apelo visual com imagens históricas, documentários sobre o tema e a justaposição de arte e guerra. O fator 'surpresa' e a engenhosidade humana garantem alta retenção."
+    },
+    {
+        "nome": "Chernobyl: O Que Realmente Aconteceu na Noite do Desastre",
+        "categoria": "historia",
+        "subcategoria": "desastres",
+        "keywords": [
+            "chernobyl",
+            "usina nuclear",
+            "1986",
+            "urss",
+            "radiação"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "revelacao_historica"
+    },
+    {
+        "nome": "Os Últimos Segundos de Pompeia: A Erupção que Congelou uma Cidade",
+        "categoria": "historia",
+        "subcategoria": "civilizacoes_antigas",
+        "keywords": [
+            "pompeia",
+            "vesúvio",
+            "erupção",
+            "roma antiga",
+            "79 d.C."
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "impacto_historico"
+    },
+    {
+        "nome": "O Navio Fantasma Mary Celeste: O Mistério que Nunca Foi Resolvido",
+        "categoria": "historia",
+        "subcategoria": "eventos_misteriosos",
+        "keywords": [
+            "mary celeste",
+            "navio fantasma",
+            "atlântico",
+            "1872",
+            "mistério"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "revelacao_historica"
+    },
+    {
+        "nome": "A Ilha das Bonecas: O Lugar Mais Perturbador do México",
+        "categoria": "historia",
+        "subcategoria": "eventos_misteriosos",
+        "keywords": [
+            "ilha das bonecas",
+            "xochimilco",
+            "méxico",
+            "lenda urbana",
+            "mistério"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "fato_surpreendente"
+    },
+    {
+        "nome": "O Experimento da Prisão de Stanford: Quando Pessoas Normais Viraram Monstros",
+        "categoria": "historia",
+        "subcategoria": "psicologia",
+        "keywords": [
+            "prisão de stanford",
+            "experimento psicológico",
+            "1971",
+            "comportamento humano",
+            "autoridade"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "media",
+        "angulo_sugerido": "fato_surpreendente"
+    },
+    {
+        "nome": "A Catástrofe de Bhopal: O Maior Desastre Industrial da História",
+        "categoria": "historia",
+        "subcategoria": "desastres",
+        "keywords": [
+            "bhopal",
+            "gás tóxico",
+            "índia",
+            "1984",
+            "desastre industrial"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "media",
+        "angulo_sugerido": "impacto_historico"
+    },
+    {
+        "nome": "O Mistério do Voo MH370: O Avião que Desapareceu Sem Deixar Rastros",
+        "categoria": "historia",
+        "subcategoria": "eventos_misteriosos",
+        "keywords": [
+            "mh370",
+            "malaysia airlines",
+            "desaparecimento",
+            "2014",
+            "avião"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "media",
+        "angulo_sugerido": "revelacao_historica"
+    },
+    {
+        "nome": "A Tragédia do Submarino Kursk: 118 Homens Presos no Fundo do Mar",
+        "categoria": "historia",
+        "subcategoria": "guerras",
+        "keywords": [
+            "kursk",
+            "submarino",
+            "rússia",
+            "2000",
+            "tragédia"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "impacto_historico"
+    },
+    {
+        "nome": "A Maldição do Diamante Hope: Três Séculos de Desgraça",
+        "categoria": "historia",
+        "subcategoria": "curiosidades",
+        "keywords": [
+            "diamante hope",
+            "maldição",
+            "joia",
+            "titanic",
+            "louvre"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "fato_surpreendente"
+    },
+    {
+        "nome": "Os Crimes do Dr. Shipman: O Médico que Matou Mais de 200 Pacientes",
+        "categoria": "historia",
+        "subcategoria": "crimes",
+        "keywords": [
+            "harold shipman",
+            "serial killer",
+            "médico",
+            "inglaterra",
+            "crimes"
+        ],
+        "potencial_monetizacao": "alto",
+        "dificuldade_pesquisa": "baixa",
+        "angulo_sugerido": "revelacao_historica"
     }
 ]
