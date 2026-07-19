@@ -62,7 +62,9 @@ def main() -> int:
     print()
     print(f"USE_N8N_FOR_SCENES={os.getenv('USE_N8N_FOR_SCENES', 'false')}")
     print(f"REPLICATE={'ok' if os.getenv('REPLICATE_API_TOKEN') else 'missing'}")
-    print(f"HF={'ok' if os.getenv('HF_API_TOKEN') else 'missing'}")
+    from scripts.utils.hf_token import hf_token_configured
+
+    print(f"HF={'ok' if hf_token_configured() else 'missing'}")
 
     if errors:
         print(f"\nFALHOU: {errors} queries com problema")

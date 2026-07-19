@@ -29,7 +29,7 @@ def main() -> int:
     from scripts.video.visual_media_engine import _try_ai_image
 
     if not hf_is_configured():
-        print("ERRO: HF_TOKEN não configurado no .env")
+        print("ERRO: HF_API_TOKEN ou HF_TOKEN não configurado no .env")
         return 1
 
     _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

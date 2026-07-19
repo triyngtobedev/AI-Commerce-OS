@@ -50,7 +50,7 @@ def ask_gemini(prompt):
 
     mode = os.getenv(
         "GEMINI_MODE",
-        "mock"
+        "api"
     )
 
     if mode == "mock":

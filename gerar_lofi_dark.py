@@ -75,7 +75,7 @@ def main() -> int:
     if not results:
         print(
             "\n❌ Nenhum vídeo produzido.\n"
-            "   Verifique no .env: GEMINI_API_KEY ou GROQ_API_KEY, PEXELS_API_KEY\n"
+            "   Verifique no .env: GEMINI_API_KEY ou GROQ_API_KEY\n"
             "   FFmpeg instalado e no PATH.\n"
         )
         return 1

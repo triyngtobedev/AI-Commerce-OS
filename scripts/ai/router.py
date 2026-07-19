@@ -199,6 +199,7 @@ class AIRouter:
             "openrouter": _has_key("OPENROUTER_API_KEY"),
         }
         footage = {
+            "wikimedia": True,
             "pexels": _has_key("PEXELS_API_KEY"),
             "pixabay": _has_key("PIXABAY_API_KEY"),
         }
@@ -211,8 +212,11 @@ class AIRouter:
         missing: list[str] = []
         if not any(ai.values()):
             missing.append("IA: defina GEMINI_API_KEY, GROQ_API_KEY ou OPENROUTER_API_KEY")
-        if not footage["pexels"]:
-            missing.append("Footage: defina PEXELS_API_KEY")
+        if not (footage["pexels"] or footage["pixabay"]):
+            missing.append(
+                "Footage opcional: PEXELS_API_KEY ou PIXABAY_API_KEY "
+                "(Wikimedia Commons funciona sem chave)"
+            )
         if not tts["azure"]:
             missing.append(
                 "TTS: defina AZURE_SPEECH_KEY + AZURE_SPEECH_REGION "
@@ -234,7 +238,7 @@ class AIRouter:
 
         return {
             "ready_for_batch": (
-                any(ai.values()) and footage["pexels"] and has_tts and not merge_conflicts
+                any(ai.values()) and footage["wikimedia"] and has_tts and not merge_conflicts
             ),
             "ready_for_batch_strict": len(missing) == 0,
             "ai": ai,
