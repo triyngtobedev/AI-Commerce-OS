@@ -8,19 +8,43 @@ Uso:
 
 from __future__ import annotations
 
-import sys
+import os
 from pathlib import Path
 
 LOG_PATH = Path("/app/persistent/logs/test_video.log")
 TAIL_LINES = 50
 
 
+def _get_output_roots() -> list[Path]:
+    """Diretórios de saída a inspecionar (Railway e local)."""
+    project_root = Path(__file__).resolve().parents[1]
+    roots: list[Path] = []
+
+    configured = os.getenv("OUTPUT_DIR", "").strip()
+    if configured:
+        roots.append(Path(configured))
+
+    for candidate in (project_root / "output", Path("/app/output"), Path("/app/persistent/output")):
+        if candidate not in roots:
+            roots.append(candidate)
+
+    return roots
+
+
 def _find_video_final() -> list[Path]:
-    root = Path(__file__).resolve().parents[1]
-    output = root / "output"
-    if not output.is_dir():
-        return []
-    return sorted(output.rglob("video_final.mp4"))
+    videos: list[Path] = []
+    seen: set[Path] = set()
+
+    for output_root in _get_output_roots():
+        if not output_root.is_dir():
+            continue
+        for path in output_root.rglob("video_final.mp4"):
+            resolved = path.resolve()
+            if resolved.is_file() and resolved not in seen:
+                seen.add(resolved)
+                videos.append(resolved)
+
+    return sorted(videos, key=lambda path: path.stat().st_mtime, reverse=True)
 
 
 def main() -> int:
@@ -35,14 +59,18 @@ def main() -> int:
         print("(arquivo de log ainda não existe)")
 
     videos = _find_video_final()
-    print("\n--- video_final.mp4 ---")
+    print("\n--- Generated video_final.mp4 files ---")
     if videos:
-        for path in videos:
-            size_mb = path.stat().st_size / (1024 * 1024)
-            print(f"✓ {path} ({size_mb:.1f} MB)")
+        for index, path in enumerate(videos, start=1):
+            size_bytes = path.stat().st_size
+            size_mb = size_bytes / (1024 * 1024)
+            print(f"{index}. {path}")
+            print(f"   size: {size_mb:.1f} MB ({size_bytes:,} bytes)")
+        print(f"\nTotal: {len(videos)} arquivo(s)")
         return 0
 
-    print("✗ Nenhum video_final.mp4 encontrado em output/")
+    searched = ", ".join(str(root) for root in _get_output_roots())
+    print(f"✗ Nenhum video_final.mp4 encontrado (procurado em: {searched})")
     return 1
 
 
