@@ -130,6 +130,7 @@ from scripts.scoring.visual_relevance_scorer import (
     rank_candidates_with_visual_score,
 )
 from scripts.core.feature_flags import sprint30_visual_score
+from scripts.ai.gemini_quota import is_gemini_quota_exhausted
 from scripts.video.editorial_fallback import execute_editorial_fallback
 from scripts.video.t2v_decision import T2VTracker, evaluate_t2v_decision
 
@@ -982,15 +983,19 @@ def _try_orchestrated_stock(
         print(f"  ⚠️ Cena {scene_num}: orchestrator retornou 0 candidatos")
         return None
 
+    use_visual_score = sprint30_visual_score() and not is_gemini_quota_exhausted()
+    if sprint30_visual_score() and is_gemini_quota_exhausted():
+        print("  ⚠️ Quota Gemini esgotada — visual score via orchestrator (sem Gemini)")
+
     scored_candidates = rank_candidates_with_visual_score(
         candidates,
         scene,
         topic=topic,
         limit=TOP_CANDIDATES,
-    ) if sprint30_visual_score() else candidates[:TOP_CANDIDATES]
+    ) if use_visual_score else candidates[:TOP_CANDIDATES]
 
     fallbacks = []
-    if sprint30_visual_score() and scored_candidates:
+    if use_visual_score and scored_candidates:
         fallbacks = [
             {
                 "asset_id": c.get("visual_breakdown", {}).get("asset_id"),
@@ -1003,12 +1008,12 @@ def _try_orchestrated_stock(
 
     top_score = (
         scored_candidates[0].get("visual_score", 0)
-        if sprint30_visual_score() and scored_candidates
+        if use_visual_score and scored_candidates
         else 0
     )
     print(
         f"  📋 Cena {scene_num}: {len(candidates)} candidatos"
-        + (f", top visual {top_score:.0f}/100" if sprint30_visual_score() else "")
+        + (f", top visual {top_score:.0f}/100" if use_visual_score else "")
     )
 
     for rank, candidate in enumerate(scored_candidates[:5], 1):
