@@ -6,6 +6,7 @@ reutilizando engines compartilhados de mídia, áudio e render.
 """
 
 import os
+import shutil
 from pathlib import Path
 
 from scripts.core.pipeline_result import PipelineResult
@@ -46,7 +47,8 @@ from scripts.video.renderer import render_video_project
 from scripts.video.scene_timeline import sync_scenes_to_audio
 from scripts.video.asset_manager import prepare_assets
 
-from scripts.pipeline.shared_media import run_media_pipeline
+from scripts.video.simple_footage import get_footage_for_scenes
+from scripts.video.scene_timeline import extract_scenes
 from scripts.audio.tts_generator import create_audio
 from scripts.audio.soundtrack_engine import generate_soundtrack
 from scripts.audio.audio_layer import (
@@ -444,11 +446,16 @@ def run_youtube_pipeline(
             )
 
 
-            run_media_pipeline(
-                topic,
-                scenes,
-                queries,
-            )
+            videos_dir = output_dir / "assets" / "videos"
+            videos_dir.mkdir(parents=True, exist_ok=True)
+            scene_list = extract_scenes(scenes)
+            clips = get_footage_for_scenes(scene_list, str(videos_dir))
+            for i, clip in enumerate(clips):
+                target = videos_dir / f"scene-{i + 1:02d}.mp4"
+                clip_path = Path(clip)
+                if clip_path.resolve() != target.resolve():
+                    shutil.copy2(clip_path, target)
+            print(f"📸 Simple footage: {len(clips)}/{len(scene_list)} cenas")
 
             lofi_template = is_lofi_dark(strategy.get("roteiro_template"))
 
