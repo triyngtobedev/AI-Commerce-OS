@@ -146,7 +146,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [900, 520],
-      "notes": "Se Create falhar (401/402), cai direto no HF Router."
+      "notes": "Se Create falhar (401/402), cai direto no Callback — Erro."
     },
     {
       "parameters": {
@@ -415,7 +415,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"scene_id\": \"{{ $('Set — Normalizar Payload').item.json.scene_id }}\",\n  \"job_id\": \"{{ $('Set — Normalizar Payload').item.json.job_id }}\",\n  \"video_path\": null,\n  \"provider_used\": null,\n  \"status\": \"failed\",\n  \"error_message\": \"All free providers failed (Replicate, HF Router). Python may retry Kling Web locally.\"\n}",
+        "jsonBody": "={\n  \"scene_id\": \"{{ $('Set — Normalizar Payload').item.json.scene_id }}\",\n  \"job_id\": \"{{ $('Set — Normalizar Payload').item.json.job_id }}\",\n  \"video_path\": null,\n  \"provider_used\": null,\n  \"status\": \"failed\",\n  \"error_message\": \"Replicate failed. Python may retry Kling Web locally.\"\n}",
         "options": {}
       },
       "id": "http-callback-error",
@@ -476,7 +476,7 @@
         ],
         [
           {
-            "node": "HTTP — HF Router T2V",
+            "node": "Callback — Erro",
             "type": "main",
             "index": 0
           }
@@ -527,7 +527,7 @@
       "main": [
         [
           {
-            "node": "HTTP — HF Router T2V",
+            "node": "Callback — Erro",
             "type": "main",
             "index": 0
           }
