@@ -6,7 +6,7 @@ Gera estratégia criativa via IA com fallback rule-based.
 
 from scripts.ai.router import ask_ai
 from scripts.utils.prompt_loader import load_prompt
-from scripts.utils.json_parser import parse_json
+from scripts.utils.json_parser import safe_parse_json
 from scripts.utils.ai_cache import load_cache, save_cache
 from scripts.core.platform_config import YOUTUBE_DARK
 
@@ -72,11 +72,10 @@ Oportunidade:
     )
 
 
-    strategy = parse_json(response)
-
+    strategy = safe_parse_json(response)
 
     if not isinstance(strategy, dict):
-
+        print("⚠️ Resposta de estratégia inválida — usando fallback")
         strategy = _fallback_strategy(topic, opportunity)
 
 

@@ -49,7 +49,7 @@ from scripts.youtube.lofi_dark_config import (
     LOFI_DARK_TARGET_DURATION_SECONDS,
     is_lofi_dark,
 )
-from scripts.utils.json_parser import parse_json
+from scripts.utils.json_parser import parse_json, safe_parse_json
 from scripts.utils.prompt_loader import load_prompt, load_script_prompt
 from scripts.utils.ai_cache import load_cache, save_cache
 
@@ -215,12 +215,10 @@ Estratégia completa:
         "script_generation",
     )
 
-
-    script = parse_json(response)
-
+    script = safe_parse_json(response)
 
     if not isinstance(script, dict):
-
+        print("⚠️ Resposta de roteiro inválida ou truncada — usando fallback")
         script = _fallback_script(topic, strategy, roteiro_template)
 
     script = clean_script_phrases(script)
@@ -331,7 +329,7 @@ Roteiro atual:
 """
 
     response = ask_ai(rewrite_prompt, "script_rewrite")
-    rewritten = parse_json(response)
+    rewritten = safe_parse_json(response)
 
     if isinstance(rewritten, dict):
         return clean_script_phrases(rewritten)
@@ -367,7 +365,7 @@ Texto atual ({section_key}):
 """
 
     response = ask_ai(prompt, "script_expansion")
-    parsed = parse_json(response)
+    parsed = safe_parse_json(response)
 
     if isinstance(parsed, dict) and parsed.get(section_key):
         return parsed[section_key]
