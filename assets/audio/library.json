@@ -1,23 +1,150 @@
 {
+  "version": 2,
   "tracks": [
-    {"id": "tense_01", "mood": "tense", "file": "tense_01.mp3", "source": "procedural", "bpm": 72},
-    {"id": "tense_02", "mood": "tense", "file": "tense_02.mp3", "source": "procedural", "bpm": 68},
-    {"id": "investigative_01", "mood": "investigative", "file": "investigative_01.mp3", "source": "procedural", "bpm": 80},
-    {"id": "investigative_02", "mood": "investigative", "file": "investigative_02.mp3", "source": "procedural", "bpm": 76},
-    {"id": "reveal_01", "mood": "reveal", "file": "reveal_01.mp3", "source": "procedural", "bpm": 90},
-    {"id": "reveal_02", "mood": "reveal", "file": "reveal_02.mp3", "source": "procedural", "bpm": 88},
-    {"id": "melancholic_01", "mood": "melancholic", "file": "melancholic_01.mp3", "source": "procedural", "bpm": 60},
-    {"id": "melancholic_02", "mood": "melancholic", "file": "melancholic_02.mp3", "source": "procedural", "bpm": 58},
-    {"id": "uplifting_end_01", "mood": "uplifting_end", "file": "uplifting_end_01.mp3", "source": "procedural", "bpm": 96},
-    {"id": "uplifting_end_02", "mood": "uplifting_end", "file": "uplifting_end_02.mp3", "source": "procedural", "bpm": 94}
+    {
+      "id": "tense_01",
+      "mood": "tense",
+      "file": "tracks/tense_01.mp3",
+      "source": "local_library",
+      "license": "royalty_free_generated",
+      "bpm": 72,
+      "duration_s": 180.0,
+      "ready": true
+    },
+    {
+      "id": "tense_02",
+      "mood": "tense",
+      "file": "tracks/tense_02.mp3",
+      "source": "local_library",
+      "license": "royalty_free_generated",
+      "bpm": 68,
+      "duration_s": 180.0,
+      "ready": true
+    },
+    {
+      "id": "investigative_01",
+      "mood": "investigative",
+      "file": "tracks/investigative_01.mp3",
+      "source": "local_library",
+      "license": "royalty_free_generated",
+      "bpm": 80,
+      "duration_s": 180.0,
+      "ready": true
+    },
+    {
+      "id": "investigative_02",
+      "mood": "investigative",
+      "file": "tracks/investigative_02.mp3",
+      "source": "local_library",
+      "license": "royalty_free_generated",
+      "bpm": 76,
+      "duration_s": 180.0,
+      "ready": true
+    },
+    {
+      "id": "reveal_01",
+      "mood": "reveal",
+      "file": "tracks/reveal_01.mp3",
+      "source": "local_library",
+      "license": "royalty_free_generated",
+      "bpm": 90,
+      "duration_s": 180.0,
+      "ready": true
+    },
+    {
+      "id": "reveal_02",
+      "mood": "reveal",
+      "file": "tracks/reveal_02.mp3",
+      "source": "local_library",
+      "license": "royalty_free_generated",
+      "bpm": 88,
+      "duration_s": 180.0,
+      "ready": true
+    },
+    {
+      "id": "melancholic_01",
+      "mood": "melancholic",
+      "file": "tracks/melancholic_01.mp3",
+      "source": "local_library",
+      "license": "royalty_free_generated",
+      "bpm": 60,
+      "duration_s": 180.0,
+      "ready": true
+    },
+    {
+      "id": "melancholic_02",
+      "mood": "melancholic",
+      "file": "tracks/melancholic_02.mp3",
+      "source": "local_library",
+      "license": "royalty_free_generated",
+      "bpm": 58,
+      "duration_s": 180.0,
+      "ready": true
+    },
+    {
+      "id": "uplifting_end_01",
+      "mood": "uplifting_end",
+      "file": "tracks/uplifting_end_01.mp3",
+      "source": "local_library",
+      "license": "royalty_free_generated",
+      "bpm": 96,
+      "duration_s": 180.0,
+      "ready": true
+    },
+    {
+      "id": "uplifting_end_02",
+      "mood": "uplifting_end",
+      "file": "tracks/uplifting_end_02.mp3",
+      "source": "local_library",
+      "license": "royalty_free_generated",
+      "bpm": 94,
+      "duration_s": 180.0,
+      "ready": true
+    }
   ],
   "sfx": [
-    {"id": "whoosh", "file": "whoosh.wav", "volume_db": -15, "trigger": "scene_change"},
-    {"id": "riser", "file": "riser.wav", "volume_db": -15, "trigger": "act_end"},
-    {"id": "impact", "file": "impact.wav", "volume_db": -15, "trigger": "act_end"},
-    {"id": "sub_drop", "file": "sub_drop.wav", "volume_db": -15, "trigger": "reveal"},
-    {"id": "ticking", "file": "ticking.wav", "volume_db": -18, "trigger": "tension"},
-    {"id": "ambient_city", "file": "ambient_city.wav", "volume_db": -20, "trigger": "ambient"}
+    {
+      "id": "whoosh",
+      "file": "sfx/whoosh.wav",
+      "volume_db": -15,
+      "trigger": "scene_change",
+      "ready": true
+    },
+    {
+      "id": "riser",
+      "file": "sfx/riser.wav",
+      "volume_db": -15,
+      "trigger": "act_end",
+      "ready": true
+    },
+    {
+      "id": "impact",
+      "file": "sfx/impact.wav",
+      "volume_db": -15,
+      "trigger": "act_end",
+      "ready": true
+    },
+    {
+      "id": "sub_drop",
+      "file": "sfx/sub_drop.wav",
+      "volume_db": -15,
+      "trigger": "reveal",
+      "ready": true
+    },
+    {
+      "id": "ticking",
+      "file": "sfx/ticking.wav",
+      "volume_db": -15,
+      "trigger": "tension",
+      "ready": true
+    },
+    {
+      "id": "ambient_city",
+      "file": "sfx/ambient_city.wav",
+      "volume_db": -15,
+      "trigger": "ambient",
+      "ready": true
+    }
   ],
   "ducking": {
     "narration_db": 0,
