@@ -1,5 +1,7 @@
 import os
+import shutil
 import time
+from typing import Any
 
 from dotenv import load_dotenv
 from groq import Groq
@@ -15,8 +17,8 @@ groq_client = Groq(
 
 GROQ_MODELS_FALLBACK = [
     "llama-3.3-70b-versatile",   # primário (12k TPM)
-    "llama-3.1-8b-instant",      # substituto do llama3-8b (maior contexto)
-    "gemma2-9b-it",              # terceiro fallback
+    "openai/gpt-oss-120b",       # contexto grande (~131k) — roteiros longos
+    "llama-3.1-8b-instant",      # substituto leve
 ]
 
 GEMINI_MODEL_PRIMARY = "gemini-2.0-flash"
@@ -127,6 +129,13 @@ def ask_ai(prompt, context_type):
             elif _is_rate_limit_error(gemini_error):
                 print("[Gemini] Quota/rate limit detectado — aguardando 60s...")
                 time.sleep(60)
+
+            if gemini_model == GEMINI_MODEL_PRIMARY:
+                print(f"[AI Router] Tentando: gemini/{GEMINI_MODEL_LITE}")
+                try:
+                    return gemini_generate(prompt, model=GEMINI_MODEL_LITE)
+                except Exception as lite_error:
+                    print(f"⚠️ Gemini lite indisponível ({lite_error}), tentando Groq...")
     else:
         print("[AI Router] Gemini quota esgotada — usando Groq direto")
 
@@ -165,3 +174,96 @@ def ask_ai(prompt, context_type):
         raise Exception(
             "Nenhuma API de IA disponível."
         ) from (openrouter_error if last_error is None else last_error)
+
+
+def _env_present(name: str) -> bool:
+    return bool(os.getenv(name, "").strip())
+
+
+def _detect_tts_provider() -> str:
+    if _env_present("AZURE_SPEECH_KEY") and _env_present("AZURE_SPEECH_REGION"):
+        return "azure"
+    try:
+        import edge_tts  # noqa: F401
+    except ImportError:
+        pass
+    else:
+        return "edge"
+    return "gtts"
+
+
+def _ai_provider_status() -> dict[str, Any]:
+    providers = {
+        "gemini": _env_present("GEMINI_API_KEY"),
+        "groq": _env_present("GROQ_API_KEY"),
+        "openrouter": _env_present("OPENROUTER_API_KEY"),
+    }
+    ready = any(providers.values())
+    primary = "none"
+    if providers["gemini"]:
+        primary = "gemini"
+    elif providers["groq"]:
+        primary = "groq"
+    elif providers["openrouter"]:
+        primary = "openrouter"
+
+    return {
+        "status": "ready" if ready else "missing_keys",
+        "primary": primary,
+        "providers": providers,
+    }
+
+
+class AIRouterClient:
+    """Cliente leve para health checks e batch Sprint 30."""
+
+    def health(self) -> dict[str, Any]:
+        from scripts.sprint30.config import get_flags, is_sprint30_enabled
+
+        missing_required: list[str] = []
+
+        ai = _ai_provider_status()
+        if ai["status"] != "ready":
+            missing_required.append("AI_KEY (GEMINI_API_KEY ou GROQ_API_KEY ou OPENROUTER_API_KEY)")
+
+        has_stock_media = _env_present("PEXELS_API_KEY") or _env_present("PIXABAY_API_KEY")
+        if not has_stock_media:
+            missing_required.append("PEXELS_API_KEY (ou PIXABAY_API_KEY como fallback)")
+
+        ffmpeg_ok = shutil.which("ffmpeg") is not None
+        if not ffmpeg_ok:
+            missing_required.append("ffmpeg (PATH)")
+
+        tts_provider = _detect_tts_provider()
+        flags = get_flags()
+        if not is_sprint30_enabled():
+            flags = {
+                "SPRINT30": False,
+                "FOOTAGE_FIRST": False,
+                "RETENTION_CONTROLLER": False,
+            }
+
+        return {
+            "ready_for_batch": len(missing_required) == 0,
+            "missing_required": missing_required,
+            "flags": flags,
+            "tts": {
+                "provider": tts_provider,
+                "azure_configured": _env_present("AZURE_SPEECH_KEY")
+                and _env_present("AZURE_SPEECH_REGION"),
+            },
+            "ai": ai,
+            "tools": {
+                "ffmpeg": ffmpeg_ok,
+            },
+        }
+
+
+_client: AIRouterClient | None = None
+
+
+def get_client() -> AIRouterClient:
+    global _client
+    if _client is None:
+        _client = AIRouterClient()
+    return _client

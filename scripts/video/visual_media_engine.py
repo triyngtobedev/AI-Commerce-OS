@@ -46,6 +46,7 @@ from scripts.video.media_providers.huggingface.adapter import (
 )
 from scripts.video.asset_ranking import pick_ranked_assets, selection_signature
 from scripts.video.relevance_feedback import RejectionLog
+from scripts.sprint30.config import is_footage_first
 from scripts.video.media_providers.relevance import (
     MIN_ACCEPTABLE_QUALITY_SCORE,
     MIN_PHOTO_RELEVANCE_SCORE,
@@ -991,7 +992,13 @@ def _resolve_scene_media(
                 )
                 return result
 
-    if not stock_video_found:
+    if not stock_video_found and is_footage_first() and not preferir_imagem:
+        print(
+            f"  🎬 Cena {scene_num}: FOOTAGE_FIRST — "
+            f"pulando fotos estáticas, indo para T2V/imagem IA"
+        )
+
+    if not stock_video_found and not (is_footage_first() and not preferir_imagem):
         for query in search_queries:
             media, source = media_by_query[query]
             if not media.get("photos"):

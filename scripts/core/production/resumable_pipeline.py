@@ -76,6 +76,8 @@ from scripts.core.emotional_timeline import EmotionalTimeline
 from scripts.core.timeline_sync import sync_timeline_to_audio
 from scripts.core.visual_intent_engine import apply_visual_intents
 from scripts.core.emotional_effects import apply_effect_hints_to_scenes
+from scripts.sprint30.retention_controller import apply_retention_optimizations
+from scripts.sprint30.metrics import record_sprint30_from_context
 
 
 class StageContext:
@@ -213,6 +215,12 @@ def _stage_script(ctx: StageContext) -> dict:
         if loaded:
             ctx.data["script"] = loaded
             return loaded
+
+    existing = ctx.state.load_artifact("script.json")
+    if isinstance(existing, dict) and existing.get("hook"):
+        ctx.data["script"] = existing
+        ctx.cache.record("script", cache_input, artifacts)
+        return existing
 
     script = generate_youtube_script(
         topic,
@@ -359,6 +367,7 @@ def _stage_audio(ctx: StageContext) -> str:
         script=ctx.data["script"],
     )
     scenes = apply_effect_hints_to_scenes(scenes, emotional_timeline)
+    scenes = apply_retention_optimizations(scenes, emotional_timeline)
     ctx.data["scenes"] = scenes
     ctx.state.save_artifact("scenes.json", scenes)
 
@@ -711,6 +720,12 @@ def run_resumable_youtube_pipeline(
             upload_result=upload_result,
             update_existing=force,
         )
+        record_sprint30_from_context(
+            ctx,
+            status="completed",
+            upload_result=upload_result,
+            perf_report=perf_report,
+        )
 
         main_logger.success(f"Pipeline concluído: {topic.get('nome')}")
         return result
@@ -722,6 +737,14 @@ def run_resumable_youtube_pipeline(
         )
         if production_mode:
             main_logger.error(traceback.format_exc())
+        record_sprint30_from_context(
+            ctx,
+            status="failed",
+            upload_result=upload_result,
+            perf_report=perf_report,
+            failure_stage=str(ctx.state._data.get("current_step", "unknown")),
+            failure_reason=str(exc),
+        )
         return None
 
 

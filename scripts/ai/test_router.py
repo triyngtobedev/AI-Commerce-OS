@@ -62,5 +62,23 @@ class TestAiRouterFallback(unittest.TestCase):
         mock_openrouter.assert_not_called()
 
 
+class TestRouterHealth(unittest.TestCase):
+    @patch.dict(
+        os.environ,
+        {
+            "GEMINI_API_KEY": "test-key",
+            "PEXELS_API_KEY": "test-key",
+            "SPRINT30": "true",
+        },
+        clear=False,
+    )
+    @patch("shutil.which", return_value="ffmpeg")
+    def test_get_client_health(self, _mock_which):
+        health = router.get_client().health()
+        self.assertTrue(health["ready_for_batch"])
+        self.assertEqual(health["missing_required"], [])
+        self.assertEqual(health["ai"]["status"], "ready")
+
+
 if __name__ == "__main__":
     unittest.main()
