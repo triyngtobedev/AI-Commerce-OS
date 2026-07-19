@@ -10,11 +10,16 @@ Gera SRT otimizado para YouTube com:
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Optional
 
 from scripts.core.brand_engine import get_subtitle_style
+
+# Karaoke word-by-word (template n8n Eli Rigobeli — palavra amarela enquanto falada).
+SUBTITLE_KARAOKE = os.getenv("SUBTITLE_KARAOKE", "true").lower() in {"1", "true", "yes"}
+KARAOKE_HIGHLIGHT_COLOR = os.getenv("SUBTITLE_KARAOKE_COLOR", "gold")
 
 
 # Cores ASS (formato &HAABBGGRR) — estilo canais dark YouTube
@@ -161,6 +166,51 @@ def _emphasize_keywords(
         result = pattern.sub(_colorize, result, count=1)
 
     return result
+
+
+def _escape_ass_text(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
+
+
+def _build_karaoke_ass_text(words: list[dict]) -> str:
+    """
+    Legenda estilo karaoke: cada palavra ganha duração \\k (centésimos de segundo)
+    e cor de destaque enquanto é falada (padrão template n8n dark).
+    """
+
+    if not words:
+        return ""
+
+    highlight = HIGHLIGHT_ASS_COLORS.get(KARAOKE_HIGHLIGHT_COLOR, HIGHLIGHT_ASS_COLORS["gold"])
+    parts: list[str] = []
+
+    for item in words:
+        word = _escape_ass_text((item.get("word") or "").strip())
+        if not word:
+            continue
+        start = float(item.get("start", 0.0))
+        end = float(item.get("end", start))
+        duration_cs = max(1, int(round((end - start) * 100)))
+        parts.append(f"{{\\k{duration_cs}\\c{highlight}&\\b1}}{word}{{\\r\\b0}}")
+
+    return " ".join(parts)
+
+
+def _words_for_time_range(
+    words: list[dict],
+    start: float,
+    end: float,
+    *,
+    tolerance: float = 0.05,
+) -> list[dict]:
+    """Filtra palavras cujo intervalo cai dentro do bloco de legenda."""
+
+    return [
+        word
+        for word in words
+        if float(word.get("start", 0.0)) >= start - tolerance
+        and float(word.get("end", 0.0)) <= end + tolerance
+    ]
 
 
 def _extract_keywords(text: str, limit: int = 2) -> list[str]:
@@ -358,6 +408,7 @@ def generate_subtitles_from_words(
     style: Optional[dict] = None,
     *,
     timing_offset: float = 0.0,
+    karaoke: bool | None = None,
 ) -> tuple[str, str]:
     """
     Gera SRT e ASS a partir de palavras com timestamps reais (Whisper).
@@ -368,6 +419,7 @@ def generate_subtitles_from_words(
     max_words = style.get("max_words_per_block", 5)
     max_chars = style.get("max_chars", 58)
     offset = max(0.0, float(timing_offset))
+    use_karaoke = SUBTITLE_KARAOKE if karaoke is None else karaoke
 
     srt_lines = []
     ass_events = []
@@ -385,19 +437,23 @@ def generate_subtitles_from_words(
         srt_lines.append(chunk)
         srt_lines.append("")
 
-        keywords = _extract_keywords(chunk)
-        ass_text = _emphasize_keywords(
-            chunk.replace("\n", "\\N"),
-            keywords,
-            style=style,
-        )
+        if use_karaoke:
+            chunk_words = _words_for_time_range(words, start, end)
+            ass_text = _build_karaoke_ass_text(chunk_words) or chunk.replace("\n", "\\N")
+        else:
+            keywords = _extract_keywords(chunk)
+            ass_text = _emphasize_keywords(
+                chunk.replace("\n", "\\N"),
+                keywords,
+                style=style,
+            )
         ass_events.append(
             f"Dialogue: 0,{_format_ass_time(start_t)},"
             f"{_format_ass_time(end_t)},Default,,0,0,0,,{ass_text}"
         )
 
     srt_content = "\n".join(srt_lines)
-    ass_content = _build_ass_header(style) + "\n".join(ass_events)
+    ass_content = _build_ass_header(style, karaoke=use_karaoke) + "\n".join(ass_events)
     return srt_content, ass_content
 
 
@@ -409,13 +465,19 @@ def _format_ass_time(seconds: float) -> str:
     return f"{hours}:{minutes:02d}:{secs:02d}.{centis:02d}"
 
 
-def _build_ass_header(style: dict) -> str:
+def _build_ass_header(style: dict, *, karaoke: bool = False) -> str:
     font = style.get("font_name", "Arial")
     size = style.get("font_size", 52)
     margin_v = style.get("margin_v", 110)
     outline = style.get("outline", 2)
     shadow = style.get("shadow", 2)
     bold = -1 if style.get("bold", True) else 0
+    primary = "&H00FFFFFF"
+    secondary = (
+        HIGHLIGHT_ASS_COLORS.get(KARAOKE_HIGHLIGHT_COLOR, HIGHLIGHT_ASS_COLORS["gold"])
+        if karaoke
+        else "&H000000FF"
+    )
 
     return f"""[Script Info]
 ScriptType: v4.00+
@@ -424,7 +486,7 @@ PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,{bold},0,0,0,100,100,0,0,1,{outline},{shadow},2,60,60,{margin_v},1
+Style: Default,{font},{size},{primary},{secondary},&H00000000,&H80000000,{bold},0,0,0,100,100,0,0,1,{outline},{shadow},2,60,60,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text

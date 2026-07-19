@@ -8,11 +8,15 @@ import unittest
 
 from scripts.video.subtitle_engine import (
 
+    _build_karaoke_ass_text,
+
     _chunk_by_words,
 
     _split_into_lines,
 
     generate_scene_subtitles,
+
+    generate_subtitles_from_words,
 
     validate_srt_timing,
 
@@ -117,6 +121,46 @@ class TestSubtitleEngine(unittest.TestCase):
         ok, reason = validate_srt_timing(srt, 12.0, timing_offset=2.0)
 
         self.assertTrue(ok, reason)
+
+
+
+    def test_karaoke_ass_uses_k_tags(self):
+
+        words = [
+
+            {"start": 0.0, "end": 0.4, "word": "A"},
+
+            {"start": 0.4, "end": 0.9, "word": "noite"},
+
+            {"start": 0.9, "end": 1.2, "word": "caiu"},
+
+        ]
+
+        ass_text = _build_karaoke_ass_text(words)
+
+        self.assertIn("\\k40", ass_text)
+
+        self.assertIn("\\k50", ass_text)
+
+        self.assertIn("noite", ass_text)
+
+
+
+    def test_generate_subtitles_from_words_karaoke(self):
+
+        words = [
+
+            {"start": 0.0, "end": 0.5, "word": "Primeira"},
+
+            {"start": 0.5, "end": 1.0, "word": "frase."},
+
+        ]
+
+        _, ass = generate_subtitles_from_words(words, karaoke=True)
+
+        self.assertIn("\\k", ass)
+
+        self.assertIn("Dialogue:", ass)
 
 
 
