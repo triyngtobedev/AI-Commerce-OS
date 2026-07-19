@@ -21,6 +21,9 @@ services:
       - N8N_PROTOCOL=http
       - N8N_SECURE_COOKIE=false
       - N8N_DIAGNOSTICS_ENABLED=false
+      # n8n 2.x bloqueia $env nas expressões por padrão — libera só a URL do pipeline
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_EXPRESSIONS_ALLOWED_ENV_VARS=PIPELINE_API_BASE_URL
       # PIPELINE_API_BASE_URL e PIPELINE_API_KEY vêm do env_file (.env.n8n)
       # Não usar ${PIPELINE_API_KEY} aqui — o Docker Compose lê do host e sobrescreve com vazio
     volumes:

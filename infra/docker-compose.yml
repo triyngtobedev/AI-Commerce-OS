@@ -30,6 +30,8 @@ services:
       - N8N_SECURE_COOKIE=true
       # Desabilita telemetria opcional em produção
       - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_EXPRESSIONS_ALLOWED_ENV_VARS=PIPELINE_API_BASE_URL
     volumes:
       - n8n_data:/home/node/.n8n
     ports:
