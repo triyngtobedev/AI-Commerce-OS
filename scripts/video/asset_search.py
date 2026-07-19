@@ -11,6 +11,17 @@ Cada query possui 3 níveis de fallback:
 """
 
 
+from scripts.core.visual_intent_engine import (
+    build_visual_search_query,
+    resolve_visual_intent,
+)
+from scripts.core.visual_director_engine import direct_scene_visual
+from scripts.video.query_localizer import localize_search_query
+from scripts.video.scene_emotion import SCENE_SECTION_ALIASES
+from scripts.video.media_search_orchestrator import generate_scene_queries
+from scripts.youtube.lofi_dark_config import is_lofi_dark, lofi_background_query
+
+
 # Termos de fallback por ângulo — usados quando
 # a query principal não retorna resultados no Pexels.
 _FALLBACK_BY_ANGLE = {
@@ -149,16 +160,6 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
     """
     Gera queries de mídia para cada cena.
     """
-
-from scripts.core.visual_intent_engine import (
-        build_visual_search_query,
-        resolve_visual_intent,
-    )
-    from scripts.core.visual_director_engine import direct_scene_visual
-    from scripts.video.query_localizer import localize_search_query
-    from scripts.video.scene_emotion import SCENE_SECTION_ALIASES
-    from scripts.video.media_search_orchestrator import generate_scene_queries
-    from scripts.youtube.lofi_dark_config import is_lofi_dark, lofi_background_query
 
     queries = []
 
