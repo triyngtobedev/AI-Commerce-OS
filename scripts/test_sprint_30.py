@@ -1,11 +1,18 @@
 """Testes Sprint 30 — Visual Intelligence & Editorial Quality."""
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from scripts.core.feature_flags import (
+    sprint30_audio_layer,
+    sprint30_enabled,
+    sprint30_visual_score,
+)
+from scripts.metrics.sprint_30_metrics import append_metrics, build_metrics_record
 from scripts.scoring.visual_relevance_scorer import (
     compute_final_score,
     rank_candidates_with_visual_score,
@@ -23,6 +30,46 @@ from scripts.audio.audio_layer import (
     select_track_for_act,
     _act_boundaries,
 )
+
+
+class TestFeatureFlags(unittest.TestCase):
+
+    @patch.dict(os.environ, {"SPRINT30_ENABLED": "false"})
+    def test_master_flag_disables_subflags(self):
+        from importlib import reload
+        import scripts.core.feature_flags as flags
+        reload(flags)
+        self.assertFalse(flags.sprint30_visual_score())
+        self.assertFalse(flags.sprint30_audio_layer())
+
+    @patch.dict(os.environ, {"SPRINT30_ENABLED": "true", "SPRINT30_VISUAL_SCORE": "true"})
+    def test_subflag_enabled(self):
+        from importlib import reload
+        import scripts.core.feature_flags as flags
+        reload(flags)
+        self.assertTrue(flags.sprint30_visual_score())
+
+
+class TestSprint30Metrics(unittest.TestCase):
+
+    def test_append_metrics_jsonl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "assets").mkdir()
+            record = build_metrics_record(
+                topic="Test Topic",
+                output_dir=out,
+                result={"audio_layer": {"sfx_events": 3}},
+                retention_report={"overall_score": 72, "hook_strength": 80},
+                video_produced=True,
+            )
+            target = Path(tmp) / "metrics.jsonl"
+            append_metrics(record, path=target)
+            lines = target.read_text(encoding="utf-8").strip().splitlines()
+            self.assertEqual(len(lines), 1)
+            parsed = json.loads(lines[0])
+            self.assertEqual(parsed["topic"], "Test Topic")
+            self.assertIn("retention_predicted_30s", parsed)
 
 
 class TestVisualRelevanceScorer(unittest.TestCase):

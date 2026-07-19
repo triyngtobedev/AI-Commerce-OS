@@ -50,6 +50,12 @@ from scripts.audio.audio_layer import (
     mix_final_audio,
 )
 from scripts.youtube.retention_controller import run_retention_controller
+from scripts.core.feature_flags import (
+    sprint30_audio_layer,
+    sprint30_retention_controller,
+    sprint30_thumbnail_ab,
+)
+from scripts.metrics.sprint_30_metrics import record_sprint_30_metrics
 from scripts.youtube.lofi_dark_config import is_lofi_dark
 from scripts.youtube.template_override import apply_template_override, get_template_override
 
@@ -395,12 +401,13 @@ def run_youtube_pipeline(
 
             scenes = apply_effect_hints_to_scenes(scenes, emotional_timeline)
 
-            scenes, _retention_actions = run_retention_controller(
-                scenes,
-                retention_report=retention_report,
-                script=script,
-                output_dir=output_dir,
-            )
+            if sprint30_retention_controller():
+                scenes, _retention_actions = run_retention_controller(
+                    scenes,
+                    retention_report=retention_report,
+                    script=script,
+                    output_dir=output_dir,
+                )
 
 
             queries = generate_asset_queries(
@@ -478,13 +485,15 @@ def run_youtube_pipeline(
             result = pipeline_result.to_dict()
 
             soundtrack_path = output_dir / "assets" / "audio" / "soundtrack.mp3"
-            soundtrack = generate_act_soundtrack(
-                output_dir,
-                topic=topic.get("nome", ""),
-                emotional_timeline=emotional_timeline,
-                audio_duration=float(scenes.get("audio_duration", 0) or 0),
-                roteiro_template=strategy.get("roteiro_template", ""),
-            )
+            soundtrack = None
+            if sprint30_audio_layer():
+                soundtrack = generate_act_soundtrack(
+                    output_dir,
+                    topic=topic.get("nome", ""),
+                    emotional_timeline=emotional_timeline,
+                    audio_duration=float(scenes.get("audio_duration", 0) or 0),
+                    roteiro_template=strategy.get("roteiro_template", ""),
+                )
             if not soundtrack:
                 soundtrack = generate_soundtrack(
                     soundtrack_path,
@@ -496,23 +505,24 @@ def run_youtube_pipeline(
             if soundtrack:
                 result["soundtrack"] = str(soundtrack)
 
-            sfx_events = build_sfx_timeline(scenes, script=script)
-            final_audio_path = output_dir / "assets" / "audio" / "final_audio.mp3"
-            mixed = mix_final_audio(
-                Path(audio) if audio else Path(""),
-                final_audio_path,
-                soundtrack_path=Path(soundtrack) if soundtrack else None,
-                sfx_events=sfx_events,
-                duration=float(scenes.get("audio_duration", 0) or 0),
-            )
-            if mixed and mixed != Path(audio):
-                result["audio"] = str(mixed)
-                result["audio_layer"] = {
-                    "sfx_events": len(sfx_events),
-                    "ducking": "sidechaincompress",
-                    "soundtrack": str(soundtrack) if soundtrack else None,
-                }
-                result.pop("soundtrack", None)
+            if sprint30_audio_layer():
+                sfx_events = build_sfx_timeline(scenes, script=script)
+                final_audio_path = output_dir / "assets" / "audio" / "final_audio.mp3"
+                mixed = mix_final_audio(
+                    Path(audio) if audio else Path(""),
+                    final_audio_path,
+                    soundtrack_path=Path(soundtrack) if soundtrack else None,
+                    sfx_events=sfx_events,
+                    duration=float(scenes.get("audio_duration", 0) or 0),
+                )
+                if mixed and mixed != Path(audio):
+                    result["audio"] = str(mixed)
+                    result["audio_layer"] = {
+                        "sfx_events": len(sfx_events),
+                        "ducking": "sidechaincompress",
+                        "soundtrack": str(soundtrack) if soundtrack else None,
+                    }
+                    result.pop("soundtrack", None)
 
             build_video_project(result)
 
@@ -539,24 +549,41 @@ def run_youtube_pipeline(
             pipeline_result.video = str(video)
             print(f"✅ Vídeo criado: {video}")
 
-            thumb_report = generate_thumbnail_variations(
-                output_dir,
-                subject=topic,
-                content=content,
-                strategy=strategy,
-                scenes=scenes,
-                video_path=pipeline_result.video,
-                platform=YOUTUBE_DARK.id,
-            )
-            if thumb_report.get("final_thumbnail"):
-                pipeline_result.youtube_metadata["thumbnail"] = thumb_report["final_thumbnail"]
-                pipeline_result.youtube_metadata["thumbnail_ab"] = {
-                    "winner": thumb_report.get("winner", {}).get("variant"),
-                    "ctr_estimate": thumb_report.get("winner", {})
-                    .get("scores", {})
-                    .get("ctr_estimate"),
-                }
-            elif not pipeline_result.youtube_metadata.get("thumbnail"):
+            if sprint30_thumbnail_ab():
+                thumb_report = generate_thumbnail_variations(
+                    output_dir,
+                    subject=topic,
+                    content=content,
+                    strategy=strategy,
+                    scenes=scenes,
+                    video_path=pipeline_result.video,
+                    platform=YOUTUBE_DARK.id,
+                )
+                if thumb_report.get("final_thumbnail"):
+                    pipeline_result.youtube_metadata["thumbnail"] = thumb_report["final_thumbnail"]
+                    pipeline_result.youtube_metadata["thumbnail_ab"] = {
+                        "winner": thumb_report.get("winner", {}).get("variant"),
+                        "ctr_estimate": thumb_report.get("winner", {})
+                        .get("scores", {})
+                        .get("ctr_estimate"),
+                    }
+                elif not pipeline_result.youtube_metadata.get("thumbnail"):
+                    thumbnail = generate_thumbnail(
+                        topic,
+                        content,
+                        video_path=pipeline_result.video,
+                        platform=YOUTUBE_DARK.id,
+                        scenes=scenes,
+                        strategy=strategy,
+                    )
+                    if thumbnail:
+                        pipeline_result.youtube_metadata["thumbnail"] = thumbnail
+                    else:
+                        print(
+                            "⚠️ Thumbnail não gerada — "
+                            "post_package será exportado sem capa customizada"
+                        )
+            else:
                 thumbnail = generate_thumbnail(
                     topic,
                     content,
@@ -649,6 +676,18 @@ def run_youtube_pipeline(
                 result,
                 upload_result=upload_result,
                 update_existing=force,
+            )
+
+            record_sprint_30_metrics(
+                topic=topic.get("nome", ""),
+                output_dir=output_dir,
+                result=result,
+                retention_report=(
+                    retention_report.to_dict()
+                    if hasattr(retention_report, "to_dict")
+                    else retention_report
+                ),
+                video_produced=bool(result.get("video")),
             )
 
             processed_names.add(

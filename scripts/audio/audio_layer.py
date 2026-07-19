@@ -19,6 +19,13 @@ AUDIO_ROOT = Path("assets/audio")
 RECENT_TRACKS: list[str] = []
 MAX_RECENT = 5
 
+
+def _resolve_track_path(track: dict) -> Path:
+    file_ref = track.get("file", "")
+    if file_ref.startswith("tracks/"):
+        return AUDIO_ROOT / file_ref
+    return AUDIO_ROOT / "tracks" / file_ref
+
 _EMOTION_TO_MOOD = {
     "mystery": "investigative",
     "impact": "reveal",
@@ -87,18 +94,15 @@ def select_track_for_act(
 
 
 def ensure_track_file(track: dict, duration: float, output_dir: Path) -> Path:
-    """Garante arquivo de trilha — gera procedural se ausente."""
+    """Garante arquivo de trilha — usa biblioteca local ou gera procedural."""
 
     output_dir.mkdir(parents=True, exist_ok=True)
     mood = track.get("mood", "investigative")
-    out_path = output_dir / track.get("file", f"{mood}.mp3")
+    library_path = _resolve_track_path(track)
+    if library_path.exists() and library_path.stat().st_size > 1000:
+        return library_path
 
-    if out_path.exists() and out_path.stat().st_size > 1000:
-        return out_path
-
-    file_path = AUDIO_ROOT / "tracks" / track.get("file", "")
-    if file_path.exists():
-        return file_path
+    out_path = output_dir / Path(track.get("file", f"{mood}.mp3")).name
 
     spec = _PROCEDURAL_SPECS.get(mood, _PROCEDURAL_SPECS["investigative"])
     safe_duration = max(30.0, duration + 5.0)
@@ -160,12 +164,17 @@ def resolve_sfx_path(sfx_id: str) -> Optional[Path]:
     if not entry:
         return None
 
-    path = AUDIO_ROOT / "sfx" / entry["file"]
+    file_ref = entry.get("file", "")
+    path = AUDIO_ROOT / file_ref if "/" in file_ref else AUDIO_ROOT / "sfx" / file_ref
     if path.exists():
         return path
 
-    if _generate_sfx_wav(sfx_id, path):
-        return path
+    legacy = AUDIO_ROOT / "sfx" / entry.get("file", f"{sfx_id}.wav")
+    if legacy.exists():
+        return legacy
+
+    if _generate_sfx_wav(sfx_id, legacy):
+        return legacy
     return None
 
 

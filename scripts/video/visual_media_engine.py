@@ -84,6 +84,7 @@ from scripts.scoring.visual_relevance_scorer import (
     TOP_CANDIDATES,
     rank_candidates_with_visual_score,
 )
+from scripts.core.feature_flags import sprint30_visual_score
 from scripts.video.editorial_fallback import execute_editorial_fallback
 from scripts.video.t2v_decision import T2VTracker, evaluate_t2v_decision
 
@@ -876,20 +877,28 @@ def _try_orchestrated_stock(
         scene,
         topic=topic,
         limit=TOP_CANDIDATES,
-    )
-    fallbacks = [
-        {
-            "asset_id": c.get("visual_breakdown", {}).get("asset_id"),
-            "visual_score": c.get("visual_score"),
-            "provider": c.get("provider"),
-            "rank": index + 1,
-        }
-        for index, c in enumerate(scored_candidates[1:FALLBACK_KEEP + 1])
-    ]
+    ) if sprint30_visual_score() else candidates[:TOP_CANDIDATES]
 
+    fallbacks = []
+    if sprint30_visual_score() and scored_candidates:
+        fallbacks = [
+            {
+                "asset_id": c.get("visual_breakdown", {}).get("asset_id"),
+                "visual_score": c.get("visual_score"),
+                "provider": c.get("provider"),
+                "rank": index + 1,
+            }
+            for index, c in enumerate(scored_candidates[1:FALLBACK_KEEP + 1])
+        ]
+
+    top_score = (
+        scored_candidates[0].get("visual_score", 0)
+        if sprint30_visual_score() and scored_candidates
+        else 0
+    )
     print(
-        f"  📋 Cena {scene_num}: {len(candidates)} candidatos, "
-        f"top visual {scored_candidates[0].get('visual_score', 0):.0f}/100"
+        f"  📋 Cena {scene_num}: {len(candidates)} candidatos"
+        + (f", top visual {top_score:.0f}/100" if sprint30_visual_score() else "")
     )
 
     for rank, candidate in enumerate(scored_candidates[:5], 1):
