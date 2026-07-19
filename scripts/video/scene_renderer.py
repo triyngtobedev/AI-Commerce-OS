@@ -421,13 +421,20 @@ def render_scene_clip(
 
     hints = get_scene_render_hints(scene or {"tipo": scene_type})
     lofi = _is_lofi_scene(scene)
-    motion = "slow_pan" if lofi else (
-        hints.get("motion") or kit.motion_for_scene(scene_type, scene_index)
-    )
-    zoom_max = 1.02 if lofi else (
-        render_style.ken_burns_zoom_max * (1.0 + hints.get("zoom_intensity", 0.0))
-    )
-    fade = 1.2 if lofi else render_style.transition_seconds
+
+    grammar = (scene or {}).get("visual_grammar", {})
+    if grammar:
+        motion = grammar.get("camera_move", hints.get("motion", "slow_push"))
+        zoom_max = grammar.get("zoom_intensity", render_style.ken_burns_zoom_max)
+        fade = grammar.get("crossfade", render_style.transition_seconds)
+    else:
+        motion = "slow_pan" if lofi else (
+            hints.get("motion") or kit.motion_for_scene(scene_type, scene_index)
+        )
+        zoom_max = 1.02 if lofi else (
+            render_style.ken_burns_zoom_max * (1.0 + hints.get("zoom_intensity", 0.0))
+        )
+        fade = 1.2 if lofi else render_style.transition_seconds
 
     grade = _cinematic_grade(render_style, lofi=lofi)
 

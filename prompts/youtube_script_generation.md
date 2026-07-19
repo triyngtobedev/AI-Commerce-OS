@@ -84,3 +84,32 @@ O encerramento deve:
 - Fazer callback ao hook (fechar o loop narrativo)
 - Deixar uma pergunta ou tensão final
 - CTA curto e direto (máx. 1 frase)
+
+## Plano visual (obrigatório por seção)
+
+Além do texto narrado, cada seção deve orientar a edição. Inclua no JSON um objeto `_visual_plan` com uma entrada por seção:
+
+```json
+{
+  "hook": "...",
+  "_visual_plan": {
+    "hook": {
+      "scene_type": "hook",
+      "visual_intent": "dramatic_hook",
+      "must_show": "o que DEVE aparecer na tela",
+      "avoid_showing": ["watermark", "logo", "meme"],
+      "asset_queries": ["query EN 1", "query EN 2"],
+      "fallback_visual_plan": "ken_burns_montage",
+      "emotion": "impact",
+      "pace": "fast",
+      "on_screen_text": "frase curta opcional",
+      "thumbnail_potential": true,
+      "broll_density": "high"
+    }
+  }
+}
+```
+
+Tipos editoriais válidos: hook, context, character, conflict, data, timeline, map, quote, evidence, turning_point, climax, resolution.
+
+Fallbacks editoriais válidos: ken_burns, ken_burns_montage, animated_chart, animated_timeline, animated_map, document_highlight, montage.
