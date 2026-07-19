@@ -1,15 +1,14 @@
 """
-Visual Media Engine — busca e geração de mídia por cena.
+Visual Media Engine — busca e geração de mídia por cena (footage-first).
 
 Cadeia de fallback por cena (youtube_dark):
-  1. Stock — Wikimedia (prioridade histórica) → Pixabay → Pexels
-  2. T2V — n8n (USE_N8N_FOR_SCENES) ou VideoGenerator local (Kling → fal → Replicate → HF)
-  3. Pollinations IA — bloqueado em hook/revelação/encerramento
-  4. Hugging Face SDXL — imagem (se HF_TOKEN configurado)
+  1. Stock ranqueado — Media Search Orchestrator (Wikimedia → Pixabay → Pexels)
+  2. Foto stock + Ken Burns / fallback editorial (mapa, timeline, gráfico)
+  3. T2V seletivo — máx. 2 cenas/vídeo (n8n ou VideoGenerator local)
+  4. Imagem IA documental — HF/Pollinations (bloqueado em cenas críticas)
   5. Placeholder ilustrativo — se tudo falhar
 
-Cenas documentais (preferir_imagem=True) priorizam foto stock, mas
-ainda tentam Replicate T2V antes de cair em Pollinations.
+Todos os assets passam pelo Asset Rights Ledger antes do render.
 """
 
 from __future__ import annotations
@@ -78,6 +77,10 @@ from scripts.video.media_quality import (
     validate_image_file,
     validate_video_file,
 )
+from scripts.core.asset_rights_ledger import AssetRightsLedger, evaluate_license
+from scripts.video.media_search_orchestrator import search_and_rank_scene
+from scripts.video.editorial_fallback import execute_editorial_fallback
+from scripts.video.t2v_decision import T2VTracker, evaluate_t2v_decision
 
 
 def _output_folder(subject):
@@ -798,6 +801,145 @@ def _try_ai_video(
     return True, "pollinations"
 
 
+def _register_asset_in_ledger(
+    ledger: AssetRightsLedger | None,
+    *,
+    scene_num: int,
+    provider: str,
+    item: dict,
+    media_type: str,
+    local_path: Path,
+    quality_score: float = 0.0,
+    license_text: str = "",
+) -> bool:
+    """Registra asset no ledger; retorna False se licença insegura."""
+
+    if ledger is None:
+        return True
+
+    record = ledger.register_asset(
+        source=provider,
+        provider=provider,
+        source_url=item.get("page_url") or item.get("url", ""),
+        download_url=item.get("url") or item.get("src", {}).get("original", ""),
+        creator=item.get("credit") or item.get("photographer") or "",
+        license_text=license_text or item.get("license") or item.get("credit") or "",
+        media_type=media_type,
+        width=item.get("width", 0),
+        height=item.get("height", 0),
+        topic_relevance_score=quality_score,
+        visual_quality_score=quality_score,
+        scene_id=scene_num,
+        local_path=local_path,
+        item_id=item.get("id"),
+    )
+    return record.is_safe
+
+
+def _try_orchestrated_stock(
+    scene_num: int,
+    query_item: dict,
+    scene: dict,
+    scene_video: Path,
+    scene_image: Path,
+    used_ids: set,
+    *,
+    topic: str = "",
+    prefer_image: bool = False,
+    recent_selections: list | None = None,
+    rejections: RejectionLog | None = None,
+    ledger: AssetRightsLedger | None = None,
+) -> dict | None:
+    """Busca via Media Search Orchestrator e seleciona melhor asset seguro."""
+
+    candidates = search_and_rank_scene(
+        query_item,
+        scene=scene,
+        topic=topic,
+        used_ids=used_ids,
+        recent_selections=recent_selections,
+        prefer_image=prefer_image,
+        min_candidates=3,
+    )
+
+    if not candidates:
+        print(f"  ⚠️ Cena {scene_num}: orchestrator retornou 0 candidatos")
+        return None
+
+    print(f"  📋 Cena {scene_num}: {len(candidates)} candidatos ranqueados")
+
+    for rank, candidate in enumerate(candidates[:5], 1):
+        item = candidate["item"]
+        provider = candidate["provider"]
+        media_type = candidate["media_type"]
+        score = candidate["score"]
+        query = candidate["query"]
+
+        license_eval = evaluate_license(
+            candidate.get("license_text", ""),
+            provider=provider,
+        )
+        if not license_eval["is_safe"]:
+            if rejections:
+                rejections.record(
+                    scene=scene_num, item=item, score=score,
+                    rejected_reason="unsafe_license", provider=provider, query=query,
+                )
+            continue
+
+        if media_type == "video":
+            if _download_scene_video(item, scene_video):
+                if not _register_asset_in_ledger(
+                    ledger, scene_num=scene_num, provider=provider,
+                    item=item, media_type="video", local_path=scene_video,
+                    quality_score=score, license_text=candidate.get("license_text", ""),
+                ):
+                    scene_video.unlink(missing_ok=True)
+                    continue
+                vid = item.get("id")
+                if vid:
+                    used_ids.add(vid)
+                return {
+                    "saved": True,
+                    "media_type": "video",
+                    "source": f"{provider}:{query}",
+                    "provedor": provider,
+                    "query_enriched": query,
+                    "quality_score": round(score, 3),
+                    "orchestrator_rank": rank,
+                    "candidates_evaluated": len(candidates),
+                    "selection_signature": selection_signature(item, "video", provider),
+                    "width": item.get("width", 0),
+                    "height": item.get("height", 0),
+                }
+        elif _download_scene_photo(item, scene_image):
+            if not _register_asset_in_ledger(
+                ledger, scene_num=scene_num, provider=provider,
+                item=item, media_type="photo", local_path=scene_image,
+                quality_score=score, license_text=candidate.get("license_text", ""),
+            ):
+                scene_image.unlink(missing_ok=True)
+                continue
+            pid = item.get("id")
+            if pid:
+                used_ids.add(pid)
+            return {
+                "saved": True,
+                "media_type": "image",
+                "source": f"{provider}:{query}",
+                "provedor": provider,
+                "query_enriched": query,
+                "quality_score": round(score, 3),
+                "orchestrator_rank": rank,
+                "candidates_evaluated": len(candidates),
+                "selection_signature": selection_signature(item, "photo", provider),
+                "width": item.get("width", 0),
+                "height": item.get("height", 0),
+            }
+
+    return None
+
+
 def _resolve_scene_media(
     scene_num: int,
     query_item: dict,
@@ -808,6 +950,9 @@ def _resolve_scene_media(
     recent_selections: list | None = None,
     rejections: RejectionLog | None = None,
     subject: dict | None = None,
+    scene: dict | None = None,
+    ledger: AssetRightsLedger | None = None,
+    t2v_tracker: T2VTracker | None = None,
 ) -> dict:
     """Resolve mídia para uma cena com fallback completo."""
 
@@ -834,6 +979,30 @@ def _resolve_scene_media(
         "preferir_imagem": preferir_imagem,
         "critical_scene": critical_scene,
     }
+
+    scene = scene or {}
+    topic = (subject or {}).get("nome", "")
+    platform = (subject or {}).get("_output_platform", "youtube_dark")
+
+    # --- Prioridade 1: Media Search Orchestrator (footage-first) ---
+    orchestrated = _try_orchestrated_stock(
+        scene_num, query_item, scene, scene_video, scene_image, used_ids,
+        topic=topic,
+        prefer_image=preferir_imagem,
+        recent_selections=recent_selections,
+        rejections=rejections,
+        ledger=ledger,
+    )
+    if orchestrated:
+        result.update(orchestrated)
+        result["scene"] = scene_num
+        result["tipo"] = tipo
+        label = "vídeo" if orchestrated["media_type"] == "video" else "imagem"
+        print(
+            f"🎬 Cena {scene_num} ({tipo}): {label} stock orquestrado "
+            f"(score {orchestrated['quality_score']}) — {orchestrated['provedor']}"
+        )
+        return result
 
     search_queries = _enrich_search_query(
         busca, tipo, fallback, tematica=tematica, atmosfera=atmosfera
@@ -938,90 +1107,156 @@ def _resolve_scene_media(
                 print(f"🖼️ Cena {scene_num} ({tipo}): imagem stock — {source}")
                 return result
 
-    # Stock falhou — n8n T2V (se habilitado) ou VideoGenerator local.
-    if not stock_video_found and not result.get("saved"):
-        print(
-            f"  ⚠️ Cena {scene_num}: stock sem mídia adequada — "
-            f"acionando geração IA"
+    stock_failed = not result.get("saved")
+
+    # --- Prioridade 2: Fallback editorial (Ken Burns, motion graphics) ---
+    if stock_failed:
+        print(f"  📐 Cena {scene_num}: tentando fallback editorial...")
+        duration = float(scene.get("duration_seconds", 5) or 5)
+        saved_images = [p for p in (saved_assets or []) if p.suffix.lower() in {".jpg", ".jpeg", ".png"}]
+        editorial_ok, editorial_type, strategy = execute_editorial_fallback(
+            scene, query_item,
+            scene_image=scene_image,
+            scene_video=scene_video,
+            saved_images=saved_images,
+            duration=min(duration, 12),
         )
-        image_url = None
-        product_name = None
-        category = None
-        material = None
-        if subject:
-            image_url = subject.get("image_url") or subject.get("imagem_url")
-            product_name = subject.get("nome") or subject.get("name")
-            category = subject.get("categoria") or subject.get("category")
-            material = subject.get("material")
-
-        platform = (subject or {}).get("_output_platform", "youtube_dark")
-        scene_description = query_item.get("visual_goal", busca)
-        emotion = query_item.get("emotion", "")
-
-        ai_video_saved = False
-        ai_video_provider = ""
-
-        # I2V e-commerce: sempre local (n8n orquestra só T2V documental).
-        i2v_ecommerce = (
-            image_url
-            and (fal_kling_is_configured() or replicate_is_configured())
-            and product_name
-        )
-        if i2v_ecommerce:
-            ai_video_saved, ai_video_provider = _try_ai_video(
-                busca,
-                scene_video,
-                image_url=image_url,
-                product_name=product_name,
-                category=category,
-                material=material,
-                scene_description=scene_description,
-                scene_tipo=tipo,
-                emotion=emotion,
-                platform=platform,
-                visual_direction=visual_direction,
-                allow_pollinations=allow_pollinations,
-            )
-        elif use_n8n_for_scenes():
-            print(f"[n8n] delegando T2V cena {scene_num} ao orquestrador n8n")
-            fallback = generate_scene_video_fallback(
-                scene_description=scene_description,
-                scene_query=busca,
-                output_path=scene_video,
-                platform=platform,
-                scene_tipo=tipo,
-                emotion=emotion,
-                scene=query_item,
-            )
-            if fallback and fallback.get("local_path"):
-                ai_video_saved = True
-                ai_video_provider = fallback.get("api_used", "n8n")
-        else:
-            ai_video_saved, ai_video_provider = _try_ai_video(
-                busca,
-                scene_video,
-                image_url=image_url,
-                product_name=product_name,
-                category=category,
-                material=material,
-                scene_description=scene_description,
-                scene_tipo=tipo,
-                emotion=emotion,
-                platform=platform,
-                visual_direction=visual_direction,
-                allow_pollinations=allow_pollinations,
-            )
-        if ai_video_saved:
+        if editorial_ok:
+            if ledger:
+                ledger.register_asset(
+                    source="generated",
+                    provider="generated",
+                    license_text="Editorial composite",
+                    media_type=editorial_type,
+                    scene_id=scene_num,
+                    local_path=scene_video,
+                    visual_quality_score=0.75,
+                )
             result.update({
                 "saved": True,
-                "media_type": "ai_video",
-                "source": f"{ai_video_provider}:video",
-                "provedor": ai_video_provider,
+                "media_type": editorial_type,
+                "source": f"editorial:{strategy}",
+                "provedor": "generated",
+                "quality_score": 0.75,
+                "fallback_strategy": strategy,
             })
-            label = ai_video_provider if ai_video_provider != "pollinations" else "Pollinations"
-            print(f"🤖 Cena {scene_num} ({tipo}): vídeo {label}")
+            print(f"📐 Cena {scene_num} ({tipo}): fallback editorial — {strategy}")
             return result
 
+    # --- Prioridade 3: T2V seletivo (máx. 2 cenas) ---
+    if stock_failed and not result.get("saved"):
+        tracker = t2v_tracker or T2VTracker()
+        t2v_decision = evaluate_t2v_decision(
+            scene_num, scene, query_item,
+            tracker=tracker,
+            stock_failed=True,
+            editorial_failed=True,
+            scene_importance=0.8 if critical_scene else 0.5,
+        )
+        result["t2v_decision"] = t2v_decision.to_dict()
+
+        if not t2v_decision.should_use_t2v:
+            print(f"  ⏭️ Cena {scene_num}: T2V skipped — {t2v_decision.reason}")
+        else:
+            print(f"  ⚠️ Cena {scene_num}: T2V aprovado — {t2v_decision.reason}")
+            image_url = None
+            product_name = None
+            category = None
+            material = None
+            if subject:
+                image_url = subject.get("image_url") or subject.get("imagem_url")
+                product_name = subject.get("nome") or subject.get("name")
+                category = subject.get("categoria") or subject.get("category")
+                material = subject.get("material")
+
+            scene_description = query_item.get("visual_goal", busca)
+            emotion = query_item.get("emotion", "")
+
+            ai_video_saved = False
+            ai_video_provider = ""
+
+            i2v_ecommerce = (
+                image_url
+                and (fal_kling_is_configured() or replicate_is_configured())
+                and product_name
+            )
+            if i2v_ecommerce:
+                ai_video_saved, ai_video_provider = _try_ai_video(
+                    busca, scene_video,
+                    image_url=image_url, product_name=product_name,
+                    category=category, material=material,
+                    scene_description=scene_description, scene_tipo=tipo,
+                    emotion=emotion, platform=platform,
+                    visual_direction=visual_direction,
+                    allow_pollinations=allow_pollinations,
+                )
+            elif use_n8n_for_scenes():
+                print(f"[n8n] delegando T2V cena {scene_num} ao orquestrador n8n")
+                n8n_result = generate_scene_video_fallback(
+                    scene_description=scene_description,
+                    scene_query=t2v_decision.prompt or busca,
+                    output_path=scene_video,
+                    platform=platform,
+                    scene_tipo=tipo,
+                    emotion=emotion,
+                    scene=query_item,
+                )
+                if n8n_result and n8n_result.get("local_path"):
+                    ai_video_saved = True
+                    ai_video_provider = n8n_result.get("api_used", "n8n")
+            else:
+                ai_video_saved, ai_video_provider = _try_ai_video(
+                    busca, scene_video,
+                    image_url=image_url, product_name=product_name,
+                    category=category, material=material,
+                    scene_description=scene_description, scene_tipo=tipo,
+                    emotion=emotion, platform=platform,
+                    visual_direction=visual_direction,
+                    allow_pollinations=allow_pollinations,
+                )
+
+            if ai_video_saved:
+                tracker.record_use(scene_num, t2v_decision)
+                if ledger:
+                    ledger.register_asset(
+                        source=ai_video_provider,
+                        provider=ai_video_provider,
+                        license_text="AI generated (T2V)",
+                        media_type="t2v",
+                        scene_id=scene_num,
+                        local_path=scene_video,
+                        visual_quality_score=0.55,
+                    )
+                result.update({
+                    "saved": True,
+                    "media_type": "ai_video",
+                    "source": f"{ai_video_provider}:video",
+                    "provedor": ai_video_provider,
+                    "quality_score": 0.55,
+                })
+                label = ai_video_provider if ai_video_provider != "pollinations" else "Pollinations"
+                print(f"🤖 Cena {scene_num} ({tipo}): vídeo T2V {label}")
+                return result
+
+            print(f"  ⚠️ Cena {scene_num}: T2V falhou — fallback editorial")
+            fb_ok, fb_type, fb_strategy = execute_editorial_fallback(
+                scene, query_item,
+                scene_image=scene_image, scene_video=scene_video,
+                saved_images=[p for p in (saved_assets or []) if p.suffix.lower() in {".jpg", ".jpeg", ".png"}],
+            )
+            if fb_ok:
+                result.update({
+                    "saved": True,
+                    "media_type": fb_type,
+                    "source": f"editorial:{fb_strategy}",
+                    "provedor": "generated",
+                    "quality_score": 0.70,
+                    "t2v_fallback": True,
+                })
+                print(f"📐 Cena {scene_num} ({tipo}): fallback pós-T2V — {fb_strategy}")
+                return result
+
+    # --- Prioridade 4: Imagem IA documental ---
     ai_saved, ai_provider = _try_ai_image(
         busca,
         scene_image,
@@ -1086,11 +1321,12 @@ def _resolve_scene_media(
 
 def run_visual_media_pipeline(subject, scenes, queries) -> str:
     """
-    Pipeline de mídia scene-aware com seleção por relevância e fallback IA.
+    Pipeline footage-first com orchestrator, rights ledger e T2V seletivo.
     Salva arquivos como scene-01.mp4, scene-02.jpg, etc.
     """
 
     folder = _output_folder(subject) / "assets"
+    output_root = _output_folder(subject)
     videos_folder = folder / "videos"
     images_folder = folder / "images"
     videos_folder.mkdir(parents=True, exist_ok=True)
@@ -1100,13 +1336,17 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
     saved_assets: list[Path] = []
     results = []
     rejections = RejectionLog()
-    # Histórico das cenas anteriores (comparação com as 2 últimas).
     recent_selections: list[dict] = []
+    ledger = AssetRightsLedger(output_root)
+    t2v_tracker = T2VTracker()
+
+    scene_list = scenes.get("cenas", []) if isinstance(scenes, dict) else []
 
     for i, query_item in enumerate(queries):
         scene_num = i + 1
         scene_video = videos_folder / f"scene-{scene_num:02d}.mp4"
         scene_image = images_folder / f"scene-{scene_num:02d}.jpg"
+        scene_data = scene_list[i] if i < len(scene_list) else {}
 
         result = _resolve_scene_media(
             scene_num,
@@ -1118,10 +1358,11 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
             recent_selections=recent_selections[-2:],
             rejections=rejections,
             subject=subject,
+            scene=scene_data,
+            ledger=ledger,
+            t2v_tracker=t2v_tracker,
         )
 
-        # Assinatura de diversidade é transiente: alimenta o histórico e é
-        # removida antes de serializar para não alterar a estrutura de output.
         signature = result.pop("selection_signature", None)
         if signature:
             recent_selections.append(signature)
@@ -1134,21 +1375,30 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
             elif scene_image.exists():
                 saved_assets.append(scene_image)
 
+    ledger.export_report(output_root)
+
     output = {
         "produto": subject.get("nome", ""),
         "engine": "visual_media_engine",
-        "version": 3,
+        "version": 4,
+        "architecture": "footage_first",
         "scenes": results,
+        "t2v_usage": t2v_tracker.to_dict(),
+        "rights_all_safe": ledger.all_safe(),
     }
 
     with open(folder / "media_search.json", "w", encoding="utf-8") as file:
         json.dump(output, file, ensure_ascii=False, indent=4)
 
-    # Log de auditoria de rejeições (best-effort, fora do contrato).
     rejections.flush(folder)
 
     saved_count = sum(1 for r in results if r["saved"])
-    print(f"📸 Visual Media Engine: {saved_count}/{len(results)} cenas com mídia")
+    t2v_used = len(t2v_tracker.used_scenes)
+    print(
+        f"📸 Visual Media Engine: {saved_count}/{len(results)} cenas | "
+        f"T2V: {t2v_used}/{t2v_tracker.max_scenes} | "
+        f"Rights: {'OK' if ledger.all_safe() else 'UNSAFE'}"
+    )
 
     if saved_count < len(results):
         raise RuntimeError(

@@ -60,6 +60,14 @@ from scripts.publisher.youtube_uploader import (
 )
 from scripts.metrics.metrics_tracker import record_production
 
+from scripts.research.research_pack import generate_research_pack, validate_claims_against_pack
+from scripts.youtube.retention_analyzer import run_retention_pipeline
+from scripts.youtube.scene_visual_planner import enrich_scenes_with_visual_plan
+from scripts.video.visual_grammar import apply_visual_grammar_to_scenes
+from scripts.core.production.quality_gate import run_quality_gate
+from scripts.core.asset_rights_ledger import AssetRightsLedger
+from scripts.youtube.youtube_packager import generate_youtube_package
+
 from scripts.core.emotional_timeline import build_emotional_timeline
 from scripts.core.timeline_sync import sync_timeline_to_audio
 from scripts.core.visual_intent_engine import apply_visual_intents
@@ -274,6 +282,17 @@ def run_youtube_pipeline(
             )
             strategy = apply_template_override(strategy)
 
+            output_dir = content_output_dir(
+                topic,
+                platform=YOUTUBE_DARK.id,
+            )
+
+            research_pack = generate_research_pack(
+                topic,
+                analysis=analysis,
+                output_dir=output_dir,
+            )
+
 
             script = generate_youtube_script(
                 topic,
@@ -281,6 +300,16 @@ def run_youtube_pipeline(
                 opportunity,
                 strategy,
             )
+
+            script, retention_report = run_retention_pipeline(
+                script,
+                topic=topic.get("nome", ""),
+                output_dir=output_dir,
+            )
+
+            claims_check = validate_claims_against_pack(script, research_pack)
+            if not claims_check.get("safe_to_proceed"):
+                print(f"⚠️ Claims sensíveis sem fonte: {claims_check.get('flagged_claims', [])}")
 
 
             content = generate_youtube_content(
@@ -317,11 +346,13 @@ def run_youtube_pipeline(
                 strategy,
             )
 
-
-            output_dir = content_output_dir(
-                topic,
-                platform=YOUTUBE_DARK.id,
+            scenes = enrich_scenes_with_visual_plan(
+                scenes,
+                topic=topic.get("nome", ""),
+                research_pack=research_pack,
+                script=script,
             )
+            scenes = apply_visual_grammar_to_scenes(scenes)
 
 
             audio = create_audio({
@@ -445,6 +476,18 @@ def run_youtube_pipeline(
 
             build_video_project(result)
 
+            # Quality Gate pré-render
+            ledger = AssetRightsLedger(output_dir)
+            quality_gate = run_quality_gate(
+                output_dir,
+                result,
+                block_on_failure=False,
+                ledger=ledger,
+            )
+            if quality_gate.blocked:
+                print(f"⚠️ Quality Gate: {'; '.join(quality_gate.block_reasons[:3])}")
+            else:
+                print(f"✅ Quality Gate: aprovado ({quality_gate.publish_ready_score}/100)")
 
             video = render_video_project(result)
 
@@ -482,6 +525,7 @@ def run_youtube_pipeline(
 
             result = pipeline_result.to_dict()
 
+            generate_youtube_package(result, export_folder=output_dir)
 
             export_folder = export_youtube_video(result)
 

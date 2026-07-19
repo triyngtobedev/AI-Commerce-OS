@@ -150,13 +150,14 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
     Gera queries de mídia para cada cena.
     """
 
-    from scripts.core.visual_intent_engine import (
+from scripts.core.visual_intent_engine import (
         build_visual_search_query,
         resolve_visual_intent,
     )
     from scripts.core.visual_director_engine import direct_scene_visual
     from scripts.video.query_localizer import localize_search_query
     from scripts.video.scene_emotion import SCENE_SECTION_ALIASES
+    from scripts.video.media_search_orchestrator import generate_scene_queries
     from scripts.youtube.lofi_dark_config import is_lofi_dark, lofi_background_query
 
     queries = []
@@ -243,7 +244,22 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
             "visual_direction": direction_dict,
             "primary_asset": direction.primary_asset,
             "animation_strategy": direction.animation_strategy,
+            "scene_type": scene.get("scene_type", tipo),
+            "must_show": scene.get("must_show", visual),
+            "avoid_showing": scene.get("avoid_showing", []),
+            "asset_queries": scene.get("asset_queries", []),
+            "fallback_visual_plan": scene.get("fallback_visual_plan", ""),
+            "on_screen_text": scene.get("on_screen_text", ""),
+            "pace": scene.get("pace", "medium"),
+            "broll_density": scene.get("broll_density", "medium"),
         }
+
+        if not lofi_template:
+            query["scene_queries"] = generate_scene_queries(
+                {**scene, **query},
+                topic=produto,
+                asset_queries=scene.get("asset_queries"),
+            )
 
         # Visual Director sobrescreve preferência de mídia quando disponível.
         if direction.primary_asset == "documentary_image":
