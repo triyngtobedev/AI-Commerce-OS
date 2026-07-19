@@ -16,12 +16,13 @@ from typing import Callable
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from api import __version__
 from api.config import get_pipeline_api_key
 from api.models.schemas import HealthResponse
-from api.routers import analytics, download, pipeline, scenes, youtube
+from api.routers import analytics, pipeline, scenes, youtube
+from api.services.output_videos import get_latest_video_final, is_allowed_output_path
 
 load_dotenv()
 
@@ -177,9 +178,31 @@ async def health_check() -> HealthResponse:
     )
 
 
+@app.get("/download/latest-video", tags=["download"])
+def download_latest_video() -> FileResponse:
+    """Baixa o video_final.mp4 mais recente em /app/persistent/output ou /app/output."""
+    video_path = get_latest_video_final()
+    if video_path is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nenhum video_final.mp4 encontrado em output/",
+        )
+
+    if not is_allowed_output_path(video_path):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Caminho de saída fora do diretório permitido",
+        )
+
+    return FileResponse(
+        path=str(video_path),
+        media_type="video/mp4",
+        filename="video.mp4",
+    )
+
+
 # Registra routers sob prefixo /api/v1
 app.include_router(pipeline.router, prefix="/api/v1")
 app.include_router(scenes.router, prefix="/api/v1")
 app.include_router(youtube.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
-app.include_router(download.router)
