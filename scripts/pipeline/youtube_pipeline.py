@@ -96,6 +96,70 @@ from scripts.core.emotional_effects import apply_effect_hints_to_scenes
 from scripts.utils.slug import content_output_dir
 
 
+def _is_dark_channel_mode() -> bool:
+    return os.getenv("DARK_CHANNEL_MODE", "false").lower() in ("true", "1", "yes")
+
+
+def _run_dark_channel_pipeline(
+    topic: dict,
+    *,
+    should_upload: bool,
+    privacy_status: str,
+    upload_context: dict,
+    force: bool = False,
+) -> dict | None:
+    """Render path simples — Ken Burns + Edge TTS + legendas queimadas."""
+    from scripts.video.dark_channel_renderer import render_dark_channel_video
+
+    topic_name = topic.get("nome", str(topic))
+    output_dir = content_output_dir(topic, platform=YOUTUBE_DARK.id)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"\n🌑 DARK_CHANNEL_MODE — renderer simples para: {topic_name}\n")
+
+    video_path = render_dark_channel_video(
+        topic_name,
+        output_dir,
+        output_filename="video_final.mp4",
+    )
+
+    if not video_path.is_file():
+        print("❌ Dark channel renderer não produziu vídeo.")
+        return None
+
+    result = {
+        "produto": topic,
+        "video": str(video_path),
+        "platform": YOUTUBE_DARK.id,
+        "dark_channel_mode": True,
+        "youtube_metadata": {
+            "titulo": topic_name,
+            "tags": ["mistério", "documentário", "dark"],
+            "categoria": "Education",
+        },
+    }
+
+    export_folder = output_dir
+    upload_result = None
+
+    if should_upload and is_upload_configured():
+        print("\n📤 Iniciando publicação no YouTube (dark channel)...")
+        upload_result = upload_from_folder(export_folder, privacy_status=privacy_status)
+    elif should_upload:
+        upload_result = {
+            "status": UPLOAD_STATUS["failed"],
+            "message": "Credenciais não configuradas",
+        }
+    else:
+        upload_result = {
+            "status": UPLOAD_STATUS["skipped"],
+            "message": upload_context["reason"],
+        }
+
+    record_production(result, upload_result=upload_result, update_existing=force)
+    return result
+
+
 def _is_cloud_injected_topic() -> bool:
     """Tema explícito via API/n8n — não descartar por score baixo."""
 
@@ -229,6 +293,24 @@ def run_youtube_pipeline(
 
             if not topic:
 
+                continue
+
+            if _is_dark_channel_mode():
+                output_dir = content_output_dir(
+                    topic,
+                    platform=YOUTUBE_DARK.id,
+                )
+                dark_result = _run_dark_channel_pipeline(
+                    topic,
+                    should_upload=should_upload,
+                    privacy_status=privacy_status,
+                    upload_context=upload_context,
+                    force=force,
+                )
+                if dark_result:
+                    processed_names.add(topic["nome"].strip().casefold())
+                    processed_names.add(output_dir.name)
+                    results.append(dark_result)
                 continue
 
             if production_mode:
