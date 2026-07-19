@@ -276,5 +276,17 @@ def export_youtube_video(result):
         f"Local: {folder}"
     )
 
+    # Exportar relatórios footage-first se existirem
+    for report_name in (
+        "asset_rights_report.json",
+        "quality_report.json",
+        "retention_report.json",
+        "research_pack.json",
+        "thumbnail_brief.json",
+    ):
+        report_path = folder / report_name
+        if report_path.exists():
+            print(f"   📄 {report_name}")
+
 
     return folder

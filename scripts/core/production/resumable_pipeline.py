@@ -77,6 +77,14 @@ from scripts.core.timeline_sync import sync_timeline_to_audio
 from scripts.core.visual_intent_engine import apply_visual_intents
 from scripts.core.emotional_effects import apply_effect_hints_to_scenes
 
+from scripts.research.research_pack import generate_research_pack, validate_claims_against_pack
+from scripts.youtube.retention_analyzer import run_retention_pipeline
+from scripts.youtube.scene_visual_planner import enrich_scenes_with_visual_plan
+from scripts.video.visual_grammar import apply_visual_grammar_to_scenes
+from scripts.core.production.quality_gate import run_quality_gate
+from scripts.core.asset_rights_ledger import AssetRightsLedger
+from scripts.youtube.youtube_packager import generate_youtube_package
+
 
 class StageContext:
     """Contexto compartilhado entre etapas do pipeline."""
@@ -199,6 +207,15 @@ def _stage_strategy(ctx: StageContext) -> dict:
     strategy = apply_template_override(strategy)
     ctx.state.save_artifact("strategy.json", strategy)
     ctx.data["strategy"] = strategy
+
+    research_pack = generate_research_pack(
+        topic,
+        analysis=ctx.data.get("analysis"),
+        output_dir=ctx.output_dir,
+    )
+    ctx.data["research_pack"] = research_pack
+    ctx.state.save_artifact("research_pack.json", research_pack)
+
     ctx.cache.record("strategy", cache_input, artifacts)
     return strategy
 
@@ -220,6 +237,20 @@ def _stage_script(ctx: StageContext) -> dict:
         ctx.data["opportunity"],
         ctx.data["strategy"],
     )
+
+    script, retention_report = run_retention_pipeline(
+        script,
+        topic=topic.get("nome", ""),
+        output_dir=ctx.output_dir,
+    )
+    ctx.data["retention_report"] = retention_report.to_dict()
+
+    research_pack = ctx.data.get("research_pack") or generate_research_pack(
+        topic, analysis=ctx.data["analysis"], output_dir=ctx.output_dir,
+    )
+    claims_check = validate_claims_against_pack(script, research_pack)
+    ctx.data["claims_check"] = claims_check
+
     ctx.state.save_artifact("script.json", script)
     ctx.data["script"] = script
     ctx.cache.record("script", cache_input, artifacts)
@@ -265,6 +296,19 @@ def _stage_timeline(ctx: StageContext) -> dict:
     emotional_timeline = apply_visual_intents(emotional_timeline)
 
     scenes = generate_youtube_scenes(topic, content, ctx.data["strategy"])
+
+    research_pack = ctx.data.get("research_pack") or generate_research_pack(
+        topic, analysis=ctx.data.get("analysis"), output_dir=ctx.output_dir,
+    )
+    ctx.data["research_pack"] = research_pack
+
+    scenes = enrich_scenes_with_visual_plan(
+        scenes,
+        topic=topic.get("nome", ""),
+        research_pack=research_pack,
+        script=ctx.data.get("script"),
+    )
+    scenes = apply_visual_grammar_to_scenes(scenes)
 
     ctx.state.save_artifact("content.json", content)
     ctx.state.save_artifact("caption.json", caption)
@@ -437,6 +481,13 @@ def _stage_render(ctx: StageContext) -> Optional[str]:
     if isinstance(result.get("cenas"), dict):
         result["cenas"]["emotional_timeline"] = _serialize_timeline(ctx.data.get("emotional_timeline"))
     build_video_project(result)
+
+    ledger = AssetRightsLedger(ctx.output_dir)
+    quality_gate = run_quality_gate(
+        ctx.output_dir, result, block_on_failure=False, ledger=ledger,
+    )
+    ctx.data["quality_gate"] = quality_gate.to_dict()
+
     video = render_video_project(result)
 
     if not video:
@@ -474,6 +525,7 @@ def _stage_export(ctx: StageContext) -> Path:
         raise RuntimeError("PipelineResult ausente — execute render primeiro")
 
     result = pr.to_dict()
+    generate_youtube_package(result, export_folder=ctx.output_dir)
     folder = export_youtube_video(result)
     ctx.data["export_folder"] = folder
     return folder
@@ -492,6 +544,11 @@ def _stage_validate(ctx: StageContext, *, block_upload: bool = True) -> dict:
 
     quality = run_quality_score(folder, pr.to_dict())
     ctx.data["quality_report"] = quality
+
+    # Quality Gate editorial (footage-first)
+    ledger = AssetRightsLedger(folder)
+    gate = run_quality_gate(folder, pr.to_dict(), block_on_failure=False, ledger=ledger)
+    ctx.data["quality_gate"] = gate.to_dict()
 
     if block_upload and not quality.passed:
         raise RuntimeError(
