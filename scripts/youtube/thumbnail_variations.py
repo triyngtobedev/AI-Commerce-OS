@@ -10,6 +10,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 from scripts.core.brand_kit import get_brand_kit
+from scripts.ai.gemini_quota import (
+    handle_gemini_error,
+    is_gemini_quota_exhausted,
+    record_gemini_call,
+)
 from scripts.youtube.thumbnail_scorer import MIN_TEXT_LEGIBILITY, score_thumbnail
 from scripts.youtube.thumbnail_generator import (
     _pick_best_hero_image,
@@ -82,6 +87,15 @@ def _generate_with_gemini_image(prompt: str, output_path: Path) -> bool:
     if not api_key:
         return False
 
+    if is_gemini_quota_exhausted():
+        record_gemini_call(
+            stage="thumbnail",
+            model=THUMBNAIL_IMAGE_MODEL,
+            fallback=True,
+        )
+        print("[Thumbnail A/B] Quota Gemini esgotada — usando hero frame + BrandKit")
+        return False
+
     try:
         from google import genai
         from google.genai import types
@@ -99,8 +113,11 @@ def _generate_with_gemini_image(prompt: str, output_path: Path) -> bool:
             if part.inline_data and part.inline_data.data:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 output_path.write_bytes(part.inline_data.data)
-                return output_path.exists() and output_path.stat().st_size > 2048
-    except Exception:
+                if output_path.exists() and output_path.stat().st_size > 2048:
+                    record_gemini_call(stage="thumbnail", model=THUMBNAIL_IMAGE_MODEL)
+                    return True
+    except Exception as error:
+        handle_gemini_error(error, stage="thumbnail")
         return False
 
     return False

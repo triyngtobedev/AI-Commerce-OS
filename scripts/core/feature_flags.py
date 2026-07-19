@@ -34,7 +34,11 @@ def sprint30_visual_score() -> bool:
 
 
 def sprint30_thumbnail_ab() -> bool:
-    return sprint30_enabled() and _flag("SPRINT30_THUMBNAIL_AB", default=True)
+    return sprint30_enabled() and _flag("SPRINT30_THUMBNAIL_AB", default=False)
+
+
+def visual_score_top_n() -> int:
+    return int(os.getenv("VISUAL_SCORE_TOP_N", "2"))
 
 
 def sprint30_audio_layer() -> bool:
@@ -55,7 +59,7 @@ def sprint30_metrics() -> bool:
     return sprint30_enabled() and _flag("SPRINT30_METRICS", default=True)
 
 
-def sprint30_flags_snapshot() -> dict[str, bool]:
+def sprint30_flags_snapshot() -> dict[str, bool | int]:
     return {
         "SPRINT30_ENABLED": sprint30_enabled(),
         "SPRINT30_VISUAL_SCORE": sprint30_visual_score(),
@@ -64,4 +68,5 @@ def sprint30_flags_snapshot() -> dict[str, bool]:
         "SPRINT30_RETENTION": sprint30_retention_controller(),
         "SPRINT30_RETENTION_CONTROLLER": sprint30_retention_controller(),
         "SPRINT30_METRICS": sprint30_metrics(),
+        "VISUAL_SCORE_TOP_N": visual_score_top_n(),
     }

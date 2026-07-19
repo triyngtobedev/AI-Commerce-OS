@@ -2,7 +2,8 @@
 Visual Relevance Scorer — avaliação multimodal de candidatos por cena.
 
 Score determinístico cacheado por (asset_id, scene_hash).
-Modelo padrão: gemini-2.5-flash (multimodal, barato).
+Modelo padrão: gemini-2.0-flash-lite (multimodal, free tier).
+Gemini atua como desempate/editor final sobre candidatos pré-filtrados pelo orchestrator.
 """
 
 from __future__ import annotations
@@ -13,16 +14,21 @@ import tempfile
 from pathlib import Path
 from typing import Any, Optional
 
+from scripts.ai.gemini_quota import (
+    handle_gemini_error,
+    is_gemini_quota_exhausted,
+    record_gemini_call,
+)
 from scripts.utils.ai_cache import load_cache, save_cache
 from scripts.utils.json_parser import safe_parse_json
 from scripts.video.media_downloader import download_file, select_photo_url
 
-VISUAL_SCORE_MODEL = os.getenv("VISUAL_SCORE_MODEL", "gemini-2.5-flash")
+VISUAL_SCORE_MODEL = os.getenv("VISUAL_SCORE_MODEL", "gemini-2.0-flash-lite")
 HARD_PENALTY = 40
 MIN_VIDEO_WIDTH = 1920
 MIN_VIDEO_HEIGHT = 1080
 MIN_PHOTO_WIDTH = 1600
-TOP_CANDIDATES = int(os.getenv("VISUAL_SCORE_TOP_N", "8"))
+TOP_CANDIDATES = int(os.getenv("VISUAL_SCORE_TOP_N", "2"))
 FALLBACK_KEEP = 3
 
 _SCORE_PROMPT = """Avalie a relevância visual deste asset para a cena documentária.
@@ -129,6 +135,7 @@ def _heuristic_score(
     *,
     orchestrator_score: float = 0.0,
     metadata_penalty: int = 0,
+    reason: str = "heuristic fallback (sem Gemini)",
 ) -> dict:
     tags = " ".join(item.get("tags", [])).lower()
     text = scene_text.lower()
@@ -141,7 +148,7 @@ def _heuristic_score(
         "visual_quality": min(100.0, 50 + (item.get("width", 0) / 40)),
         "on_brand_documentary": min(100.0, base * 0.8),
         "hard_penalty_reasons": [],
-        "reason": "heuristic fallback (sem Gemini)",
+        "reason": reason,
     }
     scores["final_score"] = compute_final_score(scores, metadata_penalty)
     return scores
@@ -155,6 +162,15 @@ def _call_gemini_multimodal(
 ) -> Optional[dict]:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
+        return None
+
+    if is_gemini_quota_exhausted():
+        record_gemini_call(
+            stage="visual_score",
+            model=VISUAL_SCORE_MODEL,
+            fallback=True,
+        )
+        print("[Visual Score] Quota Gemini esgotada — heuristic fallback")
         return None
 
     try:
@@ -184,10 +200,12 @@ def _call_gemini_multimodal(
                 )
             ],
         )
+        record_gemini_call(stage="visual_score", model=VISUAL_SCORE_MODEL)
         parsed = safe_parse_json(response.text)
         if isinstance(parsed, dict):
             return parsed
-    except Exception:
+    except Exception as error:
+        handle_gemini_error(error, stage="visual_score")
         return None
 
     return None
@@ -217,7 +235,11 @@ def score_candidate(
     url = preview_url(item, media_type)
 
     scores: Optional[dict] = None
-    if url:
+    fallback_reason = "heuristic fallback (sem Gemini)"
+    if is_gemini_quota_exhausted():
+        fallback_reason = "heuristic fallback (quota Gemini esgotada)"
+
+    if url and not is_gemini_quota_exhausted():
         with tempfile.TemporaryDirectory() as tmp:
             preview_path = Path(tmp) / "preview.jpg"
             if _download_preview(url, preview_path):
@@ -231,6 +253,7 @@ def score_candidate(
             item,
             orchestrator_score=orchestrator_score,
             metadata_penalty=meta_penalty,
+            reason=fallback_reason,
         )
     else:
         if meta_reasons:

@@ -8,9 +8,14 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
+from scripts.ai.gemini_quota import (
+    handle_gemini_error,
+    is_gemini_quota_exhausted,
+    record_gemini_call,
+)
 from scripts.utils.json_parser import safe_parse_json
 
-THUMBNAIL_SCORE_MODEL = os.getenv("VISUAL_SCORE_MODEL", "gemini-2.5-flash")
+THUMBNAIL_SCORE_MODEL = os.getenv("VISUAL_SCORE_MODEL", "gemini-2.0-flash-lite")
 MIN_TEXT_LEGIBILITY = 70
 
 _SCORE_PROMPT = """Avalie esta thumbnail para YouTube dark documentário.
@@ -54,6 +59,15 @@ def _call_gemini_score(
     if not api_key:
         return None
 
+    if is_gemini_quota_exhausted():
+        record_gemini_call(
+            stage="thumbnail",
+            model=THUMBNAIL_SCORE_MODEL,
+            fallback=True,
+        )
+        print("[Thumbnail Score] Quota Gemini esgotada — heuristic fallback")
+        return None
+
     try:
         from google import genai
         from google.genai import types
@@ -84,10 +98,12 @@ def _call_gemini_score(
                 )
             ],
         )
+        record_gemini_call(stage="thumbnail", model=THUMBNAIL_SCORE_MODEL)
         parsed = safe_parse_json(response.text)
         if isinstance(parsed, dict):
             return parsed
-    except Exception:
+    except Exception as error:
+        handle_gemini_error(error, stage="thumbnail")
         return None
 
     return None
