@@ -317,6 +317,8 @@ AI-Commerce-OS/
 | [`docs/deploy-railway.md`](docs/deploy-railway.md) | Deploy na nuvem (Railway) |
 | [`docs/youtube_oauth.md`](docs/youtube_oauth.md) | OAuth e upload YouTube |
 | [`docs/STATUS.md`](docs/STATUS.md) | Snapshot atual do projeto |
+| [`docs/painel-projeto.html`](docs/painel-projeto.html) | Painel visual interativo (vibe coder) |
+| [`docs/CAMINHO-IMEDIATO.md`](docs/CAMINHO-IMEDIATO.md) | Passo a passo: merge, smoke, volume, OAuth, n8n |
 | [`docs/aicommerceos-content-guide.md`](docs/aicommerceos-content-guide.md) | Guia de conteúdo para canal dark |
 
 ---
