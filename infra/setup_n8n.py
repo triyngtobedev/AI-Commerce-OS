@@ -200,19 +200,27 @@ def patch_workflow_urls(wf: dict, api_base: str) -> dict:
     """
     Substitui $env.PIPELINE_API_BASE_URL pela URL literal.
 
-    n8n 2.x bloqueia $env nas expressões por padrão; injetar a URL no import
-    evita 'access to env vars denied' no HTTP Request.
+    n8n 2.x bloqueia $env nas expressões por padrão. O prefixo `={{ $env... }}`
+    vira URL absoluta estática; expressões {{ $json... }} no path são preservadas.
     """
     base = api_base.rstrip("/")
+    env_prefix = "={{ $env.PIPELINE_API_BASE_URL }}"
     token = "$env.PIPELINE_API_BASE_URL"
+
+    def patch_url(value: str) -> str:
+        if value.startswith(env_prefix):
+            return f"{base}{value[len(env_prefix):]}"
+        if token in value:
+            return value.replace(token, base)
+        return value
 
     def walk(obj: object) -> object:
         if isinstance(obj, dict):
-            return {key: walk(value) for key, value in obj.items()}
+            return {key: walk(val) for key, val in obj.items()}
         if isinstance(obj, list):
             return [walk(item) for item in obj]
-        if isinstance(obj, str) and token in obj:
-            return obj.replace(token, base)
+        if isinstance(obj, str):
+            return patch_url(obj)
         return obj
 
     patched = walk(wf)
