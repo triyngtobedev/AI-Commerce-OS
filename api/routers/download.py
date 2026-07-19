@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse
 
-from api.services.output_videos import PROJECT_ROOT, get_latest_video_final
+from api.services.output_videos import get_latest_video_final, is_allowed_output_path
 
 router = APIRouter(tags=["download"])
 
@@ -27,7 +27,8 @@ async def download_latest_video() -> FileResponse:
         )
 
     try:
-        video_path.resolve().relative_to(PROJECT_ROOT.resolve())
+        if not is_allowed_output_path(video_path):
+            raise ValueError("outside allowed output directories")
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
