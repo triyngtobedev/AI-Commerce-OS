@@ -6,7 +6,7 @@ para vídeos de 6-10 minutos.
 """
 
 from scripts.core.platform_config import YOUTUBE_DARK
-from scripts.video.scene_timeline import SCENE_WEIGHTS, _split_text_by_weights
+from scripts.video.scene_timeline import SCENE_WEIGHTS, _split_text_by_weights, ensure_scenes_payload
 from scripts.youtube.narration_utils import DARK5_SCRIPT_SECTIONS, TEMPLATE_8_SCENE_SECTIONS
 from scripts.youtube.lofi_dark_config import (
     LOFI_DARK_SCENE_TYPES,
@@ -149,7 +149,10 @@ def generate_youtube_scenes(
     template = (strategy or {}).get("roteiro_template", "")
 
     if template == "documentario_8cenas" and content.get("template_scenes"):
-        template_scenes = content["template_scenes"]
+        template_scenes = [
+            scene for scene in content["template_scenes"]
+            if isinstance(scene, dict)
+        ]
         narration_parts = []
         for tipo in scene_types:
             matched = next(
@@ -191,11 +194,11 @@ def generate_youtube_scenes(
         })
 
 
-    return {
+    return ensure_scenes_payload({
         "produto": nome,
         "angulo": angulo,
         "estilo_video": estilo,
         "formato": YOUTUBE_DARK.formato,
         "roteiro_template": (strategy or {}).get("roteiro_template", "documentario"),
         "cenas": cenas,
-    }
+    })

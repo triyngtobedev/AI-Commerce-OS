@@ -2,10 +2,11 @@
 Timeline de cenas sincronizada com áudio e Emotional Timeline.
 """
 
+import json
 import math
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from scripts.core.emotional_timeline import EmotionalTimeline, build_emotional_timeline
 from scripts.video.media_probe import probe_duration
@@ -70,14 +71,132 @@ def _vary_split_motion(base_motion: str, part_idx: int) -> str:
     return alternatives[(part_idx - 1) % len(alternatives)]
 
 
+def _scene_dict_from_string(value: str, *, tipo: str) -> dict:
+    """Reconstrói dict de cena a partir de narração/query serializada."""
+
+    text = value.strip()
+    return {
+        "tipo": tipo,
+        "narracao": text,
+        "visual": text[:120],
+    }
+
+
+def normalize_scene_list(
+    raw_cenas: Any,
+    *,
+    section_order: list[str] | None = None,
+) -> list[dict]:
+    """
+    Garante lista de dicts de cena.
+
+    Corrige formatos legados/incorretos:
+      - dict mapeando seção → texto (iterar keys virava str na footage)
+      - lista de strings (json.dumps / default=str em artefatos)
+      - aninhamento acidental {"cenas": [...]}
+    """
+    if raw_cenas is None:
+        return []
+
+    if isinstance(raw_cenas, dict):
+        inner = raw_cenas.get("cenas")
+        if isinstance(inner, list) and all(isinstance(item, dict) for item in inner):
+            raw_cenas = inner
+        elif inner is not None and "cenas" not in raw_cenas:
+            raw_cenas = inner
+
+    if isinstance(raw_cenas, list):
+        normalized: list[dict] = []
+        order = section_order or []
+        for index, item in enumerate(raw_cenas):
+            if isinstance(item, dict):
+                normalized.append(dict(item))
+                continue
+            if isinstance(item, str):
+                try:
+                    parsed = json.loads(item)
+                    if isinstance(parsed, dict):
+                        normalized.append(parsed)
+                        continue
+                except json.JSONDecodeError:
+                    pass
+                tipo = order[index] if index < len(order) else f"section_{index + 1}"
+                normalized.append(_scene_dict_from_string(item, tipo=tipo))
+        return normalized
+
+    if isinstance(raw_cenas, dict):
+        from scripts.youtube.narration_utils import TEMPLATE_8_SCENE_SECTIONS
+
+        order = section_order or TEMPLATE_8_SCENE_SECTIONS
+        normalized = []
+        seen: set[str] = set()
+
+        for key in order:
+            if key not in raw_cenas:
+                continue
+            value = raw_cenas[key]
+            if isinstance(value, dict):
+                scene = dict(value)
+                scene.setdefault("tipo", key)
+            elif isinstance(value, str):
+                scene = _scene_dict_from_string(value, tipo=key)
+            else:
+                continue
+            normalized.append(scene)
+            seen.add(key)
+
+        if normalized:
+            return normalized
+
+        for key, value in raw_cenas.items():
+            if key in seen or key.startswith("_"):
+                continue
+            if isinstance(value, dict):
+                scene = dict(value)
+                scene.setdefault("tipo", key)
+            elif isinstance(value, str):
+                scene = _scene_dict_from_string(value, tipo=key)
+            else:
+                continue
+            normalized.append(scene)
+
+        return normalized
+
+    return []
+
+
+def ensure_scenes_payload(scenes: Any) -> dict:
+    """Normaliza payload de cenas do pipeline para {"cenas": [dict, ...]}."""
+
+    if not isinstance(scenes, dict):
+        return {"cenas": normalize_scene_list(scenes)}
+
+    result = dict(scenes)
+    section_order = None
+    if result.get("roteiro_template") == "documentario_8cenas":
+        from scripts.youtube.narration_utils import TEMPLATE_8_SCENE_SECTIONS
+
+        section_order = list(TEMPLATE_8_SCENE_SECTIONS)
+
+    result["cenas"] = normalize_scene_list(
+        result.get("cenas"),
+        section_order=section_order,
+    )
+    return result
+
+
 def extract_scenes(cenas_data) -> list:
     """Normaliza estrutura de cenas do pipeline."""
 
     if isinstance(cenas_data, dict):
-        return cenas_data.get("cenas", [])
+        if "cenas" in cenas_data and any(
+            key in cenas_data for key in ("produto", "angulo", "roteiro_template", "synced")
+        ):
+            return ensure_scenes_payload(cenas_data)["cenas"]
+        return normalize_scene_list(cenas_data)
 
     if isinstance(cenas_data, list):
-        return cenas_data
+        return normalize_scene_list(cenas_data)
 
     return []
 
@@ -233,7 +352,9 @@ def split_long_scenes(
     Preserva metadados emocionais/visuais e referência de mídia original.
     """
 
-    result = dict(scenes_data)
+    result = ensure_scenes_payload(scenes_data) if isinstance(scenes_data, dict) else {
+        "cenas": normalize_scene_list(scenes_data),
+    }
     if not _should_split_scenes(result):
         return result
     scenes = list(result.get("cenas", []))
@@ -331,11 +452,11 @@ def sync_scenes_to_audio(
     """
 
     if isinstance(cenas_data, dict):
-        result = dict(cenas_data)
+        result = ensure_scenes_payload(cenas_data)
         scenes = list(result.get("cenas", []))
     else:
-        result = {"cenas": []}
-        scenes = list(cenas_data or [])
+        result = {"cenas": normalize_scene_list(cenas_data)}
+        scenes = list(result.get("cenas", []))
 
     audio_duration = probe_duration(audio_path)
 
@@ -366,7 +487,7 @@ def sync_scenes_to_audio(
         result = apply_timeline_to_scenes(result, timeline)
         if _should_split_scenes(result):
             result = split_long_scenes(result)
-        return result
+        return ensure_scenes_payload(result)
 
     weights = [_scene_weight(s) for s in scenes]
     durations = _estimate_scene_durations(scenes, narracao, audio_duration)
@@ -407,7 +528,7 @@ def sync_scenes_to_audio(
 
     if _should_split_scenes(result):
         result = split_long_scenes(result)
-    return result
+    return ensure_scenes_payload(result)
 
 
 def _resolve_timeline(

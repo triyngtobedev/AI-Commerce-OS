@@ -18,6 +18,7 @@ from scripts.core.visual_intent_engine import (
 from scripts.core.visual_director_engine import direct_scene_visual
 from scripts.video.query_localizer import localize_search_query
 from scripts.video.scene_emotion import SCENE_SECTION_ALIASES
+from scripts.video.scene_timeline import ensure_scenes_payload
 from scripts.video.media_search_orchestrator import generate_scene_queries
 from scripts.youtube.lofi_dark_config import is_lofi_dark, lofi_background_query
 
@@ -161,6 +162,7 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
     Gera queries de mídia para cada cena.
     """
 
+    scenes = ensure_scenes_payload(scenes if isinstance(scenes, dict) else {"cenas": scenes})
     queries = []
 
     angulo = scenes.get("angulo", "")

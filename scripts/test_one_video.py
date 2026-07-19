@@ -160,6 +160,13 @@ def _stage_tracker():
         def inner(*args, **kwargs):
             state["current"] = stage
             _stage_label(stage)
+            if stage == "footage" and len(args) > 1 and isinstance(args[1], dict):
+                cenas = args[1].get("cenas", [])
+                first = cenas[0] if cenas else None
+                print(
+                    f"[DEBUG] footage: first scene type={type(first).__name__} "
+                    f"value={repr(first)[:300]}"
+                )
             return fn(*args, **kwargs)
 
         return inner

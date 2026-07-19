@@ -94,6 +94,7 @@ from scripts.scoring.visual_relevance_scorer import (
 from scripts.core.feature_flags import sprint30_visual_score
 from scripts.video.editorial_fallback import execute_editorial_fallback
 from scripts.video.t2v_decision import T2VDecision, T2VTracker, evaluate_t2v_decision
+from scripts.video.scene_timeline import ensure_scenes_payload
 
 REPLICATE_PREDICTIONS_URL = "https://api.replicate.com/v1/predictions"
 REPLICATE_FLUX_MODEL = os.getenv("REPLICATE_FLUX_MODEL", "black-forest-labs/flux-schnell")
@@ -1607,7 +1608,9 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
     _reset_t2v_budget()
 
     subject = _coerce_mapping(subject, label="subject") or (subject if isinstance(subject, dict) else {})
-    scenes = _coerce_mapping(scenes, label="scenes") or (scenes if isinstance(scenes, dict) else {})
+    scenes = ensure_scenes_payload(
+        _coerce_mapping(scenes, label="scenes") or (scenes if isinstance(scenes, dict) else {})
+    )
     if not isinstance(queries, list):
         print("⚠️ queries inválido — esperava lista; usando []")
         queries = []
@@ -1637,8 +1640,19 @@ def run_visual_media_pipeline(subject, scenes, queries) -> str:
         scene_video = videos_folder / f"scene-{scene_num:02d}.mp4"
         scene_image = images_folder / f"scene-{scene_num:02d}.jpg"
 
-        query_item = _coerce_mapping(raw_query_item, label=f"Cena {scene_num} query") or {}
         scene_data = scene_list[i] if i < len(scene_list) else {}
+        if isinstance(scene_data, str):
+            try:
+                scene_data = json.loads(scene_data)
+            except Exception:
+                print(
+                    f"  ⚠️ Cena {scene_num}: scene inválida (string não-JSON) — ignorada"
+                )
+                continue
+            if not isinstance(scene_data, dict):
+                continue
+
+        query_item = _coerce_mapping(raw_query_item, label=f"Cena {scene_num} query") or {}
         scene_data = _coerce_mapping(scene_data, label=f"Cena {scene_num} scene") or {}
 
         try:

@@ -8,6 +8,7 @@ from scripts.video.scene_emotion import apply_timeline_to_scenes
 from scripts.video.scene_timeline import (
     sync_scenes_to_audio,
     split_long_scenes,
+    normalize_scene_list,
     _split_text_by_weights,
     _split_narration_at_sentences,
     SCENE_WEIGHTS,
@@ -59,6 +60,17 @@ class TestSceneTimeline(unittest.TestCase):
         parts = _split_narration_at_sentences(text, 2)
         self.assertEqual(len(parts), 2)
         self.assertIn(".", parts[0])
+
+    def test_normalize_scene_list_from_section_dict(self):
+        raw = {
+            "gancho": "Texto do gancho.",
+            "contexto": "Texto do contexto.",
+        }
+        normalized = normalize_scene_list(raw, section_order=["gancho", "contexto"])
+        self.assertEqual(len(normalized), 2)
+        self.assertIsInstance(normalized[0], dict)
+        self.assertEqual(normalized[0]["tipo"], "gancho")
+        self.assertEqual(normalized[0]["narracao"], "Texto do gancho.")
 
     def test_split_long_scenes_skips_documentario_8cenas(self):
         scenes = {
