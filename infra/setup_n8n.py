@@ -200,8 +200,8 @@ def patch_workflow_urls(wf: dict, api_base: str) -> dict:
     """
     Substitui $env.PIPELINE_API_BASE_URL pela URL literal.
 
-    n8n 2.x bloqueia $env nas expressões por padrão. URLs de polling usam uma
-    única expressão que lê job_id do nó POST (evita {{ $json.job_id }} literal).
+    n8n 2.x bloqueia $env nas expressões por padrão. URLs de polling usam
+    URL estática + {{ }} (sem prefixo = antes de https — evita 'Invalid URL').
     """
     base = api_base.rstrip("/")
     env_prefix = "={{ $env.PIPELINE_API_BASE_URL }}"
@@ -209,10 +209,8 @@ def patch_workflow_urls(wf: dict, api_base: str) -> dict:
     def patch_url(value: str) -> str:
         if "/pipeline/status/" in value:
             return (
-                "={{ '"
-                + base
-                + "/api/v1/pipeline/status/' + "
-                "$('POST Pipeline Run').first().json.job_id }}"
+                f"{base}/api/v1/pipeline/status/"
+                "{{ $('POST Pipeline Run').first().json.job_id }}"
             )
 
         if value.startswith(env_prefix):
