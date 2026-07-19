@@ -25,8 +25,10 @@ _PROMPT = (
 def main() -> int:
     load_dotenv(_PROJECT_ROOT / ".env")
 
-    if not os.getenv("HF_TOKEN"):
-        print("ERRO: HF_TOKEN não configurado no .env")
+    from scripts.utils.hf_token import hf_token_configured
+
+    if not hf_token_configured():
+        print("ERRO: HF_API_TOKEN ou HF_TOKEN não configurado no .env")
         return 1
 
     from scripts.video.media_providers.huggingface import HuggingFaceProvider

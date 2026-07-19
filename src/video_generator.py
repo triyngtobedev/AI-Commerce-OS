@@ -657,9 +657,11 @@ class VideoGenerator:
 
         Poll assíncrono (202) até timeout VIDEO_TIMEOUT.
         """
-        token = os.getenv("HF_API_TOKEN") or os.getenv("HF_TOKEN", "")
+        from scripts.utils.hf_token import get_hf_token
+
+        token = get_hf_token()
         if not token:
-            raise RuntimeError("HF_API_TOKEN ausente — configure em .env")
+            raise RuntimeError("HF_API_TOKEN ou HF_TOKEN ausente — configure em .env")
 
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         route = FALAI_HF_ROUTE_I2V if image_url else FALAI_HF_ROUTE_T2V
@@ -1659,8 +1661,10 @@ def ai_video_configured() -> bool:
 
 
 def falai_is_configured() -> bool:
-    """True se HF_API_TOKEN está presente."""
-    return bool(os.getenv("HF_API_TOKEN") or os.getenv("HF_TOKEN"))
+    """True se HF_API_TOKEN ou HF_TOKEN está presente."""
+    from scripts.utils.hf_token import hf_token_configured
+
+    return hf_token_configured()
 
 
 def replicate_is_configured() -> bool:
