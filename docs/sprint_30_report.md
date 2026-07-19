@@ -1,8 +1,8 @@
 # Sprint 30 — Relatório de Validação pós-Fase 1 (PR #31)
 
 **Data:** 2026-07-19  
-**Branch:** `cursor/gemini-quota-phase1-064f` (PR #31)  
-**Agente:** [Validação pós-fase 1](https://cursor.com/agents/bc-ebd31a7d-1aba-4440-aa90-e0103a9714eb)
+**Branch:** `cursor/sprint30-e2e-validation-14eb` (PR #31 + #32)  
+**Agentes:** [Validação pós-fase 1](https://cursor.com/agents/bc-ebd31a7d-1aba-4440-aa90-e0103a9714eb) · [Validação E2E real (2ª tentativa)](https://cursor.com/agents/bc-ab60edc5-ab4b-47a9-964d-82fd32522e42)
 
 ## Setup executado
 
@@ -22,7 +22,8 @@ python3 scripts/run_sprint_30_batch.py --max-videos 2
 | Dependências Python | ✅ instaladas |
 | FFmpeg | ✅ 6.1.1 |
 | `.env` com chaves reais | ❌ **não disponível no cloud agent** |
-| Cursor Environment (secrets) | ❌ `environment: null` — nenhum secret injetado |
+| Cursor Environment (secrets) | ❌ `environment: null` — nenhum secret injetado (2ª tentativa confirmada) |
+| Secrets no `printenv` | ❌ `GEMINI_API_KEY`, `GROQ_API_KEY`, `PEXELS_API_KEY` ausentes |
 | Railway produção | ✅ online (`d0887f7`, sem Fase 1 ainda) |
 
 ### Bug encontrado no template `.env`
@@ -33,6 +34,8 @@ Comentários inline (`GEMINI_API_KEY=  # primário`) eram parseados pelo `python
 2. **Falha imediata no router** — `UnicodeEncodeError` ao enviar chaves inválidas para Gemini/Groq
 
 **Correção aplicada:** comentários movidos para linhas separadas no `.env.sprint30.example`.
+
+**Validação da correção (2ª tentativa):** com `.env` vazio (template), preflight retorna `ready_for_batch: false` e aborta antes do batch — comportamento correto.
 
 ---
 
@@ -149,18 +152,31 @@ Campos esperados em `sprint_30_metrics.jsonl` após batch bem-sucedido:
 
 ## Próximo passo para completar validação E2E
 
-1. **Configurar secrets no Cursor Environment** (ou preencher `.env` localmente):
+### Opção A — Cursor Cloud Agent (recomendado)
+
+1. Abra [cursor.com → Cloud Agents → Secrets](https://cursor.com/dashboard/cloud-agents)
+2. Adicione como **Runtime Secret** (ou Environment Variable):
    - `GEMINI_API_KEY`
    - `GROQ_API_KEY`
    - `PEXELS_API_KEY`
-2. Usar `.env.sprint30.example` **corrigido** (sem comentários inline)
-3. Re-executar:
-   ```bash
+3. **Workaround conhecido (jul/2026):** secrets com escopo *Environment* podem não ser injetados. Recrie os mesmos secrets em escopo **Personal** e inicie um agente novo.
+4. Opcional: vincule um **Cursor Environment** ao repositório (atualmente `environment: null`).
+5. Re-execute o agente com o prompt de validação E2E.
+
+### Opção B — Máquina local / Railway
+
+1. `cp .env.sprint30.example .env` e preencha as chaves (sem comentários inline)
+2. ```bash
    python3 scripts/run_sprint_30_batch.py --max-videos 2
    ```
-4. Coletar `sprint_30_metrics.jsonl`, vídeos em `output/youtube_dark/`, e preencher tabelas abaixo
+3. Coletar `sprint_30_metrics.jsonl`, vídeos em `output/youtube_dark/`, logs completos
 
-Alternativa: rodar localmente na máquina do dev (onde `.env` já existe) ou no Railway após merge do PR #31.
+### Coleta pós-batch bem-sucedido
+
+- `sprint_30_metrics.jsonl` — campos Gemini (calls, stages, models, fallbacks)
+- Logs completos do batch
+- Vídeos em `output/youtube_dark/`
+- Preencher tabelas de qualidade abaixo
 
 ---
 
