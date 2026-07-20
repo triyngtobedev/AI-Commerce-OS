@@ -25,9 +25,14 @@ Write-Host "=== AI-Commerce-OS Touch Portal ===" -ForegroundColor Cyan
 Write-Host ""
 
 if (-not (Test-Path $PageSrc)) {
-    Write-Host "Arquivos nao gerados. Rode primeiro:" -ForegroundColor Yellow
-    Write-Host "  python touchportal\build\build_assets.py" -ForegroundColor White
+    Write-Host "Page nao encontrada: $PageSrc" -ForegroundColor Red
+    Write-Host "Rode: git checkout origin/cursor/touchportal-icons-c0f0 -- touchportal" -ForegroundColor White
     exit 1
+}
+
+if (-not (Test-Path $IconsSrc) -or ((Get-ChildItem $IconsSrc -Filter "*.png").Count -lt 8)) {
+    Write-Host "Icones pre-gerados nao encontrados em source\icons." -ForegroundColor Yellow
+    Write-Host "Opcional (dev): pip install cairosvg pillow requests && python touchportal\build\build_assets.py" -ForegroundColor White
 }
 
 foreach ($dir in @($IconsDest, $PagesDest, (Join-Path $PluginsDest "AI-Commerce-OS"))) {

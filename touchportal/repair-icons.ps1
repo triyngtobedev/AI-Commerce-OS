@@ -8,6 +8,7 @@ $TouchPortalRoot = Join-Path $env:APPDATA "TouchPortal"
 $IconsDest = Join-Path $TouchPortalRoot "icons"
 $PagesDest = Join-Path $TouchPortalRoot "pages"
 $MainPage = Join-Path $PagesDest "(main).tml"
+$PageSrc = Join-Path $PSScriptRoot "pages\aicommerce-main.tml"
 $IconsSrc = Join-Path $PSScriptRoot "source\icons"
 $TpzFile = Join-Path $PSScriptRoot "dist\AI-Commerce-OS-Main.tpz"
 $TempDir = Join-Path $env:TEMP "aicommerce-tp-repair"
@@ -25,20 +26,20 @@ Write-Host "=== Reparar icones Touch Portal ===" -ForegroundColor Cyan
 Write-Host ""
 
 if (-not (Test-Path $IconsSrc)) {
-    Write-Error "Pasta touchportal\source\icons nao encontrada. Rode: git checkout cursor/touchportal-icons-c0f0 -- touchportal"
+    Write-Error "Pasta touchportal\source\icons nao encontrada."
 }
 
-# 1) Copia todos os PNGs do repo
 New-Item -ItemType Directory -Path $IconsDest -Force | Out-Null
+
+# 1) Copia PNGs do repo (nao precisa rodar build_assets.py)
 $pngs = Get-ChildItem $IconsSrc -Filter "*.png"
 foreach ($png in $pngs) {
     Copy-Item $png.FullName (Join-Path $IconsDest $png.Name) -Force
 }
 Write-Host "Copiados $($pngs.Count) icones para $IconsDest" -ForegroundColor Green
 
-# 2) Extrai PNGs do .tpz (backup)
+# 2) Extrai PNGs do TPZ (backup)
 if (Test-Path $TpzFile) {
-    if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
     Expand-Tpz -TpzPath $TpzFile -Dest $TempDir
     Get-ChildItem $TempDir -Filter "*.png" | ForEach-Object {
         Copy-Item $_.FullName (Join-Path $IconsDest $_.Name) -Force
@@ -46,7 +47,13 @@ if (Test-Path $TpzFile) {
     Write-Host "Extraidos icones do TPZ" -ForegroundColor Green
 }
 
-# 3) Verifica referencias na page (main)
+# 3) Atualiza page (main)
+if (Test-Path $PageSrc) {
+    Copy-Item $PageSrc $MainPage -Force
+    Write-Host "Page (main) atualizada" -ForegroundColor Green
+}
+
+# 4) Verifica referencias
 if (Test-Path $MainPage) {
     $json = Get-Content $MainPage -Raw | ConvertFrom-Json
     $missing = @()
@@ -59,19 +66,13 @@ if (Test-Path $MainPage) {
     }
     if ($missing.Count -gt 0) {
         Write-Host ""
-        Write-Host "ATENCAO: $($missing.Count) icones referenciados na page mas ausentes:" -ForegroundColor Yellow
+        Write-Host "ATENCAO: icones ausentes:" -ForegroundColor Yellow
         $missing | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
-        Write-Host ""
-        Write-Host "Reinstale a page:" -ForegroundColor Cyan
-        Write-Host "  Copy-Item touchportal\pages\aicommerce-main.tml `"$MainPage`" -Force" -ForegroundColor White
     } else {
-        Write-Host "Todos os icones referenciados em (main) existem." -ForegroundColor Green
+        Write-Host "OK: todos os 8 icones referenciados existem." -ForegroundColor Green
     }
-} else {
-    Write-Host "(main).tml nao encontrado — copiando page nova..." -ForegroundColor Yellow
-    Copy-Item (Join-Path $PSScriptRoot "pages\aicommerce-main.tml") $MainPage -Force
 }
 
 Write-Host ""
-Write-Host "Reabra o Touch Portal (feche pela bandeja e abra de novo)." -ForegroundColor Cyan
+Write-Host "Feche o Touch Portal pela bandeja (Exit) e abra de novo." -ForegroundColor Cyan
 Write-Host ""

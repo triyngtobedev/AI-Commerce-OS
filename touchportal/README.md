@@ -8,26 +8,25 @@ Pages importadas da comunidade costumam vir **sem icones e sem nomes** porque fa
 
 ## Instalacao rapida (Windows)
 
-1. **Feche** o Touch Portal (bandeja → Exit)
-2. No PowerShell, na raiz do projeto:
+**Nao precisa rodar `build_assets.py`** - os icones ja vem prontos em `source/icons/`.
+
+1. **Feche** o Touch Portal (bandeja -> Exit)
+2. No PowerShell:
 
 ```powershell
+cd C:\Projetos\AI-Commerce-OS
 git fetch origin cursor/touchportal-icons-c0f0
 git checkout origin/cursor/touchportal-icons-c0f0 -- touchportal
-python touchportal\build\build_assets.py
-powershell -ExecutionPolicy Bypass -File .\touchportal\install.ps1 -AsMainPage
+powershell -ExecutionPolicy Bypass -File .\touchportal\repair-icons.ps1
 ```
 
-3. Abra o Touch Portal → se pedir, clique **Trust Always** no plugin
+3. Abra o Touch Portal de novo
 
-### Se faltarem icones (so 4 de 8)
+### Se faltarem icones
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\touchportal\repair-icons.ps1
-Copy-Item touchportal\pages\aicommerce-main.tml "$env:APPDATA\TouchPortal\pages\(main).tml" -Force
 ```
-
-Feche e reabra o Touch Portal.
 
 ## Instalacao via import (alternativa)
 
