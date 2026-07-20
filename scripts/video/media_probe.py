@@ -86,6 +86,58 @@ def probe_dimensions(path) -> tuple[int, int]:
     return 0, 0
 
 
+def probe_video_bitrate(path) -> int:
+    """Retorna bitrate médio do stream de vídeo em bps, ou 0 se indisponível."""
+
+    media = Path(path)
+
+    if not media.exists():
+        return 0
+
+    cmd = [
+        "ffprobe",
+        "-v", "quiet",
+        "-select_streams", "v:0",
+        "-show_entries", "stream=bit_rate",
+        "-of", "json",
+        str(media.resolve()),
+    ]
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        data = json.loads(result.stdout)
+        streams = data.get("streams", [])
+        if streams:
+            return int(streams[0].get("bit_rate") or 0)
+    except (subprocess.CalledProcessError, json.JSONDecodeError, ValueError, IndexError):
+        pass
+
+    cmd = [
+        "ffprobe",
+        "-v", "quiet",
+        "-show_entries", "format=bit_rate",
+        "-of", "json",
+        str(media.resolve()),
+    ]
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        data = json.loads(result.stdout)
+        return int(data.get("format", {}).get("bit_rate") or 0)
+    except (subprocess.CalledProcessError, json.JSONDecodeError, ValueError):
+        return 0
+
+
 def probe_has_video_stream(path) -> bool:
     """Verifica se o arquivo possui stream de vídeo."""
 

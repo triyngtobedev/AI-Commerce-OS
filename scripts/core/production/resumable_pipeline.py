@@ -84,6 +84,7 @@ from scripts.video.visual_grammar import apply_visual_grammar_to_scenes
 from scripts.core.production.quality_gate import run_quality_gate
 from scripts.core.asset_rights_ledger import AssetRightsLedger
 from scripts.youtube.youtube_packager import generate_youtube_package
+from scripts.strategy.shorts_extractor import maybe_extract_short
 
 
 class StageContext:
@@ -512,6 +513,10 @@ def _stage_render(ctx: StageContext) -> Optional[str]:
     ctx.data["chapters"] = chapters
     ctx.data["video"] = str(video)
 
+    short_result = maybe_extract_short(ctx.output_dir, ctx.data["scenes"])
+    if short_result:
+        ctx.data["short"] = short_result
+
     output_files = [Path(video)]
     if thumbnail:
         output_files.append(Path(thumbnail))
@@ -763,6 +768,8 @@ def run_resumable_youtube_pipeline(
                 _timed_stage(ctx, stage, lambda r=runner: r(ctx, block_upload=True))
 
         result = ctx.data["pipeline_result"].to_dict()
+        if ctx.data.get("short"):
+            result["short"] = ctx.data["short"]
         record_production(
             result,
             upload_result=upload_result,
