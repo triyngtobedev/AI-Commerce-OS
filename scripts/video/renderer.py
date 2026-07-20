@@ -266,8 +266,10 @@ def _render_legacy_concat(result, folder, width, height, output):
     if subtitle_file:
         subtitle = Path(subtitle_file)
         if subtitle.exists():
-            video_filter += f",{get_subtitle_ffmpeg_filter(subtitle, platform)}"
-            print("📝 Legenda aplicada.")
+            sub_filter = get_subtitle_ffmpeg_filter(subtitle, platform)
+            if sub_filter:
+                video_filter += f",{sub_filter}"
+                print("📝 Legenda aplicada.")
 
     audio_file = result.get("audio")
     has_audio = False

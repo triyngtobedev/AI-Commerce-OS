@@ -587,19 +587,30 @@ def burn_subtitles_on_scenes(
     work_dir: Path,
 ) -> list[Path]:
     """STEP 4 + STEP 6 — Legendas queimadas e color grade por cena."""
+    from scripts.video.subtitle_generator import log_subtitles_disabled_once, subtitles_enabled
+
     graded_dir = work_dir / "graded_clips"
     graded_dir.mkdir(parents=True, exist_ok=True)
 
+    burn_subtitles = subtitles_enabled()
+    if not burn_subtitles:
+        log_subtitles_disabled_once()
+
     font_path = _resolve_bold_font()
-    timings = build_subtitle_timings(narration_text, narration_duration)
+    timings = build_subtitle_timings(narration_text, narration_duration) if burn_subtitles else []
     offsets = scene_time_offsets(scenes)
     graded_clips: list[Path] = []
 
     for index, (raw_clip, (start, end)) in enumerate(zip(raw_clips, offsets)):
         scene_id = scenes[index]["id"]
-        subtitle_filter = _drawtext_filters_for_scene(timings, start, end, font_path)
+        subtitle_filter = (
+            _drawtext_filters_for_scene(timings, start, end, font_path)
+            if burn_subtitles
+            else ""
+        )
         out_path = graded_dir / f"{index:02d}_{scene_id}_final.mp4"
-        print(f"[STEP 4/6] Cena {scene_id}: legendas + color grade")
+        step_label = "legendas + color grade" if burn_subtitles else "color grade"
+        print(f"[STEP 4/6] Cena {scene_id}: {step_label}")
         apply_grade_and_subtitles(raw_clip, out_path, subtitle_filter)
         graded_clips.append(out_path)
 

@@ -563,8 +563,13 @@ def write_subtitles(
     platform: str = "youtube_dark",
     timing_offset: float = 0.0,
     audio_duration: Optional[float] = None,
-) -> Path:
+) -> Path | None:
     """Escreve SRT e ASS no diretório de saída. Retorna path do SRT."""
+
+    from scripts.video.subtitle_generator import subtitles_enabled
+
+    if not subtitles_enabled():
+        return None
 
     output_dir.mkdir(parents=True, exist_ok=True)
     style = get_subtitle_style(platform)

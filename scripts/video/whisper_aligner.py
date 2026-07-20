@@ -50,6 +50,11 @@ def transcribe_words(audio_path, language: str | None = None) -> list[dict]:
     Retorna [] quando indisponível ou em qualquer falha (fallback seguro).
     """
 
+    from scripts.video.subtitle_generator import subtitles_enabled
+
+    if not subtitles_enabled():
+        return []
+
     path = Path(audio_path)
     if not path.exists() or not whisper_is_available():
         return []
