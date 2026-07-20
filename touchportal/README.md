@@ -6,27 +6,30 @@ Pacote de **icones**, **page** e **plugin** para o Touch Portal.
 
 Pages importadas da comunidade costumam vir **sem icones e sem nomes** porque faltam os PNGs referenciados. Este pacote inclui tudo embutido.
 
-## Instalacao rapida (Windows)
+## Corrigir botoes sem icone (Windows)
 
-**Nao precisa rodar `build_assets.py`** - os icones ja vem prontos em `source/icons/`.
+**Nao recria botoes** — apenas copia os PNGs e atualiza o campo de imagem nos botoes existentes.
 
-1. **Feche** o Touch Portal (bandeja -> Exit)
+1. **Feche** o Touch Portal (bandeja do sistema -> Exit)
 2. No PowerShell:
 
 ```powershell
 cd C:\Projetos\AI-Commerce-OS
-git fetch origin cursor/touchportal-icons-c0f0
-git checkout origin/cursor/touchportal-icons-c0f0 -- touchportal
+git pull
 powershell -ExecutionPolicy Bypass -File .\touchportal\repair-icons.ps1
 ```
 
-3. Abra o Touch Portal de novo
+Ou clique duplo em `touchportal\repair-icons.bat`.
 
-### Se faltarem icones
+3. Abra o Touch Portal de novo — os 8 icones devem aparecer no celular.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\touchportal\repair-icons.ps1
-```
+### O que o script faz
+
+| Passo | Acao |
+|-------|------|
+| 1 | Copia 8 PNGs para `%APPDATA%\TouchPortal\icons\` |
+| 2 | Atualiza `(main).tml` in-place (preserva IDs e acoes) |
+| 3 | Verifica que cada botao referencia um PNG existente |
 
 ## Instalacao via import (alternativa)
 
