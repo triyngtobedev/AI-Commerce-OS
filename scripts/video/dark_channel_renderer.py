@@ -5,7 +5,7 @@ Dark Channel Renderer — replica o fluxo de canais BR de mistério no YouTube.
 Pipeline simples e confiável:
   1. Roteiro dramático (template fixo)
   2. Narração Kokoro TTS (fallback Edge TTS)
-  3. Imagens Wikimedia + Ken Burns
+  3. Imagens Lorem Picsum (base) + Wikimedia (substituição) + Ken Burns
   4. Legendas queimadas (drawtext)
   5. Música de fundo (6%)
   6. Color grade escuro
@@ -276,7 +276,7 @@ def generate_narration(scenes: list[dict[str, Any]], output_dir: Path) -> tuple[
     narration_path = output_dir / "narration.mp3"
     text = full_narration_text(scenes)
 
-    voice = os.environ.get("KOKORO_VOICE", "bf_alice")
+    voice = os.environ.get("KOKORO_VOICE", "pf_dora")
     speed = float(os.environ.get("KOKORO_SPEED", "0.85"))
 
     try:
@@ -349,9 +349,14 @@ def _wikimedia_search_jpg(query: str) -> str | None:
     return None
 
 
-def _download_image_from_url(url: str, dest: Path) -> bool:
+def _download_image_from_url(
+    url: str,
+    dest: Path,
+    *,
+    headers: dict[str, str] | None = None,
+) -> bool:
     try:
-        data = requests.get(url, timeout=30, headers=WIKIMEDIA_HEADERS).content
+        data = requests.get(url, timeout=30, headers=headers or {}).content
         if not data:
             return False
         dest.write_bytes(data)
@@ -361,14 +366,15 @@ def _download_image_from_url(url: str, dest: Path) -> bool:
         return False
 
 
-def download_scene_image(query: str, dest: Path, scene_index: int = 0) -> bool:
-    """Baixa imagem com fallbacks: Wikimedia → query curta → Lorem Picsum."""
+def _try_wikimedia_replacement(query: str, dest: Path) -> bool:
+    """Tenta substituir a imagem base por uma foto real do Wikimedia."""
     for attempt in range(1, 3):
         try:
             url = _wikimedia_search_jpg(query)
             if not url:
                 raise ValueError(f"Nenhuma .jpg encontrada para {query!r}")
-            if _download_image_from_url(url, dest):
+            if _download_image_from_url(url, dest, headers=WIKIMEDIA_HEADERS):
+                print(f"[STEP 3] Wikimedia substituiu imagem base: {query!r}")
                 return True
         except Exception as exc:
             print(f"[STEP 3] Wikimedia tentativa {attempt}/2 falhou ({query!r}): {exc}")
@@ -381,17 +387,24 @@ def download_scene_image(query: str, dest: Path, scene_index: int = 0) -> bool:
         print(f"[STEP 3] Tentando query simplificada: {short_query!r}")
         try:
             url = _wikimedia_search_jpg(short_query)
-            if url and _download_image_from_url(url, dest):
+            if url and _download_image_from_url(url, dest, headers=WIKIMEDIA_HEADERS):
+                print(f"[STEP 3] Wikimedia substituiu imagem base: {short_query!r}")
                 return True
         except Exception as exc:
             print(f"[STEP 3] Query simplificada falhou ({short_query!r}): {exc}")
 
-    picsum_url = f"https://picsum.photos/1920/1080?random={scene_index}"
-    print(f"[STEP 3] Usando Lorem Picsum: {picsum_url}")
-    if _download_image_from_url(picsum_url, dest):
-        return True
-
     return False
+
+
+def download_scene_image(query: str, dest: Path, scene_index: int = 0) -> bool:
+    """Baixa Picsum como base garantida, depois tenta Wikimedia como substituição."""
+    picsum_url = f"https://picsum.photos/1920/1080?random={scene_index}&blur=0"
+    print(f"[STEP 3] Baixando imagem base (Picsum): {picsum_url}")
+    if not _download_image_from_url(picsum_url, dest):
+        return False
+
+    _try_wikimedia_replacement(query, dest)
+    return True
 
 
 def create_gradient_image(dest: Path) -> None:
@@ -404,6 +417,7 @@ def create_gradient_image(dest: Path) -> None:
 
 def create_ken_burns_clip(image_path: Path, output_path: Path, duration: float) -> None:
     frames = int(duration * 25)
+    print(f"[STEP 3] Ken Burns ffmpeg: duration={duration}s, frames={frames}")
     vf = KEN_BURNS_ZOOM.format(frames=frames)
     subprocess.run(
         [
@@ -421,7 +435,7 @@ def create_ken_burns_clip(image_path: Path, output_path: Path, duration: float) 
 
 
 def fetch_footage_for_scenes(scenes: list[dict[str, Any]], work_dir: Path) -> list[Path]:
-    """STEP 3 — Imagem Wikimedia ou gradiente + Ken Burns por cena."""
+    """STEP 3 — Picsum (base) + Wikimedia (opcional) + Ken Burns por cena."""
     images_dir = work_dir / "images"
     raw_dir = work_dir / "raw_clips"
     images_dir.mkdir(parents=True, exist_ok=True)
@@ -431,17 +445,19 @@ def fetch_footage_for_scenes(scenes: list[dict[str, Any]], work_dir: Path) -> li
     for index, scene in enumerate(scenes):
         scene_id = scene["id"]
         duration = float(scene["duration"])
-        image_path = images_dir / f"{index:02d}_{scene_id}.jpg"
+        image_path = images_dir / f"scene_{index}_base.jpg"
         raw_path = raw_dir / f"{index:02d}_{scene_id}.mp4"
 
-        print(f"[STEP 3] Cena {scene_id}: buscando {scene['visual_query']!r}")
+        print(f"[STEP 3] Cena {scene_id}: duration={duration}s, query={scene['visual_query']!r}")
         if not download_scene_image(scene["visual_query"], image_path, scene_index=index):
-            print(f"[STEP 3] Cena {scene_id}: usando gradiente escuro")
+            print(f"[STEP 3] Cena {scene_id}: Picsum falhou — usando gradiente escuro")
             create_gradient_image(image_path)
 
         create_ken_burns_clip(image_path, raw_path, duration)
+        actual_duration = probe_duration(raw_path)
+        print(f"Scene {index} clip: {actual_duration:.1f}s (expected {duration:.0f}s)")
         raw_clips.append(raw_path)
-        print(f"[STEP 3] Cena {scene_id}: {raw_path.name} ({duration}s)")
+        print(f"[STEP 3] Cena {scene_id}: {raw_path.name}")
 
     return raw_clips
 

@@ -6,15 +6,14 @@ import numpy as np
 def generate_narration_kokoro(
     text: str,
     output_path: str,
-    voice: str = "bf_alice",
+    voice: str = "pf_dora",
     speed: float = 0.85,
 ) -> str:
     """
     Generate dramatic narration using Kokoro TTS.
     voice options for PT-BR dramatic style:
-    - "bf_alice" — female, clear
-    - "bm_daniel" — male, deep
-    - "af_heart" — female, emotional
+    - "pf_dora" — Portuguese female
+    - "pm_alex" — Portuguese male
     speed: 0.85 = slightly slower = more dramatic
     """
     from kokoro import KPipeline
