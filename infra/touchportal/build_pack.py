@@ -182,18 +182,25 @@ class PackBuilder:
             "KEY_TYPE": "GOTO_PAGE_ACTION",
         }
 
-    def _run_ps(self, action: str) -> list[dict]:
-        args = f'-NoProfile -ExecutionPolicy Bypass -File "{self.plugin_script}" -Action {action}'
-        # Formato Touch Portal: Run PowerShell Script (run visivel = 2)
+    def _run_ps(self, action: str, *, visible: bool = False, pause: bool = False) -> list[dict]:
+        script_args = f"-Action {action}"
+        if pause:
+            script_args += " -Pause"
         return [
             {
                 "kIEn": True,
                 "KEY_TYPE": "RUN_POWERSHELL_SCRIPT_ACTION",
                 "KEY_POWERSHELL": self.plugin_script,
-                "KEY_POWERSHELL_ARGS": f'-NoProfile -ExecutionPolicy Bypass -Action {action}',
-                "KEY_POWERSHELL_RUNTYPE": 2,
+                "KEY_POWERSHELL_ARGS": script_args,
+                "KEY_POWERSHELL_RUNTYPE": 2 if visible else 0,
             }
         ]
+
+    def _run_bg(self, action: str) -> list[dict]:
+        return self._run_ps(action, visible=False)
+
+    def _run_window(self, action: str, *, pause: bool = True) -> list[dict]:
+        return self._run_ps(action, visible=True, pause=pause)
 
     def _btn(
         self,
@@ -215,7 +222,7 @@ class PackBuilder:
 
     def build_pages(self) -> list[str]:
         home = self._page("home", "ACOS Home", "AI-Commerce Home", 6, 4)
-        prod = self._page("prod", "ACOS Producao", "AI-Commerce Producao", 7, 4)
+        prod = self._page("prod", "ACOS Producao", "AI-Commerce Producao", 6, 4)
         pipe = self._page("pipe", "ACOS Pipeline", "AI-Commerce Pipeline", 6, 4)
         git = self._page("git", "ACOS Git", "AI-Commerce Git", 5, 4)
         cloud = self._page("cloud", "ACOS Nuvem", "AI-Commerce Nuvem", 6, 4)
@@ -228,52 +235,50 @@ class PackBuilder:
             self.page_paths[key] = builder.path
 
         home.buttons = [
-            self._btn("🧠\nCursor", self._run_ps("open-cursor"), cols=2, bg=COLOR_BTN_ACCENT),
-            self._btn("📝\nVS Code", self._run_ps("open-vscode"), cols=2, col=2),
-            self._btn("💻\nTerminal", self._run_ps("open-terminal"), row=1),
-            self._btn("📁\nExplorer", self._run_ps("open-explorer"), row=1, col=2),
-            self._btn("🌐\nFirefox", self._run_ps("open-firefox"), row=2),
-            self._btn("🐳\nDocker", self._run_ps("open-docker"), row=2, col=2),
-            self._btn("▶\nProducao", [self._goto("prod")], row=3, cols=4, bg=COLOR_BTN_ACCENT),
-            self._btn("☁\nNuvem", [self._goto("cloud")], row=4, cols=2),
-            self._btn("📤\nGit", [self._goto("git")], row=4, col=2, cols=2),
+            self._btn("Cursor", self._run_bg("open-cursor"), cols=2, bg=COLOR_BTN_ACCENT),
+            self._btn("VS Code", self._run_bg("open-vscode"), cols=2, col=2),
+            self._btn("Terminal", self._run_window("open-terminal", pause=False), row=1),
+            self._btn("Explorer", self._run_bg("open-explorer"), row=1, col=2),
+            self._btn("Firefox", self._run_bg("open-firefox"), row=2),
+            self._btn("Docker", self._run_bg("open-docker"), row=2, col=2),
+            self._btn("Producao", [self._goto("prod")], row=3, cols=4, bg=COLOR_BTN_ACCENT),
+            self._btn("Nuvem", [self._goto("cloud")], row=4, cols=2),
+            self._btn("Git", [self._goto("git")], row=4, col=2, cols=2),
         ]
 
         prod.buttons = [
-            self._btn("🚀\nPipeline IA", self._run_ps("pipeline-ia"), rows=2, cols=4, bg=COLOR_BTN_ACCENT),
-            self._btn("🎯\nPipeline Tema", self._run_ps("pipeline-tema"), row=2, cols=4, bg=COLOR_BTN_ACCENT),
-            self._btn("🎥\nUltimo video", self._run_ps("last-video"), row=3, cols=4),
-            self._btn("📂\nOutputs", self._run_ps("outputs"), row=4, cols=2),
-            self._btn("📤\nGit", [self._goto("git")], row=4, col=2, cols=2),
-            self._btn("🐳\nDocker", self._run_ps("open-docker"), row=5),
-            self._btn("💻\nTerminal", self._run_ps("open-terminal"), row=5, col=2, cols=2),
-            self._btn("🏠\nHome", [self._goto("home")], row=6, cols=4),
+            self._btn("Pipeline IA", self._run_window("pipeline-ia"), cols=2, bg=COLOR_BTN_ACCENT),
+            self._btn("Ultimo video", self._run_bg("last-video"), cols=2, col=2),
+            self._btn("Outputs", self._run_bg("outputs"), row=1, cols=2),
+            self._btn("Git", [self._goto("git")], row=1, col=2, cols=2),
+            self._btn("Docker", self._run_bg("open-docker"), row=2, cols=2),
+            self._btn("Terminal", self._run_window("open-terminal", pause=False), row=2, col=2, cols=2),
+            self._btn("Home", [self._goto("home")], row=3, cols=4),
         ]
 
         pipe.buttons = [
-            self._btn("🚀 Pipeline IA", self._run_ps("pipeline-ia"), cols=4, bg=COLOR_BTN_ACCENT),
-            self._btn("🎯 Pipeline Tema", self._run_ps("pipeline-tema"), row=1, cols=4, bg=COLOR_BTN_ACCENT),
-            self._btn("🔄 Rerun", self._run_ps("pipeline-rerun"), row=2, cols=2),
-            self._btn("🖥 Local", self._run_ps("pipeline-local"), row=2, col=2, cols=2),
-            self._btn("📊 Logs", self._run_ps("logs"), row=3, cols=2),
-            self._btn("🔌 API", self._run_ps("restart-api"), row=3, col=2, cols=2),
-            self._btn("◀ Producao", [self._goto("prod")], row=4, cols=4),
+            self._btn("Pipeline IA", self._run_window("pipeline-ia"), cols=2, bg=COLOR_BTN_ACCENT),
+            self._btn("Rerun", self._run_window("pipeline-rerun"), cols=2, col=2),
+            self._btn("Local", self._run_window("pipeline-local"), row=1, col=2, cols=2),
+            self._btn("Logs", self._run_bg("logs"), row=2, cols=2),
+            self._btn("API", self._run_window("restart-api", pause=False), row=2, col=2, cols=2),
+            self._btn("Voltar", [self._goto("prod")], row=3, cols=4),
         ]
 
         git.buttons = [
-            self._btn("✅ Commit\nadd + status", self._run_ps("git-commit"), rows=2, cols=4, bg=COLOR_BTN_GIT),
-            self._btn("⬆ Push", self._run_ps("git-push"), row=2, rows=2, cols=4, bg=COLOR_BTN_GIT),
-            self._btn("📋 Status", self._run_ps("git-status"), row=4, cols=2),
-            self._btn("◀ Voltar", [self._goto("prod")], row=4, col=2, cols=2),
+            self._btn("Commit", self._run_window("git-commit"), cols=2, bg=COLOR_BTN_GIT),
+            self._btn("Push", self._run_window("git-push"), cols=2, col=2, bg=COLOR_BTN_GIT),
+            self._btn("Status", self._run_window("git-status", pause=False), row=1, cols=2),
+            self._btn("Voltar", [self._goto("prod")], row=1, col=2, cols=2),
         ]
 
         cloud.buttons = [
-            self._btn("🚂 Railway", self._run_ps("open-railway"), cols=2, bg=COLOR_BTN_ACCENT),
-            self._btn("▶ YT Studio", self._run_ps("open-youtube-studio"), cols=2, col=2, bg=COLOR_BTN_ACCENT),
-            self._btn("🔌 Reiniciar API", self._run_ps("restart-api"), row=1, cols=2),
-            self._btn("📂 Projeto", self._run_ps("open-project"), row=1, col=2, cols=2),
-            self._btn("🧹 Limpar cache", self._run_ps("clear-cache"), row=2, cols=4, bg=COLOR_BTN_DANGER),
-            self._btn("🏠 Home", [self._goto("home")], row=3, cols=4),
+            self._btn("Railway", self._run_bg("open-railway"), cols=2, bg=COLOR_BTN_ACCENT),
+            self._btn("YT Studio", self._run_bg("open-youtube-studio"), cols=2, col=2, bg=COLOR_BTN_ACCENT),
+            self._btn("Reiniciar API", self._run_window("restart-api", pause=False), row=1, cols=2),
+            self._btn("Projeto", self._run_bg("open-project"), row=1, col=2, cols=2),
+            self._btn("Limpar cache", self._run_window("clear-cache", pause=False), row=2, cols=4, bg=COLOR_BTN_DANGER),
+            self._btn("Home", [self._goto("home")], row=3, cols=4),
         ]
 
         return [builders[spec.key].render() for spec in self.page_specs]

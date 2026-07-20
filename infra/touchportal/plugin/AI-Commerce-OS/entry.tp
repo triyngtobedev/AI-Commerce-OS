@@ -28,7 +28,7 @@
               }
             ]
           },
-          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action pipeline-ia",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action pipeline-ia -Pause",
           "data": []
         },
         {
@@ -36,6 +36,8 @@
           "name": "Pipeline Tema",
           "prefix": "AI-Commerce",
           "type": "execute",
+          "format": "Pipeline tema: {$topic$}",
+          "tryInline": true,
           "lines": {
             "action": [
               {
@@ -46,7 +48,7 @@
               }
             ]
           },
-          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action pipeline-tema -Topic \"{$topic$}\"",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action pipeline-tema -Topic \"{$topic$}\" -Pause",
           "data": [
             {
               "id": "topic",

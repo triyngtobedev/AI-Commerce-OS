@@ -1,9 +1,5 @@
 # Dispatcher de acoes do AI-Commerce-OS para Touch Portal.
-#
-# Uso:
-#   .\infra\touchportal\aicommerce.ps1 -Action pipeline-ia
-#   .\infra\touchportal\aicommerce.ps1 -Action pipeline-tema -Topic "Seu tema"
-#   .\infra\touchportal\aicommerce.ps1 -Action last-video
+# Executa tudo no processo atual (sem abrir janela extra do PowerShell).
 
 [CmdletBinding()]
 param(
@@ -35,7 +31,7 @@ param(
 
     [string]$Topic = "",
 
-    [switch]$Wait
+    [switch]$Pause
 )
 
 $ErrorActionPreference = "Stop"
@@ -44,34 +40,15 @@ $ErrorActionPreference = "Stop"
 $Root = Get-AICommerceProjectRoot
 if (-not (Test-Path $Root)) {
     Write-Host "ERRO: projeto nao encontrado em $Root" -ForegroundColor Red
-    Write-Host "Edite infra/touchportal/local.env ou config.ps1" -ForegroundColor Yellow
     exit 1
 }
 
 Set-Location $Root
 
-function Invoke-ProjectPowerShell {
-    param(
-        [string]$Command,
-        [switch]$NewWindow
-    )
-
-    if ($NewWindow) {
-        Start-Process powershell.exe -ArgumentList @(
-            "-NoExit",
-            "-ExecutionPolicy", "Bypass",
-            "-Command",
-            "Set-Location '$Root'; $Command"
-        )
-        return
+function Wait-IfNeeded {
+    if ($Pause) {
+        Read-Host "Pressione Enter para fechar"
     }
-
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command $Command
-}
-
-function Open-Url {
-    param([string]$Url)
-    Start-Process $Url
 }
 
 function Find-LastVideo {
@@ -85,7 +62,7 @@ function Find-LastVideo {
         Select-Object -First 1
 
     if (-not $video) {
-        Write-Host "Nenhum video_final.mp4 encontrado em output/ ou downloads/" -ForegroundColor Yellow
+        Write-Host "Nenhum video_final.mp4 encontrado." -ForegroundColor Yellow
         exit 1
     }
 
@@ -96,54 +73,42 @@ switch ($Action) {
     "pipeline-ia" {
         $script = Join-Path $Root "scripts\cloud\gerar_video.ps1"
         if (Test-Path $script) {
-            Invoke-ProjectPowerShell -Command "& '$script' -Research" -NewWindow:(-not $Wait)
+            & $script -Research
         }
         else {
-            Invoke-ProjectPowerShell -Command "python main.py --platform youtube_dark --research --production" -NewWindow:(-not $Wait)
+            python main.py --platform youtube_dark --research --production
         }
+        Wait-IfNeeded
     }
 
     "pipeline-tema" {
         if (-not $Topic) {
-            try {
-                Add-Type -AssemblyName Microsoft.VisualBasic
-                $Topic = [Microsoft.VisualBasic.Interaction]::InputBox(
-                    "Tema do video:",
-                    "AI-Commerce-OS",
-                    "A verdade sobre a Biblioteca de Alexandria"
-                )
-            }
-            catch {
-                Write-Host "Informe -Topic `"Seu tema`"" -ForegroundColor Red
-                exit 1
-            }
+            Write-Host "Tema nao informado. Use a acao Pipeline Tema do plugin (campo no celular)." -ForegroundColor Red
+            exit 1
         }
-        if (-not $Topic) {
-            Write-Host "Tema cancelado." -ForegroundColor Yellow
-            exit 0
-        }
-        $escaped = $Topic.Replace("'", "''")
         $script = Join-Path $Root "scripts\cloud\gerar_video.ps1"
         if (Test-Path $script) {
-            Invoke-ProjectPowerShell -Command "& '$script' -Topic '$escaped'" -NewWindow:(-not $Wait)
+            & $script -Topic $Topic
         }
         else {
-            Invoke-ProjectPowerShell -Command "python main.py --platform youtube_dark --production" -NewWindow:(-not $Wait)
+            python main.py --platform youtube_dark --production
         }
+        Wait-IfNeeded
     }
 
     "pipeline-rerun" {
-        Invoke-ProjectPowerShell -Command "python main.py --platform youtube_dark --rerun" -NewWindow:(-not $Wait)
+        python main.py --platform youtube_dark --rerun
+        Wait-IfNeeded
     }
 
     "pipeline-local" {
-        Invoke-ProjectPowerShell -Command "python main.py --platform youtube_dark --research" -NewWindow:(-not $Wait)
+        python main.py --platform youtube_dark --research
+        Wait-IfNeeded
     }
 
     "last-video" {
         $video = Find-LastVideo
         Start-Process $video.FullName
-        Write-Host "Abrindo: $($video.FullName)" -ForegroundColor Green
     }
 
     "outputs" {
@@ -151,87 +116,71 @@ switch ($Action) {
         $dl = Join-Path $Root "downloads"
         New-Item -ItemType Directory -Force -Path $out, $dl | Out-Null
         Start-Process explorer.exe $out
-        Start-Sleep -Milliseconds 400
+        Start-Sleep -Milliseconds 300
         Start-Process explorer.exe $dl
     }
 
     "git-commit" {
-        Invoke-ProjectPowerShell -Command "git add -A; git status" -NewWindow
+        git add -A
+        git status
+        Wait-IfNeeded
     }
 
     "git-push" {
-        Invoke-ProjectPowerShell -Command "git push" -NewWindow
+        git push
+        Wait-IfNeeded
     }
 
     "git-status" {
-        Invoke-ProjectPowerShell -Command "git status" -NewWindow
+        git status
+        Wait-IfNeeded
     }
 
     "clear-cache" {
-        Invoke-ProjectPowerShell -Command "python scripts\maintenance\clear_cache.py" -NewWindow
+        python scripts\maintenance\clear_cache.py
+        Wait-IfNeeded
     }
 
-    "open-project" {
-        Start-Process explorer.exe $Root
-    }
+    "open-project" { Start-Process explorer.exe $Root }
+    "open-explorer" { Start-Process explorer.exe $Root }
 
     "open-cursor" {
         $cursor = Join-Path $env:LOCALAPPDATA "Programs\cursor\Cursor.exe"
-        if (Test-Path $cursor) {
-            Start-Process $cursor $Root
-        }
-        else {
-            Start-Process explorer.exe $Root
-        }
+        if (Test-Path $cursor) { Start-Process $cursor $Root }
+        else { Start-Process explorer.exe $Root }
     }
 
-    "open-vscode" {
-        Start-Process code $Root
-    }
+    "open-vscode" { Start-Process code $Root }
 
     "open-terminal" {
-        Invoke-ProjectPowerShell -Command "# Terminal AI-Commerce-OS" -NewWindow
-    }
-
-    "open-explorer" {
-        Start-Process explorer.exe $Root
+        Start-Process powershell.exe -ArgumentList @(
+            "-NoExit", "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-Command", "Set-Location '$Root'"
+        ) -WindowStyle Normal -WorkingDirectory $Root
     }
 
     "open-docker" {
         $docker = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-        if (Test-Path $docker) {
-            Start-Process $docker
-        }
-        else {
-            Write-Host "Docker Desktop nao encontrado em $docker" -ForegroundColor Yellow
-        }
+        if (Test-Path $docker) { Start-Process $docker }
     }
 
     "open-firefox" {
         $firefox = "${env:ProgramFiles}\Mozilla Firefox\firefox.exe"
-        if (Test-Path $firefox) {
-            Start-Process $firefox
-        }
-        else {
-            Write-Host "Firefox nao encontrado" -ForegroundColor Yellow
-        }
+        if (Test-Path $firefox) { Start-Process $firefox }
     }
 
-    "open-youtube-studio" {
-        Open-Url "https://studio.youtube.com"
-    }
-
-    "open-railway" {
-        Open-Url "https://railway.app"
-    }
+    "open-youtube-studio" { Start-Process "https://studio.youtube.com" }
+    "open-railway" { Start-Process "https://railway.app" }
 
     "restart-api" {
         $api = Join-Path $Root "api\run_api.ps1"
-        Invoke-ProjectPowerShell -Command "& '$api'" -NewWindow
+        Start-Process powershell.exe -ArgumentList @(
+            "-NoExit", "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", $api
+        ) -WindowStyle Normal -WorkingDirectory $Root
     }
 
     "logs" {
-        Invoke-ProjectPowerShell -Command "# Logs: acompanhe aqui ou abra Railway Deploy Logs" -NewWindow
         Start-Process "https://railway.app"
     }
 }
