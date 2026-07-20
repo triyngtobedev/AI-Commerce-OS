@@ -3,6 +3,9 @@
 # Uso (PowerShell na raiz do repo):
 #   .\infra\touchportal\install.ps1
 #   .\infra\touchportal\install.ps1 -ProjectRoot "D:\Dev\AI-Commerce-OS"
+#
+# Se der erro "running scripts is disabled", use o .bat ou:
+#   powershell -ExecutionPolicy Bypass -File .\infra\touchportal\install.ps1
 
 param(
     [string]$ProjectRoot = ""
