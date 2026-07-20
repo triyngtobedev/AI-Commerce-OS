@@ -73,18 +73,36 @@ def _search_wikimedia_image(query: str) -> str | None:
     return None
 
 
-def _resolve_image_url(query: str) -> str | None:
-    """Try full query, then a single-word fallback."""
+def _download_image(url: str, dest: str) -> bool:
+    try:
+        data = requests.get(url, timeout=30).content
+        if not data:
+            return False
+        with open(dest, "wb") as f:
+            f.write(data)
+        return True
+    except Exception as exc:
+        print(f"[Footage] Download failed ({url!r}): {exc}")
+        return False
+
+
+def _resolve_image_url(query: str, scene_index: int = 0) -> str | None:
+    """Try Wikimedia, then 2-word query, then Lorem Picsum."""
     image_url = _search_wikimedia_image(query)
     if image_url:
         return image_url
 
     words = query.strip().split()
-    if len(words) > 1:
-        fallback = words[0]
-        print(f"[Wikimedia] Trying 1-word fallback query: {fallback!r}")
-        return _search_wikimedia_image(fallback)
-    return None
+    if len(words) > 2:
+        short_query = " ".join(words[:2])
+        print(f"[Wikimedia] Trying 2-word fallback query: {short_query!r}")
+        image_url = _search_wikimedia_image(short_query)
+        if image_url:
+            return image_url
+
+    picsum_url = f"https://picsum.photos/1920/1080?random={scene_index}"
+    print(f"[Footage] Using Lorem Picsum fallback: {picsum_url}")
+    return picsum_url
 
 
 def _create_gradient_frame(output_path: str) -> None:
@@ -120,17 +138,18 @@ def get_footage_for_scenes(scenes: list, output_dir: str) -> list:
             query = "ancient mystery documentary"
 
         try:
-            image_url = _resolve_image_url(query)
+            image_url = _resolve_image_url(query, scene_index=i)
 
             if not image_url:
                 img_path = f"{output_dir}/scene_{i}_gradient.jpg"
-                print(f"⚠️ Cena {i + 1}: Wikimedia vazio — usando gradiente escuro")
+                print(f"⚠️ Cena {i + 1}: sem imagem — usando gradiente escuro")
                 _create_gradient_frame(img_path)
             else:
                 img_path = f"{output_dir}/scene_{i}.jpg"
-                img_data = requests.get(image_url, timeout=30).content
-                with open(img_path, "wb") as f:
-                    f.write(img_data)
+                if not _download_image(image_url, img_path):
+                    img_path = f"{output_dir}/scene_{i}_gradient.jpg"
+                    print(f"⚠️ Cena {i + 1}: download falhou — usando gradiente escuro")
+                    _create_gradient_frame(img_path)
 
             # 3. Convert to Ken Burns MP4
             mp4_path = f"{output_dir}/scene_{i}.mp4"

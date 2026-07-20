@@ -7,7 +7,7 @@ Pipeline simples e confiável:
   2. Narração Edge TTS (pt-BR-FranciscaNeural)
   3. Imagens Wikimedia + Ken Burns
   4. Legendas queimadas (drawtext)
-  5. Música de fundo (8%)
+  5. Música de fundo (6%)
   6. Color grade escuro
   7. Concatenação final
 """
@@ -40,79 +40,169 @@ SCENE_TEMPLATE: list[dict[str, Any]] = [
         "id": "gancho",
         "narration": (
             "Você está prestes a descobrir algo que poucos sabem sobre {topic}. "
-            "O que vou te revelar agora vai mudar completamente a forma como você vê esse assunto. "
-            "Prepare-se, porque essa história é perturbadora. "
-            "Fique até o final, porque a revelação mais chocante vem por último."
+            "O que vou te revelar agora vai mudar completamente a forma como você enxerga esse assunto "
+            "para sempre. Prepare-se, porque essa história é perturbadora, profunda e cheia de detalhes "
+            "que nunca apareceram nos livros didáticos que você leu na escola. "
+            "Durante anos, milhões de pessoas passaram por essa informação sem perceber o que estava "
+            "escondido bem diante dos olhos delas. Pesquisadores corajosos arriscaram suas carreiras "
+            "para trazer esses fatos à luz, e o que encontraram desafia tudo o que considerávamos "
+            "como verdade absoluta. Antes de continuar, peço que fique até o final deste vídeo, "
+            "porque a revelação mais chocante vem por último, e ela pode alterar sua percepção "
+            "de realidade de um jeito que você jamais imaginou. Respire fundo, ajuste o volume "
+            "e preste atenção em cada palavra, porque depois que você souber, não haverá como "
+            "desver o que está prestes a ser exposto. Este não é mais um vídeo comum de internet; "
+            "é um registro cuidadoso de fatos que resistiram ao tempo e à censura silenciosa "
+            "de quem preferia que você nunca chegasse até aqui."
         ),
         "visual_query": "mystery dark documentary cinematic",
-        "duration": 30,
+        "duration": 60,
     },
     {
         "id": "contexto",
         "narration": (
-            "Para entender o mistério de {topic}, precisamos voltar no tempo. "
-            "Durante séculos, esse assunto foi ignorado pelos historiadores oficiais. "
-            "Mas documentos secretos e descobertas recentes revelaram uma verdade "
-            "que as autoridades preferem manter escondida. "
-            "A história que nos ensinaram está incompleta."
+            "Para entender o mistério de {topic}, precisamos voltar no tempo e reconstruir "
+            "cuidadosamente o que realmente aconteceu, longe das versões simplificadas "
+            "que nos ensinaram em sala de aula. Durante séculos, esse assunto foi tratado "
+            "como um detalhe secundário pelos historiadores oficiais, como se não merecesse "
+            "investigação profunda ou debate público honesto. Mas documentos secretos, arquivos "
+            "desclassificados e descobertas recentes revelaram uma verdade incômoda que as autoridades "
+            "preferem manter escondida do grande público. Registros antigos, cartas trocadas entre "
+            "figuras poderosas e relatos de testemunhas ignoradas apontam para uma narrativa "
+            "completamente diferente da que conhecemos. A história que nos ensinaram está incompleta, "
+            "cuidadosamente editada e, em alguns trechos, deliberadamente distorcida para proteger "
+            "interesses que vão muito além do conhecimento científico. Quando você compreende "
+            "esse contexto histórico, cada peça do quebra-cabeça começa a se encaixar "
+            "de um jeito que ninguém esperava. Museus, arquivos nacionais e bases de dados "
+            "acadêmicas guardam indícios que raramente aparecem em documentários mainstream, "
+            "mas que, quando reunidos, contam uma história muito mais complexa e inquietante "
+            "sobre {topic} do que qualquer narrativa oficial jamais admitiria publicamente."
         ),
         "visual_query": "ancient history documentary cinematic dark",
-        "duration": 45,
+        "duration": 90,
     },
     {
         "id": "misterio",
         "narration": (
-            "O mistério começa quando pesquisadores independentes começaram a questionar "
-            "a versão oficial sobre {topic}. As evidências que encontraram são impossíveis de ignorar. "
-            "Fotografias, documentos e testemunhos apontam para uma conclusão perturbadora. "
-            "Algo não bate na história que nos contaram."
+            "O mistério começa quando pesquisadores independentes, cansados de aceitar respostas "
+            "prontas, começaram a questionar a versão oficial sobre {topic} com rigor científico "
+            "e coragem intelectual. As evidências que encontraram são impossíveis de ignorar, "
+            "mesmo para quem tenta desesperadamente mantê-las fora do debate público. "
+            "Fotografias de alta resolução, documentos digitalizados, gravações recuperadas "
+            "e testemunhos de primeira mão apontam para uma conclusão perturbadora que desafia "
+            "o senso comum. Algo fundamental não bate na história que nos contaram durante décadas, "
+            "e quanto mais fundo esses investigadores cavaram, mais inconsistências apareceram "
+            "como fios soltos de um tecido cuidadosamente costurado para esconder a verdade. "
+            "Laboratórios independentes confirmaram anomalias que instituições oficiais se recusaram "
+            "a explicar. Mapas antigos, datas conflitantes e registros apagados sugerem "
+            "que alguém, em algum momento, decidiu apagar deliberadamente partes essenciais "
+            "dessa história. E se essas pistas estiverem corretas, estamos diante de um dos "
+            "maiores enigmas já documentados pela humanidade. Cada nova pista reforça "
+            "a sensação de que alguém, em algum lugar, trabalhou sistematicamente "
+            "para garantir que {topic} permanecesse envolto em mistério, dúvida "
+            "e controvérsia por gerações inteiras."
         ),
         "visual_query": "mystery investigation evidence dark cinematic",
-        "duration": 45,
+        "duration": 90,
     },
     {
         "id": "evidencia",
         "narration": (
-            "As evidências sobre {topic} são esmagadoras. "
-            "Especialistas de universidades renomadas confirmaram que os dados oficiais foram manipulados. "
-            "Um estudo publicado em 2019 revelou anomalias inexplicáveis. "
-            "Os números simplesmente não fecham com a narrativa que nos foi apresentada durante décadas."
+            "As evidências sobre {topic} são esmagadoras e continuam se acumulando "
+            "mesmo enquanto falamos. Especialistas de universidades renomadas, após analisar "
+            "dados brutos sem filtros ideológicos, confirmaram que os números oficiais foram "
+            "manipulados ou apresentados de forma seletiva para sustentar uma narrativa "
+            "predeterminada. Um estudo publicado em 2019 revelou anomalias inexplicáveis "
+            "que nenhum modelo convencional conseguiu justificar de maneira satisfatória. "
+            "Relatórios internos, vazamentos de funcionários e perícias independentes "
+            "mostram lacunas enormes entre o que foi divulgado à imprensa e o que constava "
+            "nos arquivos originais. Os números simplesmente não fecham com a história "
+            "que nos foi apresentada durante décadas, e cada nova descoberta reforça "
+            "a suspeita de que houve uma campanha coordenada para obscurecer fatos relevantes. "
+            "Imagens de satélite, análises geológicas e comparações cronológicas revelam "
+            "discrepâncias que não podem ser atribuídas a simples erros de catalogação. "
+            "Quando você olha para esse conjunto de provas com honestidade intelectual, "
+            "fica claro que algo muito maior está em jogo do que gostaríamos de admitir. "
+            "Jornalistas investigativos, arqueólogos independentes e cientistas dissidentes "
+            "passaram a usar os mesmos dados brutos e chegaram a conclusões alarmantemente "
+            "parecidas sobre {topic}, mesmo trabalhando em países e épocas diferentes."
         ),
         "visual_query": "research documents evidence conspiracy dark",
-        "duration": 45,
+        "duration": 90,
     },
     {
         "id": "teoria",
         "narration": (
-            "A teoria mais aceita entre os pesquisadores é que {topic} esconde um segredo "
-            "que poucos têm acesso. Essa hipótese explica todas as inconsistências que encontramos. "
-            "Se essa teoria estiver correta, tudo que você sabia sobre esse assunto precisará ser revisado. "
-            "As implicações são enormes."
+            "A teoria mais aceita entre os pesquisadores que ousaram ir além do consenso "
+            "é que {topic} esconde um segredo de proporções colossais, acessível apenas "
+            "a um círculo restrito de iniciados que controlam a narrativa pública. "
+            "Essa hipótese explica, de forma coerente, todas as inconsistências que encontramos "
+            "ao longo desta investigação, conectando pontos que pareciam isolados "
+            "em um padrão perturbadoramente lógico. Se essa teoria estiver correta, "
+            "tudo o que você acreditava saber sobre esse assunto precisará ser revisado "
+            "com humildade e atenção aos detalhes. As implicações são enormes e alcançam "
+            "campos que vão da arqueologia à geopolítica, passando por religião, economia "
+            "e controle de informação em escala global. Não se trata de especulação vazia, "
+            "mas de um modelo explicativo sustentado por evidências convergentes "
+            "de fontes independentes. Cada nova descoberta fortalece essa interpretação "
+            "e enfraquece as explicações simplistas que durante tanto tempo nos satisfizeram. "
+            "Alguns especialistas preferem o silêncio a assumir publicamente posições "
+            "que poderiam custar caro às suas reputações. Mas a verdade, quando bem "
+            "documentada, tem o incômodo hábito de insistir em ser ouvida. "
+            "E quanto mais examinamos {topic} sob essa lente, mais difícil se torna "
+            "manter a versão confortável que nos foi vendida como definitiva "
+            "por décadas de livros, reportagens e produções televisivas."
         ),
         "visual_query": "theory conspiracy revelation dramatic dark",
-        "duration": 45,
+        "duration": 90,
     },
     {
         "id": "revelacao",
         "narration": (
-            "E aqui está a revelação que vai te deixar sem palavras. "
-            "Depois de anos de investigação, a verdade sobre {topic} finalmente veio à tona. "
-            "O que descobrimos é mais perturbador do que qualquer teoria da conspiração. "
-            "Essa informação foi suprimida por décadas por razões que agora ficam claras."
+            "E aqui está a revelação que pode te deixar sem palavras por alguns instantes. "
+            "Depois de anos de investigação silenciosa, cruzamento de fontes e análise "
+            "minuciosa de registros esquecidos, a verdade sobre {topic} finalmente veio à tona "
+            "de um jeito que não pode mais ser ignorado. O que descobrimos é mais perturbador "
+            "do que qualquer teoria da conspiração popular, justamente porque está ancorado "
+            "em documentos verificáveis e testemunhos consistentes. Essa informação foi "
+            "suprimida por décadas por razões que agora ficam dolorosamente claras "
+            "quando observamos quem se beneficiava do silêncio coletivo. Não se trata "
+            "de um detalhe menor ou de uma interpretação exagerada de fatos comuns. "
+            "Estamos falando de uma reviravolta que reescreve capítulos inteiros "
+            "da história humana e obriga a repensar decisões tomadas com base "
+            "em premissas falsas. Arquivos recuperados, entrevistas resgatadas "
+            "e perícias recentes convergem para a mesma conclusão inescapável. "
+            "A partir deste momento, você passa a integrar um grupo reduzido "
+            "de pessoas que conhece o que está por trás do véu oficial. "
+            "O impacto dessa descoberta sobre {topic} vai muito além do curioso "
+            "ou do sensacionalista: ele questiona premissas que sustentam "
+            "disciplinas inteiras e exige coragem para ser assimilado "
+            "sem filtros ou desculpas intelectuais."
         ),
         "visual_query": "revelation truth dramatic cinematic mystery",
-        "duration": 45,
+        "duration": 90,
     },
     {
         "id": "conclusao",
         "narration": (
-            "Agora você sabe a verdade sobre {topic}. "
-            "Uma verdade que o sistema não quer que você conheça. "
-            "Compartilhe esse vídeo com quem você confia, porque esse tipo de conteúdo costuma ser removido. "
-            "E se você quer continuar descobrindo segredos como esse, se inscreva no canal e ative o sininho."
+            "Agora você sabe a verdade sobre {topic}, uma verdade que o sistema "
+            "não quer que circule livremente entre pessoas curiosas e bem informadas. "
+            "O que compartilhamos aqui não é entretenimento superficial, mas um convite "
+            "sério para questionar narrativas prontas e buscar fontes primárias "
+            "com espírito crítico. Compartilhe esse vídeo com quem você confia, "
+            "porque esse tipo de conteúdo costuma ser removido ou limitado "
+            "assim que começa a alcançar um público maior. Cada visualização, "
+            "cada comentário e cada inscrição fortalece um espaço independente "
+            "onde ideias incômodas ainda podem ser discutidas com honestidade. "
+            "Se você quer continuar descobrindo segredos como esse, se inscreva no canal, "
+            "ative o sininho e fique atento aos próximos episódios. A jornada "
+            "pelo desconhecido não termina aqui. Na verdade, ela está apenas começando, "
+            "e as próximas revelações prometem ser ainda mais surpreendentes "
+            "do que tudo o que você acabou de ouvir. Guarde o que aprendeu "
+            "sobre {topic}, questione o que te contaram e nunca aceite "
+            "verdades prontas sem examinar as evidências por conta própria."
         ),
         "visual_query": "truth revelation subscribe channel dark",
-        "duration": 30,
+        "duration": 60,
     },
 ]
 
@@ -123,8 +213,9 @@ KEN_BURNS_ZOOM = "scale=8000:-1,zoompan=z='min(zoom+0.0015,1.5)':d='{frames}':x=
 TTS_VOICE = "pt-BR-FranciscaNeural"
 TTS_RATE = "-10%"
 TTS_PITCH = "-5Hz"
-MUSIC_VOLUME = 0.08
+MUSIC_VOLUME = 0.06
 AUDIO_LIBRARY = ROOT / "assets" / "audio" / "library.json"
+DARK_AMBIENT_PATH = ROOT / "assets" / "audio" / "dark_ambient.mp3"
 DARK_MOODS = {"melancholic", "tense", "investigative", "mystery", "dark ambient", "dark_ambient"}
 
 
@@ -233,20 +324,48 @@ def _wikimedia_search_jpg(query: str) -> str | None:
     return None
 
 
-def download_scene_image(query: str, dest: Path) -> bool:
-    """Baixa primeira .jpg do Wikimedia; retorna False se falhar após 2 retries."""
+def _download_image_from_url(url: str, dest: Path) -> bool:
+    try:
+        data = requests.get(url, timeout=30, headers=WIKIMEDIA_HEADERS).content
+        if not data:
+            return False
+        dest.write_bytes(data)
+        return True
+    except Exception as exc:
+        print(f"[STEP 3] Download falhou ({url!r}): {exc}")
+        return False
+
+
+def download_scene_image(query: str, dest: Path, scene_index: int = 0) -> bool:
+    """Baixa imagem com fallbacks: Wikimedia → query curta → Lorem Picsum."""
     for attempt in range(1, 3):
         try:
             url = _wikimedia_search_jpg(query)
             if not url:
                 raise ValueError(f"Nenhuma .jpg encontrada para {query!r}")
-            data = requests.get(url, timeout=30, headers=WIKIMEDIA_HEADERS).content
-            dest.write_bytes(data)
-            return True
+            if _download_image_from_url(url, dest):
+                return True
         except Exception as exc:
             print(f"[STEP 3] Wikimedia tentativa {attempt}/2 falhou ({query!r}): {exc}")
             if attempt < 2:
                 time.sleep(2)
+
+    words = query.strip().split()
+    if len(words) > 2:
+        short_query = " ".join(words[:2])
+        print(f"[STEP 3] Tentando query simplificada: {short_query!r}")
+        try:
+            url = _wikimedia_search_jpg(short_query)
+            if url and _download_image_from_url(url, dest):
+                return True
+        except Exception as exc:
+            print(f"[STEP 3] Query simplificada falhou ({short_query!r}): {exc}")
+
+    picsum_url = f"https://picsum.photos/1920/1080?random={scene_index}"
+    print(f"[STEP 3] Usando Lorem Picsum: {picsum_url}")
+    if _download_image_from_url(picsum_url, dest):
+        return True
+
     return False
 
 
@@ -291,7 +410,7 @@ def fetch_footage_for_scenes(scenes: list[dict[str, Any]], work_dir: Path) -> li
         raw_path = raw_dir / f"{index:02d}_{scene_id}.mp4"
 
         print(f"[STEP 3] Cena {scene_id}: buscando {scene['visual_query']!r}")
-        if not download_scene_image(scene["visual_query"], image_path):
+        if not download_scene_image(scene["visual_query"], image_path, scene_index=index):
             print(f"[STEP 3] Cena {scene_id}: usando gradiente escuro")
             create_gradient_image(image_path)
 
@@ -328,7 +447,7 @@ def _escape_drawtext(text: str) -> str:
     return text
 
 
-def split_subtitle_chunks(text: str, max_words: int = 6) -> list[str]:
+def split_subtitle_chunks(text: str, max_words: int = 5) -> list[str]:
     words = re.findall(r"\S+", text)
     chunks: list[str] = []
     for i in range(0, len(words), max_words):
@@ -339,7 +458,7 @@ def split_subtitle_chunks(text: str, max_words: int = 6) -> list[str]:
 def build_subtitle_timings(
     text: str,
     total_duration: float,
-    max_words: int = 6,
+    max_words: int = 5,
 ) -> list[tuple[str, float, float]]:
     words = re.findall(r"\S+", text)
     if not words:
@@ -376,7 +495,8 @@ def _drawtext_filters_for_scene(
         escaped = _escape_drawtext(text)
         filters.append(
             f"drawtext=text='{escaped}'{font_opt}"
-            f":fontsize=52:fontcolor=white:borderw=3:bordercolor=black"
+            f":fontsize=38:fontcolor=white:borderw=3:bordercolor=black"
+            f":box=1:boxcolor=black@0.4:boxborderw=8"
             f":x=(w-text_w)/2:y=h-120"
             f":enable='between(t\\,{local_start:.3f}\\,{local_end:.3f})'"
         )
@@ -451,6 +571,9 @@ def burn_subtitles_on_scenes(
 
 
 def pick_dark_ambient_track() -> Path | None:
+    if DARK_AMBIENT_PATH.is_file():
+        return DARK_AMBIENT_PATH
+
     if not AUDIO_LIBRARY.is_file():
         return None
 
@@ -490,7 +613,7 @@ def pick_dark_ambient_track() -> Path | None:
 
 
 def mix_background_music(narration_path: Path, output_path: Path, duration: float) -> Path:
-    """STEP 5 — Mixa música dark ambient a 8% sobre a narração."""
+    """STEP 5 — Mixa música dark ambient a 6% sobre a narração."""
     music_path = pick_dark_ambient_track()
     if not music_path:
         print("[STEP 5] Sem música disponível — pulando")
