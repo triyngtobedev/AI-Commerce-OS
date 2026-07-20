@@ -1,0 +1,332 @@
+{
+  "api": 12,
+  "version": 1,
+  "name": "AI-Commerce-OS",
+  "id": "com.triyn.aicommerceos",
+  "configuration": {
+    "colorDark": "#FFB703",
+    "colorLight": "#0C1220",
+    "parentCategory": "tools"
+  },
+  "categories": [
+    {
+      "id": "com.triyn.aicommerceos.main",
+      "name": "AI-Commerce-OS",
+      "actions": [
+        {
+          "id": "acmd_pipeline_ia",
+          "name": "Pipeline IA (tema automatico)",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Pipeline IA — nuvem/research" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action pipeline-ia",
+          "data": []
+        },
+        {
+          "id": "acmd_pipeline_tema",
+          "name": "Pipeline Tema",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Pipeline tema: {$topic$}" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action pipeline-tema -Topic \"{$topic$}\"",
+          "data": [
+            {
+              "id": "topic",
+              "type": "text",
+              "label": "Tema do video",
+              "default": "A verdade sobre a Biblioteca de Alexandria"
+            }
+          ]
+        },
+        {
+          "id": "acmd_pipeline_rerun",
+          "name": "Pipeline Rerun",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Rerun pipeline (--force)" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action pipeline-rerun",
+          "data": []
+        },
+        {
+          "id": "acmd_last_video",
+          "name": "Ultimo video",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Abrir ultimo video_final.mp4" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action last-video",
+          "data": []
+        },
+        {
+          "id": "acmd_outputs",
+          "name": "Abrir Outputs",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Abrir pastas output e downloads" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action outputs",
+          "data": []
+        },
+        {
+          "id": "acmd_git_commit",
+          "name": "Git Commit (add + status)",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "git add -A && git status" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action git-commit",
+          "data": []
+        },
+        {
+          "id": "acmd_git_push",
+          "name": "Git Push",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "git push" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action git-push",
+          "data": []
+        },
+        {
+          "id": "acmd_clear_cache",
+          "name": "Limpar cache",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Limpar cache IA e temporarios" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action clear-cache",
+          "data": []
+        },
+        {
+          "id": "acmd_open_project",
+          "name": "Abrir projeto",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Abrir pasta do projeto" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action open-project",
+          "data": []
+        },
+        {
+          "id": "acmd_restart_api",
+          "name": "Reiniciar API",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Iniciar api/run_api.ps1" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action restart-api",
+          "data": []
+        },
+        {
+          "id": "acmd_open_terminal",
+          "name": "Terminal",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Abrir PowerShell no projeto" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action open-terminal",
+          "data": []
+        },
+        {
+          "id": "acmd_open_docker",
+          "name": "Docker Desktop",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Abrir Docker Desktop" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action open-docker",
+          "data": []
+        },
+        {
+          "id": "acmd_open_cursor",
+          "name": "Cursor",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Abrir Cursor no projeto" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action open-cursor",
+          "data": []
+        },
+        {
+          "id": "acmd_open_vscode",
+          "name": "VS Code",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Abrir VS Code no projeto" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action open-vscode",
+          "data": []
+        },
+        {
+          "id": "acmd_open_youtube",
+          "name": "YouTube Studio",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Abrir YouTube Studio" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action open-youtube-studio",
+          "data": []
+        },
+        {
+          "id": "acmd_open_railway",
+          "name": "Railway Dashboard",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Abrir Railway Dashboard" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action open-railway",
+          "data": []
+        },
+        {
+          "id": "acmd_logs",
+          "name": "Logs",
+          "prefix": "AI-Commerce",
+          "type": "execute",
+          "lines": {
+            "action": [
+              {
+                "language": "default",
+                "data": [
+                  { "lineFormat": "Terminal + Railway logs" }
+                ]
+              }
+            ]
+          },
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%aicommerce.ps1\" -Action logs",
+          "data": []
+        }
+      ]
+    }
+  ]
+}

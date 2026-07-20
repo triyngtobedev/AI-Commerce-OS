@@ -61,6 +61,7 @@ def _start_job(
     production: bool,
     platform: str,
     template: str | None = None,
+    research: bool = False,
 ) -> str:
     url = f"{base_url.rstrip('/')}/api/v1/pipeline/run"
     payload = {
@@ -68,6 +69,7 @@ def _start_job(
         "production": production,
         "max_videos": 1,
         "topic": topic,
+        "research": research,
     }
     if template:
         payload["template"] = template
@@ -167,8 +169,13 @@ def main() -> int:
     )
     parser.add_argument(
         "--topic",
-        required=True,
+        default=None,
         help="Tema do vídeo (ex: 'A guerra dos emus na Austrália')",
+    )
+    parser.add_argument(
+        "--research",
+        action="store_true",
+        help="Deixa a IA escolher o tema (--research na API)",
     )
     parser.add_argument(
         "--production",
@@ -199,6 +206,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if not args.topic and not args.research:
+        print("❌ Informe --topic \"Seu tema\" ou use --research para tema automático")
+        return 1
+
     base_url = os.getenv("CLOUD_API_URL", "").strip()
     api_key = os.getenv("CLOUD_API_KEY", os.getenv("PIPELINE_API_KEY", "")).strip()
 
@@ -211,7 +222,8 @@ def main() -> int:
         print("   Atalho: .\\scripts\\cloud\\configurar_pc.ps1")
         return 1
 
-    print(f"\n🎬 Gerando vídeo na nuvem: {args.topic}\n")
+    topic_label = args.topic or "(tema automático — research)"
+    print(f"\n🎬 Gerando vídeo na nuvem: {topic_label}\n")
     if args.template:
         print(f"   Template: {args.template}\n")
     print(f"   Servidor: {base_url}\n")
@@ -225,6 +237,7 @@ def main() -> int:
             production=args.production,
             platform=args.platform,
             template=args.template,
+            research=args.research,
         )
         result = _poll_status(
             base_url,

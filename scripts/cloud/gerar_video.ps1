@@ -6,10 +6,12 @@
 #   .\scripts\cloud\gerar_video.ps1 -Topic "Emus vs Austrália" -Production
 
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$Topic,
+    [Parameter(Mandatory = $false)]
+    [string]$Topic = "",
 
     [switch]$Production,
+
+    [switch]$Research,
 
     [string]$Platform = "youtube_dark",
 
@@ -24,11 +26,13 @@ $ProjectRoot = Split-Path -Parent (Split-Path -Parent $ScriptDir)
 
 $Args = @(
     "$ProjectRoot\scripts\cloud\gerar_video.py",
-    "--topic", $Topic,
     "--platform", $Platform
 )
 
+if ($Topic) { $Args += @("--topic", $Topic) }
+
 if ($Production) { $Args += "--production" }
+if ($Research) { $Args += "--research" }
 if ($OutputDir) { $Args += @("--output-dir", $OutputDir) }
 
 python @Args
