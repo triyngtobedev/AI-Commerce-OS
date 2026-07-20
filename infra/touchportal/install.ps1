@@ -18,7 +18,7 @@ if (-not $ProjectRoot) {
 $ProjectRoot = (Resolve-Path $ProjectRoot).Path
 
 Write-Host ""
-Write-Host "=== AI-Commerce-OS — Touch Portal ===" -ForegroundColor Cyan
+Write-Host "=== AI-Commerce-OS - Touch Portal ===" -ForegroundColor Cyan
 Write-Host "Projeto: $ProjectRoot" -ForegroundColor DarkGray
 Write-Host ""
 
