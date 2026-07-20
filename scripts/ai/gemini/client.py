@@ -42,9 +42,31 @@ def extract_product_name(prompt):
     return "produto"
 
 
-def ask_gemini(prompt):
+def _infer_context_type(prompt: str) -> str:
+    prompt_lower = prompt.lower()
+
+    if "script_rewrite" in prompt_lower or "review_script" in prompt_lower:
+        return "script_rewrite"
+    if "script_expansion" in prompt_lower:
+        return "script_expansion"
+    if any(
+        token in prompt_lower
+        for token in ("video_script", "script_generation", "roteiro", "task: script")
+    ):
+        return "script_generation"
+    if "task: content_generation" in prompt_lower or "content_generation" in prompt_lower:
+        return "content_generation"
+    if "task: strategy" in prompt_lower or "strategy" in prompt_lower:
+        return "strategy"
+    if "task: analysis" in prompt_lower or "analysis" in prompt_lower:
+        return "analysis"
+
+    return "default"
+
+
+def ask_gemini(prompt, context_type=None):
     """
-    Envia um prompt para o Gemini
+    Envia um prompt para o router de IA (Groq → OpenRouter)
     ou usa resposta simulada em desenvolvimento.
     """
 
@@ -110,4 +132,5 @@ def ask_gemini(prompt):
         }
         """
 
-        return ask_ai(prompt)
+    resolved_context = context_type or _infer_context_type(prompt)
+    return ask_ai(prompt, resolved_context)

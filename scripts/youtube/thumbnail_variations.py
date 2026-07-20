@@ -117,6 +117,7 @@ def _generate_with_gemini_image(prompt: str, output_path: Path) -> bool:
                     record_gemini_call(stage="thumbnail", model=THUMBNAIL_IMAGE_MODEL)
                     return True
     except Exception as error:
+        print(f"[Gemini] Cota esgotada ou erro: {error}. Pulando etapa.")
         handle_gemini_error(error, stage="thumbnail")
         return False
 

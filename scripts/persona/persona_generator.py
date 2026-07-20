@@ -117,10 +117,7 @@ def generate_persona_reference():
         return str(REFERENCE_IMAGE)
 
     except Exception as error:
-        print(
-            "[PERSONA ERROR]",
-            error
-        )
+        print(f"[Gemini] Cota esgotada ou erro: {error}. Pulando etapa.")
 
         # Não quebra o pipeline
         return None

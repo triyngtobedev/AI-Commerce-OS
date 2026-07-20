@@ -187,6 +187,7 @@ class AIRouter:
         ai = {
             "groq": _has_key("GROQ_API_KEY"),
             "openrouter": _has_key("OPENROUTER_API_KEY"),
+            "gemini": _has_key("GEMINI_API_KEY"),
         }
         footage = {
             "youtube_cc": True,
