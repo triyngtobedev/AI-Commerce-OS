@@ -105,8 +105,22 @@ switch ($Action) {
 
     "pipeline-tema" {
         if (-not $Topic) {
-            Write-Host "Informe -Topic `"Seu tema`"" -ForegroundColor Red
-            exit 1
+            try {
+                Add-Type -AssemblyName Microsoft.VisualBasic
+                $Topic = [Microsoft.VisualBasic.Interaction]::InputBox(
+                    "Tema do video:",
+                    "AI-Commerce-OS",
+                    "A verdade sobre a Biblioteca de Alexandria"
+                )
+            }
+            catch {
+                Write-Host "Informe -Topic `"Seu tema`"" -ForegroundColor Red
+                exit 1
+            }
+        }
+        if (-not $Topic) {
+            Write-Host "Tema cancelado." -ForegroundColor Yellow
+            exit 0
         }
         $escaped = $Topic.Replace("'", "''")
         $script = Join-Path $Root "scripts\cloud\gerar_video.ps1"
