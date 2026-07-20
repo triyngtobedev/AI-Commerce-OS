@@ -65,8 +65,8 @@ Write-Host "  1. Reinicie o Touch Portal"
 Write-Host "  2. Aba Pages -> icone de engrenagem -> Import page"
 Write-Host "  3. Va em Desktop e selecione: AI-Commerce-OS-Panels.tpz"
 Write-Host "  4. NAO de duplo clique no arquivo (.tpz pode abrir programa errado)"
-Write-Host "  5. Se nao aparecer, mude filtro para 'Todos os arquivos (*.*)'"
+Write-Host "  5. Se nao aparecer, mude filtro para Todos os arquivos"
 Write-Host ""
-Write-Host "Pipeline Tema com texto no celular:" -ForegroundColor DarkGray
-Write-Host "  Edite o botao -> acao 'Pipeline Tema' do plugin AI-Commerce-OS" -ForegroundColor DarkGray
+Write-Host "Pipeline Tema (texto no celular): adicione botao manual com acao Pipeline Tema do plugin." -ForegroundColor DarkGray
+Write-Host "Emergencia (plugin travou): .\\infra\\touchportal\\uninstall.bat" -ForegroundColor DarkGray
 Write-Host ""
