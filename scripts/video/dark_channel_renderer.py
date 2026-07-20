@@ -4,7 +4,7 @@ Dark Channel Renderer — replica o fluxo de canais BR de mistério no YouTube.
 
 Pipeline simples e confiável:
   1. Roteiro dramático (template fixo)
-  2. Narração Edge TTS (pt-BR-FranciscaNeural)
+  2. Narração Kokoro TTS (fallback Edge TTS)
   3. Imagens Wikimedia + Ken Burns
   4. Legendas queimadas (drawtext)
   5. Música de fundo (6%)
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 import subprocess
 import sys
@@ -239,11 +240,11 @@ def full_narration_text(scenes: list[dict[str, Any]]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# STEP 2 — Narration (Edge TTS)
+# STEP 2 — Narration (Kokoro TTS, Edge TTS fallback)
 # ---------------------------------------------------------------------------
 
 
-async def _synthesize_narration(text: str, output_path: Path) -> None:
+async def _synthesize_narration_edge(text: str, output_path: Path) -> None:
     import edge_tts
 
     communicate = edge_tts.Communicate(
@@ -255,14 +256,38 @@ async def _synthesize_narration(text: str, output_path: Path) -> None:
     await communicate.save(str(output_path))
 
 
+def _convert_wav_to_mp3(wav_path: Path, mp3_path: Path) -> None:
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-i", str(wav_path),
+            "-c:a", "libmp3lame",
+            "-q:a", "2",
+            str(mp3_path),
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
 def generate_narration(scenes: list[dict[str, Any]], output_dir: Path) -> tuple[Path, float]:
-    """STEP 2 — Narração PT-BR com pausas dramáticas via Edge TTS."""
+    """STEP 2 — Narração PT-BR com pausas dramáticas via Kokoro TTS (Edge fallback)."""
     output_dir.mkdir(parents=True, exist_ok=True)
     narration_path = output_dir / "narration.mp3"
     text = full_narration_text(scenes)
 
-    print("[STEP 2] Gerando narração Edge TTS...")
-    asyncio.run(_synthesize_narration(text, narration_path))
+    voice = os.environ.get("KOKORO_VOICE", "bf_alice")
+    speed = float(os.environ.get("KOKORO_SPEED", "0.85"))
+
+    try:
+        from scripts.audio.kokoro_tts import generate_narration_kokoro
+
+        wav_path = output_dir / "narration.wav"
+        print(f"[STEP 2] Gerando narração Kokoro TTS (voice={voice}, speed={speed})...")
+        generate_narration_kokoro(text, str(wav_path), voice=voice, speed=speed)
+        _convert_wav_to_mp3(wav_path, narration_path)
+    except Exception:
+        asyncio.run(_synthesize_narration_edge(text, narration_path))
 
     duration = probe_duration(narration_path)
     if duration <= 0:
