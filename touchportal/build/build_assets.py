@@ -21,6 +21,18 @@ ICONS_DIR = ROOT / "source" / "icons"
 DIST_DIR = ROOT / "dist"
 PAGES_DIR = ROOT / "pages"
 
+# slug -> nome fixo do PNG (evita quebra ao rebuildar)
+ICON_FILES = {
+    "cursor": "aico-cursor.png",
+    "visualstudiocode": "aico-vscode.png",
+    "folder": "aico-project.png",
+    "openai": "aico-pipeline.png",
+    "docker": "aico-docker.png",
+    "github": "aico-github.png",
+    "windowsterminal": "aico-terminal.png",
+    "railway": "aico-railway.png",
+}
+
 # simple-icons slugs -> acao do plugin
 BUTTONS = [
     ("cursor", "open-cursor", "Cursor"),
@@ -201,13 +213,11 @@ def main() -> None:
 
     icon_map: dict[str, str] = {}
     for slug, _, _ in BUTTONS:
-        ts = int(time.time() * 1000) + len(icon_map)
-        filename = f"{ts}.png"
+        filename = ICON_FILES[slug]
         img = download_icon(slug)
         out = ICONS_DIR / filename
         img.save(out, "PNG")
         icon_map[slug] = filename
-        time.sleep(0.05)
 
     write_plugin_icon()
 

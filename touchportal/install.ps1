@@ -34,9 +34,29 @@ foreach ($dir in @($IconsDest, $PagesDest, (Join-Path $PluginsDest "AI-Commerce-
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
 }
 
-# Icones
-Copy-Item (Join-Path $IconsSrc "*.png") $IconsDest -Force
-Write-Host "Icones copiados para $IconsDest" -ForegroundColor Green
+# Icones — copia todos e verifica
+$pngs = Get-ChildItem $IconsSrc -Filter "*.png"
+if ($pngs.Count -lt 8) {
+    Write-Host "AVISO: so $($pngs.Count) icones em $IconsSrc (esperado 8)." -ForegroundColor Yellow
+    Write-Host "Rode: python touchportal\build\build_assets.py" -ForegroundColor White
+}
+foreach ($png in $pngs) {
+    Copy-Item $png.FullName (Join-Path $IconsDest $png.Name) -Force
+}
+Write-Host "Icones copiados ($($pngs.Count)) para $IconsDest" -ForegroundColor Green
+
+# Backup: extrai PNGs do .tpz tambem
+$tpz = Join-Path $DistDir "AI-Commerce-OS-Main.tpz"
+if (Test-Path $tpz) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $tmp = Join-Path $env:TEMP "aicommerce-tp-install"
+    if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+    New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($tpz, $tmp)
+    Get-ChildItem $tmp -Filter "*.png" | ForEach-Object {
+        Copy-Item $_.FullName (Join-Path $IconsDest $_.Name) -Force
+    }
+}
 
 # Page
 $pageName = if ($AsMainPage) { "(main).tml" } else { "aicommerce-main.tml" }
