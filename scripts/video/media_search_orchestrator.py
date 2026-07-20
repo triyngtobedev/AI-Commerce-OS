@@ -28,20 +28,22 @@ QUERY_TYPES = (
 
 # Mapeamento tipo editorial → queries emocionais/simbólicas
 _EMOTION_QUERY_SUFFIX = {
-    "impact": "dramatic tension documentary",
-    "mystery": "mysterious dark atmosphere",
+    "impact": "dramatic historical impact ancient documentary",
+    "mystery": "mysterious dark ancient atmosphere cinematic",
     "calm": "contemplative atmospheric",
     "warning": "crisis tension documentary",
     "tension": "conflict pressure documentary",
     "curiosity": "investigation discovery",
-    "revelation": "dramatic reveal moment",
+    "revelation": "dramatic revelation historical truth exposed",
     "wonder": "awe inspiring scale",
+    "suspense": "suspense tension hidden secret documentary",
 }
 
 _SCENE_TYPE_KEYWORDS = {
-    "hook": "dramatic opening impact",
+    "hook": "mysterious revelation ancient secret documentary",
     "context": "establishing context overview",
     "contexto": "establishing context overview",
+    "contexto_historico": "ancient civilization historical ruins archive",
     "character": "portrait person company",
     "conflict": "conflict tension struggle",
     "data": "statistics chart infographic",
@@ -50,12 +52,13 @@ _SCENE_TYPE_KEYWORDS = {
     "quote": "document text headline",
     "evidence": "document proof newspaper",
     "turning_point": "pivotal moment change",
-    "revelacao": "dramatic revelation turning point",
+    "revelacao": "hidden truth exposed historical evidence",
+    "misterio": "ancient mystery unsolved conspiracy archive",
     "climax": "peak tension dramatic",
     "resolution": "conclusion aftermath legacy",
     "consequencias": "impact consequences aftermath",
     "impacto": "modern impact legacy",
-    "encerramento": "closing atmospheric horizon",
+    "encerramento": "dramatic conclusion historical documentary cinematic",
     "desenvolvimento_1": "process detail investigation",
     "desenvolvimento_2": "expansion scale growth",
 }

@@ -7,7 +7,7 @@ Cadeia de fallback por cena (youtube_dark):
   3. Foto stock + Ken Burns / fallback editorial (mapa, timeline, gráfico)
   4. T2V seletivo — máx. 2 cenas/vídeo (n8n ou VideoGenerator local: Kling → fal → Replicate → HF).
      Cenas preferir_imagem pulam T2V e usam imagem + Ken Burns (~$0,03/imagem vs ~$0,25/clip T2V).
-  5. Imagem IA documental — Replicate Flux → Pollinations → HF (bloqueado em cenas críticas)
+  5. Imagem IA documental — Replicate Flux → Pollinations (opt-in) → HF
   6. Placeholder ilustrativo — se tudo falhar
 
 Todos os assets passam pelo Asset Rights Ledger antes do render.
@@ -107,6 +107,16 @@ REPLICATE_FLUX_POLL_INTERVAL = float(os.getenv("REPLICATE_FLUX_POLL_INTERVAL", "
 REPLICATE_FLUX_TIMEOUT = float(os.getenv("REPLICATE_FLUX_TIMEOUT", "120"))
 
 _t2v_scenes_used = 0
+
+_PLACEHOLDER_BG = "0x0f0f14"  # RGB(15, 15, 20)
+_PLACEHOLDER_SIZE = "1920x1080"
+_PLACEHOLDER_DURATION = "1"
+
+
+def _pollinations_enabled() -> bool:
+    """Pollinations desativado por padrão — ENABLE_POLLINATIONS=true para reativar."""
+
+    return os.getenv("ENABLE_POLLINATIONS", "false").lower() in ("1", "true", "yes")
 
 
 def _dbg_scene1_var(scene_num: int, name: str, value: Any) -> None:
@@ -609,7 +619,7 @@ def _try_ai_image(
     suffix: str = "",
     *,
     allow_upscale: bool = True,
-    allow_pollinations: bool = True,
+    allow_pollinations: bool = False,
     scene_description: str = "",
     scene_tipo: str = "",
     emotion: str = "",
@@ -633,6 +643,8 @@ def _try_ai_image(
         generated = generate_pollinations_image(ai_prompt, scene_image)
         if generated:
             provider = "pollinations"
+    else:
+        print("[Media] Pollinations desativado — tentando Flux direto")
     if not generated and _try_replicate_flux_image(ai_prompt, scene_image):
         generated = True
         provider = "replicate_flux"
@@ -700,25 +712,58 @@ def _try_local_reuse(
     return False
 
 
+def _placeholder_display_text(
+    prompt: str,
+    scene_num: int,
+    *,
+    scene: dict | None = None,
+    query_item: dict | None = None,
+) -> str:
+    """Texto centralizado no placeholder — prioriza visual/must_show da cena."""
+
+    for src in (scene, query_item):
+        if not src:
+            continue
+        for key in ("visual", "must_show", "visual_goal"):
+            value = src.get(key)
+            if value:
+                return _truncate_query(localize_search_query(str(value)), max_len=60)
+    return _truncate_query(localize_search_query(prompt or f"scene {scene_num}"), max_len=60)
+
+
 def _generate_placeholder_image(
     prompt: str,
     scene_image: Path,
     scene_num: int,
     *,
-    allow_pollinations: bool = True,
+    allow_pollinations: bool = False,
+    scene: dict | None = None,
+    query_item: dict | None = None,
+    scene_name: str = "",
 ) -> bool:
     """Gera imagem ilustrativa mínima quando todos os provedores falham."""
 
-    label = _truncate_query(localize_search_query(prompt or f"scene {scene_num}"), max_len=40)
-    safe_label = label.replace(":", "\\:").replace("'", "\\'")
+    label = _placeholder_display_text(
+        prompt, scene_num, scene=scene, query_item=query_item
+    )
+    nome = (
+        scene_name
+        or (query_item or {}).get("tipo")
+        or (scene or {}).get("tipo")
+        or (scene or {}).get("scene_type")
+        or f"cena-{scene_num:02d}"
+    )
+    print(f"[Media] PLACEHOLDER ativado para cena: {nome}")
+
+    safe_label = label.replace(":", "\\:").replace("'", "\\'").replace("%", "\\%")
     cmd = [
         "ffmpeg", "-y",
         "-f", "lavfi",
-        "-i", f"color=c=0x1a1a2e:s=1920x1080:d=1",
+        "-i", f"color=c={_PLACEHOLDER_BG}:s={_PLACEHOLDER_SIZE}:d={_PLACEHOLDER_DURATION}",
         "-vf",
         (
             f"drawtext=text='{safe_label}':fontcolor=white:fontsize=42:"
-            "x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.45"
+            "x=(w-text_w)/2:y=(h-text_h)/2"
         ),
         "-frames:v", "1",
         str(scene_image),
@@ -734,7 +779,7 @@ def _generate_placeholder_image(
             scene_image,
             ", atmospheric documentary illustration",
             allow_upscale=True,
-            allow_pollinations=True,
+            allow_pollinations=allow_pollinations,
             scene_description=prompt,
             platform="youtube_dark",
         )
@@ -764,13 +809,13 @@ def _try_ai_video(
     emotion: str = "",
     platform: str = "youtube_dark",
     visual_direction: dict | None = None,
-    allow_pollinations: bool = True,
+    allow_pollinations: bool = False,
 ) -> tuple[bool, str]:
     """
     Gera vídeo IA via VideoGenerator (Kling Web → fal Kling 2.6 → Replicate Wan → HF).
     Com image_url: fluxo I2V e-commerce (fal Kling / Replicate Wan + upscale 2x).
     Sem image_url: T2V documental YouTube Dark via build_scene_video_prompt.
-    Pollinations só entra como último recurso em cenas não críticas.
+    Pollinations só entra como último recurso quando ENABLE_POLLINATIONS=true.
     """
     localized_prompt = localize_search_query(prompt)
     localized_description = localize_search_query(scene_description or prompt)
@@ -1168,7 +1213,7 @@ def _resolve_scene_media(
     _dbg_scene1_var(scene_num, "query_item", query_item)
     visual_direction = query_item.get("visual_direction")
     critical_scene = is_critical_scene(tipo)
-    allow_pollinations = not critical_scene
+    allow_pollinations = _pollinations_enabled()
 
     result = {
         "scene": scene_num,
@@ -1549,7 +1594,7 @@ def _resolve_scene_media(
         busca,
         scene_image,
         allow_upscale=True,
-        allow_pollinations=allow_pollinations,
+        allow_pollinations=_pollinations_enabled(),
         scene_description=query_item.get("visual_goal", query_item.get("visual", busca)),
         scene_tipo=tipo,
         emotion=query_item.get("emotion", ""),
@@ -1579,7 +1624,7 @@ def _resolve_scene_media(
         scene_image,
         ", atmospheric wide establishing shot, epic scale",
         allow_upscale=True,
-        allow_pollinations=allow_pollinations,
+        allow_pollinations=_pollinations_enabled(),
         scene_description=query_item.get("visual_goal", query_item.get("visual", busca)),
         scene_tipo=tipo,
         emotion=query_item.get("emotion", ""),
@@ -1600,7 +1645,10 @@ def _resolve_scene_media(
         busca,
         scene_image,
         scene_num,
-        allow_pollinations=allow_pollinations,
+        allow_pollinations=_pollinations_enabled(),
+        scene=scene,
+        query_item=query_item,
+        scene_name=tipo or f"cena-{scene_num:02d}",
     ):
         result.update({
             "saved": True,
@@ -1651,7 +1699,14 @@ def _recover_scene_with_placeholder(
         "query_enriched": busca,
     })
 
-    if _generate_placeholder_image(busca, scene_image, scene_num, allow_pollinations=True):
+    if _generate_placeholder_image(
+        busca,
+        scene_image,
+        scene_num,
+        allow_pollinations=_pollinations_enabled(),
+        query_item=query_item,
+        scene_name=tipo or f"cena-{scene_num:02d}",
+    ):
         result.update({
             "saved": True,
             "media_type": "placeholder",
