@@ -1,0 +1,122 @@
+{
+  "sdk": 10,
+  "version": 1,
+  "name": "AI-Commerce-OS",
+  "id": "AI-Commerce-OS",
+  "configuration": {
+    "colorDark": "#1a1a2e",
+    "colorLight": "#6366f1",
+    "parentCategory": "misc"
+  },
+  "categories": [
+    {
+      "id": "actions",
+      "name": "AI-Commerce-OS",
+      "imagepath": "%TP_PLUGIN_FOLDER%AI-Commerce-OS/icon.png",
+      "actions": [
+        {
+          "id": "pipeline-ia",
+          "name": "Pipeline IA",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action pipeline-ia"
+        },
+        {
+          "id": "pipeline-tema",
+          "name": "Pipeline Tema",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action pipeline-tema"
+        },
+        {
+          "id": "pipeline-rerun",
+          "name": "Pipeline Rerun",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action pipeline-rerun"
+        },
+        {
+          "id": "last-video",
+          "name": "Ultimo Video",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action last-video"
+        },
+        {
+          "id": "outputs",
+          "name": "Outputs",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action outputs"
+        },
+        {
+          "id": "git-commit",
+          "name": "Git Commit",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action git-commit"
+        },
+        {
+          "id": "git-push",
+          "name": "Git Push",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action git-push"
+        },
+        {
+          "id": "clear-cache",
+          "name": "Clear Cache",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action clear-cache"
+        },
+        {
+          "id": "open-project",
+          "name": "Open Project",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action open-project"
+        },
+        {
+          "id": "restart-api",
+          "name": "Restart API",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action restart-api"
+        },
+        {
+          "id": "open-terminal",
+          "name": "Open Terminal",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action open-terminal"
+        },
+        {
+          "id": "open-docker",
+          "name": "Open Docker",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action open-docker"
+        },
+        {
+          "id": "open-cursor",
+          "name": "Open Cursor",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action open-cursor"
+        },
+        {
+          "id": "open-vscode",
+          "name": "Open VS Code",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action open-vscode"
+        },
+        {
+          "id": "open-youtube-studio",
+          "name": "YouTube Studio",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action open-youtube-studio"
+        },
+        {
+          "id": "open-railway",
+          "name": "Open Railway",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action open-railway"
+        },
+        {
+          "id": "logs",
+          "name": "Logs",
+          "type": "execute",
+          "execution_cmd": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%TP_PLUGIN_FOLDER%AI-Commerce-OS\\aicommerce.ps1\" -Action logs"
+        }
+      ]
+    }
+  ]
+}
