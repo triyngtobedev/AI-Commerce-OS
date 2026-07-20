@@ -1,6 +1,9 @@
 # Instala icones e page do AI-Commerce-OS no Touch Portal
 #
-# Uso (feche o Touch Portal antes):
+# RECOMENDADO: use configure-all.ps1 (configura tudo automaticamente)
+#   .\touchportal\configure-all.ps1
+#
+# Uso legado (feche o Touch Portal antes):
 #   .\touchportal\install.ps1
 #   .\touchportal\install.ps1 -AsMainPage
 
