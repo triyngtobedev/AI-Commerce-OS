@@ -94,6 +94,7 @@ from scripts.core.timeline_sync import sync_timeline_to_audio
 from scripts.core.visual_intent_engine import apply_visual_intents
 from scripts.core.emotional_effects import apply_effect_hints_to_scenes
 from scripts.utils.slug import content_output_dir
+from scripts.strategy.shorts_extractor import maybe_extract_short
 
 
 def _is_dark_channel_mode() -> bool:
@@ -665,6 +666,8 @@ def run_youtube_pipeline(
             pipeline_result.video = str(video)
             print(f"✅ Vídeo criado: {video}")
 
+            short_result = maybe_extract_short(output_dir, scenes)
+
             if sprint30_thumbnail_ab():
                 thumb_report = generate_thumbnail_variations(
                     output_dir,
@@ -717,6 +720,8 @@ def run_youtube_pipeline(
                     )
 
             result = pipeline_result.to_dict()
+            if short_result:
+                result["short"] = short_result
             generate_youtube_package(result, export_folder=output_dir)
 
             export_folder = export_youtube_video(result)
