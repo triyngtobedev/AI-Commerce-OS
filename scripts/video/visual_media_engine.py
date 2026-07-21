@@ -79,6 +79,12 @@ from scripts.video.media_quality import (
 )
 from scripts.core.asset_rights_ledger import AssetRightsLedger, evaluate_license
 from scripts.video.media_search_orchestrator import search_and_rank_scene
+from scripts.scoring.visual_relevance_scorer import (
+    FALLBACK_KEEP,
+    TOP_CANDIDATES,
+    rank_candidates_with_visual_score,
+)
+from scripts.core.feature_flags import sprint30_visual_score
 from scripts.video.editorial_fallback import execute_editorial_fallback
 from scripts.video.t2v_decision import T2VTracker, evaluate_t2v_decision
 
@@ -866,9 +872,36 @@ def _try_orchestrated_stock(
         print(f"  ⚠️ Cena {scene_num}: orchestrator retornou 0 candidatos")
         return None
 
-    print(f"  📋 Cena {scene_num}: {len(candidates)} candidatos ranqueados")
+    scored_candidates = rank_candidates_with_visual_score(
+        candidates,
+        scene,
+        topic=topic,
+        limit=TOP_CANDIDATES,
+    ) if sprint30_visual_score() else candidates[:TOP_CANDIDATES]
 
-    for rank, candidate in enumerate(candidates[:5], 1):
+    fallbacks = []
+    if sprint30_visual_score() and scored_candidates:
+        fallbacks = [
+            {
+                "asset_id": c.get("visual_breakdown", {}).get("asset_id"),
+                "visual_score": c.get("visual_score"),
+                "provider": c.get("provider"),
+                "rank": index + 1,
+            }
+            for index, c in enumerate(scored_candidates[1:FALLBACK_KEEP + 1])
+        ]
+
+    top_score = (
+        scored_candidates[0].get("visual_score", 0)
+        if sprint30_visual_score() and scored_candidates
+        else 0
+    )
+    print(
+        f"  📋 Cena {scene_num}: {len(candidates)} candidatos"
+        + (f", top visual {top_score:.0f}/100" if sprint30_visual_score() else "")
+    )
+
+    for rank, candidate in enumerate(scored_candidates[:5], 1):
         item = candidate["item"]
         provider = candidate["provider"]
         media_type = candidate["media_type"]
@@ -906,8 +939,11 @@ def _try_orchestrated_stock(
                     "provedor": provider,
                     "query_enriched": query,
                     "quality_score": round(score, 3),
+                    "visual_score": candidate.get("visual_score", 0),
+                    "visual_breakdown": candidate.get("visual_breakdown"),
+                    "visual_fallbacks": fallbacks,
                     "orchestrator_rank": rank,
-                    "candidates_evaluated": len(candidates),
+                    "candidates_evaluated": len(scored_candidates),
                     "selection_signature": selection_signature(item, "video", provider),
                     "width": item.get("width", 0),
                     "height": item.get("height", 0),
@@ -930,8 +966,11 @@ def _try_orchestrated_stock(
                 "provedor": provider,
                 "query_enriched": query,
                 "quality_score": round(score, 3),
+                "visual_score": candidate.get("visual_score", 0),
+                "visual_breakdown": candidate.get("visual_breakdown"),
+                "visual_fallbacks": fallbacks,
                 "orchestrator_rank": rank,
-                "candidates_evaluated": len(candidates),
+                "candidates_evaluated": len(scored_candidates),
                 "selection_signature": selection_signature(item, "photo", provider),
                 "width": item.get("width", 0),
                 "height": item.get("height", 0),
