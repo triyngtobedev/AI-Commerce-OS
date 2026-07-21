@@ -822,7 +822,9 @@ def mux_video_audio_subtitles(
     video_filter = _scale_pad_filter(width, height)
 
     if subtitle_path and subtitle_path.exists():
-        video_filter += f",{get_subtitle_ffmpeg_filter(subtitle_path, platform)}"
+        sub_filter = get_subtitle_ffmpeg_filter(subtitle_path, platform)
+        if sub_filter:
+            video_filter += f",{sub_filter}"
 
     watermark = watermark_filter_for_platform(platform)
     if watermark:

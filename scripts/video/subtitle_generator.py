@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from scripts.utils.slug import content_output_dir
@@ -7,6 +8,20 @@ from scripts.core.brand_engine import (
 )
 from scripts.video.media_probe import probe_duration
 from scripts.video.subtitle_engine import write_subtitles, ffmpeg_subtitle_filter
+
+_DISABLED_LOGGED = False
+
+
+def subtitles_enabled() -> bool:
+    """True quando ENABLE_SUBTITLES=true (padrão: desligado)."""
+    return os.getenv("ENABLE_SUBTITLES", "false").lower() in ("true", "1", "yes")
+
+
+def log_subtitles_disabled_once() -> None:
+    global _DISABLED_LOGGED
+    if not _DISABLED_LOGGED:
+        print("[Subtitles] Desativado via ENABLE_SUBTITLES=false")
+        _DISABLED_LOGGED = True
 
 
 def _output_folder(subject):
@@ -55,6 +70,10 @@ def _resolve_audio_duration(cenas_data, product=None) -> float | None:
 def generate_subtitles(result):
     """Gera legendas documentais via Subtitle Engine."""
 
+    if not subtitles_enabled():
+        log_subtitles_disabled_once()
+        return None
+
     product = result["produto"]
     platform = product.get("_output_platform", result.get("platform", "youtube_dark"))
     folder = _output_folder(product)
@@ -84,6 +103,9 @@ def generate_subtitles(result):
         audio_duration=audio_duration,
     )
 
+    if subtitle_file is None:
+        return None
+
     print(f"📝 Legenda criada: {subtitle_file.resolve()}")
 
     return subtitle_file.resolve()
@@ -91,6 +113,9 @@ def generate_subtitles(result):
 
 def get_subtitle_ffmpeg_filter(subtitle_path: Path, platform: str = "youtube_dark") -> str:
     """Retorna filtro FFmpeg para legendas (prefere ASS se disponível)."""
+
+    if not subtitles_enabled():
+        return ""
 
     ass_path = subtitle_path.with_suffix(".ass")
     if ass_path.exists():
