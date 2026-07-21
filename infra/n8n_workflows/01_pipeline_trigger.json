@@ -111,7 +111,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.PIPELINE_API_BASE_URL }}/api/v1/pipeline/status/{{ $('POST Pipeline Run').item.json.job_id }}",
+        "url": "={{ $env.PIPELINE_API_BASE_URL }}/api/v1/pipeline/status/{{ $json.job_id }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -230,7 +230,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"job_id\": \"{{ $('POST Pipeline Run').item.json.job_id }}\",\n  \"force\": false\n}",
+        "jsonBody": "={\n  \"job_id\": \"{{ $json.job_id }}\",\n  \"force\": false\n}",
         "options": {}
       },
       "id": "http-youtube-upload",
@@ -263,12 +263,7 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [1680, 120],
-      "credentials": {
-        "slackOAuth2Api": {
-          "id": "SLACK_CREDENTIAL_ID",
-          "name": "Slack OAuth2"
-        }
-      },
+      "disabled": true,
       "notes": "PLACEHOLDER — configure credencial Slack ou substitua por Telegram/Email."
     },
     {
@@ -288,12 +283,7 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [1680, 520],
-      "credentials": {
-        "slackOAuth2Api": {
-          "id": "SLACK_CREDENTIAL_ID",
-          "name": "Slack OAuth2"
-        }
-      },
+      "disabled": true,
       "notes": "PLACEHOLDER — notificação de falha."
     },
     {

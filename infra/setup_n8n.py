@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 INFRA = ROOT / "infra"
 WORKFLOWS_DIR = INFRA / "n8n_workflows"
 ENV_MAIN = ROOT / ".env"
+ENV_N8N = INFRA / ".env.n8n"
 
 N8N_BASE = os.getenv("N8N_BASE_URL", "http://localhost:5678")
 OWNER_EMAIL = os.getenv("N8N_OWNER_EMAIL", "admin@local.dev")
@@ -195,6 +196,79 @@ def ensure_credentials(client: N8nClient, env_main: dict[str, str]) -> dict[str,
     return cred_ids
 
 
+def patch_workflow_urls(wf: dict, api_base: str) -> dict:
+    """
+    Substitui $env.PIPELINE_API_BASE_URL pela URL literal.
+
+    n8n 2.x bloqueia $env nas expressões por padrão. URLs de polling usam
+    URL estática + {{ }} (sem prefixo = antes de https — evita 'Invalid URL').
+    """
+    base = api_base.rstrip("/")
+    env_prefix = "={{ $env.PIPELINE_API_BASE_URL }}"
+
+    def patch_url(value: str) -> str:
+        if "/pipeline/status/" in value:
+            return (
+                f"{base}/api/v1/pipeline/status/"
+                "{{ $('POST Pipeline Run').first().json.job_id }}"
+            )
+
+        if value.startswith(env_prefix):
+            return f"{base}{value[len(env_prefix):]}"
+
+        if "$env.PIPELINE_API_BASE_URL" in value:
+            return value.replace("$env.PIPELINE_API_BASE_URL", base)
+
+        return value
+
+    def walk(obj: object) -> object:
+        if isinstance(obj, dict):
+            return {key: walk(val) for key, val in obj.items()}
+        if isinstance(obj, list):
+            return [walk(item) for item in obj]
+        if isinstance(obj, str):
+            return patch_url(obj)
+        return obj
+
+    patched = walk(wf)
+    if not isinstance(patched, dict):
+        raise RuntimeError("patch_workflow_urls: workflow inválido após patch")
+    return patched
+
+
+PLACEHOLDER_CREDENTIAL_SUFFIX = "_CREDENTIAL_ID"
+
+
+def patch_workflow_optional_nodes(wf: dict) -> dict:
+    """
+    Desativa nós com credenciais placeholder (Slack opcional, etc.).
+
+    Evita falha em execução quando SLACK_CREDENTIAL_ID não foi configurado.
+    """
+    patched = json.loads(json.dumps(wf))
+    disabled: list[str] = []
+
+    for node in patched.get("nodes", []):
+        creds = node.get("credentials") or {}
+        has_template_cred = any(
+            isinstance(meta, dict)
+            and str(meta.get("id", "")).endswith(PLACEHOLDER_CREDENTIAL_SUFFIX)
+            for meta in creds.values()
+        )
+        notes = node.get("notes") or ""
+        is_placeholder = "PLACEHOLDER" in notes or "(opcional)" in node.get("name", "").lower()
+
+        if node.get("disabled") or has_template_cred or (is_placeholder and creds):
+            node["disabled"] = True
+            node.pop("credentials", None)
+            disabled.append(node.get("name", node.get("id", "?")))
+
+    if disabled:
+        print(f"  Nós opcionais desativados (sem credencial): {', '.join(disabled)}")
+
+    return patched
+
+
 def patch_workflow_credentials(workflow: dict, cred_ids: dict[str, str]) -> dict:
     wf = json.loads(json.dumps(workflow))
     for node in wf.get("nodes", []):
@@ -208,9 +282,16 @@ def patch_workflow_credentials(workflow: dict, cred_ids: dict[str, str]) -> dict
     return wf
 
 
-def import_workflow(client: N8nClient, workflow_path: Path, cred_ids: dict[str, str]) -> str:
+def import_workflow(
+    client: N8nClient,
+    workflow_path: Path,
+    cred_ids: dict[str, str],
+    api_base: str,
+) -> str:
     raw = json.loads(workflow_path.read_text(encoding="utf-8"))
-    wf = patch_workflow_credentials(raw, cred_ids)
+    wf = patch_workflow_urls(raw, api_base)
+    wf = patch_workflow_credentials(wf, cred_ids)
+    wf = patch_workflow_optional_nodes(wf)
 
     payload = {
         "name": wf["name"],
@@ -304,12 +385,16 @@ def resolve_api_key(env_main: dict[str, str]) -> str:
     return cloud or pipeline
 
 
-def resolve_pipeline_api_url(env_main: dict[str, str]) -> str:
+def resolve_pipeline_api_url(
+    env_main: dict[str, str],
+    env_n8n: dict[str, str] | None = None,
+) -> str:
     """Prioriza CLOUD_API_URL (Railway) → PIPELINE_API_BASE_URL → localhost."""
-    for key in ("CLOUD_API_URL", "PIPELINE_API_BASE_URL"):
-        value = env_main.get(key, "").strip()
-        if value:
-            return value.rstrip("/")
+    for source in (env_main, env_n8n or {}):
+        for key in ("CLOUD_API_URL", "PIPELINE_API_BASE_URL"):
+            value = source.get(key, "").strip()
+            if value:
+                return value.rstrip("/")
     return "http://127.0.0.1:8000"
 
 
@@ -343,12 +428,15 @@ def test_pipeline(api_key: str, api_base: str) -> None:
 
 def main() -> int:
     env_main = load_env(ENV_MAIN)
+    env_n8n = load_env(ENV_N8N)
     api_key = resolve_api_key(env_main)
     if not api_key:
         print("PIPELINE_API_KEY ou CLOUD_API_KEY ausente em .env", file=sys.stderr)
         return 1
 
+    api_base = resolve_pipeline_api_url(env_main, env_n8n)
     print(f"n8n: {N8N_BASE}")
+    print(f"Pipeline API: {api_base}")
     client = N8nClient(N8N_BASE)
     setup_owner(client)
     cred_ids = ensure_credentials(client, env_main)
@@ -362,14 +450,13 @@ def main() -> int:
 
     wf_ids: dict[str, str] = {}
     for path in wf_files:
-        wf_ids[path.name] = import_workflow(client, path, cred_ids)
+        wf_ids[path.name] = import_workflow(client, path, cred_ids, api_base)
 
     for path in wf_files:
         raw = json.loads(path.read_text(encoding="utf-8"))
         activate_workflow(client, wf_ids[path.name], raw["name"])
 
     print("\nTestando pipeline via API...")
-    api_base = resolve_pipeline_api_url(env_main)
     test_pipeline(api_key, api_base)
 
     print("\nConcluído.")
