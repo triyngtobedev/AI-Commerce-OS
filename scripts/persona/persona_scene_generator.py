@@ -20,6 +20,8 @@ from datetime import date
 from google import genai
 from google.genai import types
 
+from scripts.ai.gemini_quota import is_quota_error
+
 
 MODEL_NAME = "gemini-2.5-flash-image"
 
@@ -258,27 +260,13 @@ def generate_persona_image(
             return str(output)
 
         except Exception as error:
+            print(f"[Gemini] Cota esgotada ou erro: {error}. Pulando etapa.")
 
-            import traceback
-
-
-            print(
-                f"[PERSONA ERROR] Tentativa {attempt + 1}/{retries}:",
-                error
-            )
-
-            traceback.print_exc()
+            if is_quota_error(error):
+                return None
 
             if attempt < retries - 1:
-                wait_time = (
-                    2 ** attempt
-                )
-                time.sleep(
-                    wait_time
-                )
-
-    print(
-        "[PERSONA] Falha definitiva na geração da cena."
-    )
+                wait_time = 2 ** attempt
+                time.sleep(wait_time)
 
     return None

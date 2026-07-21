@@ -1,19 +1,6 @@
-import os
-from google import genai
+from scripts.ai.router import ask_ai
 
 
 def generate(prompt, model="gemini-2.0-flash"):
-
-    api_key = os.getenv("GEMINI_API_KEY")
-
-    if not api_key:
-        raise Exception("GEMINI_API_KEY não encontrada.")
-
-    client = genai.Client(api_key=api_key)
-
-    response = client.models.generate_content(
-        model=model,
-        contents=prompt
-    )
-
-    return response.text
+    del model
+    return ask_ai(prompt, "default")
