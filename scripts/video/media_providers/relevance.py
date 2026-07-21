@@ -15,8 +15,8 @@ from scripts.video.media_quality import (
     resolution_score,
 )
 
-MIN_RELEVANCE_SCORE = 0.48
-MIN_PHOTO_RELEVANCE_SCORE = 0.35
+MIN_RELEVANCE_SCORE = 0.62
+MIN_PHOTO_RELEVANCE_SCORE = 0.65
 MIN_ACCEPTABLE_QUALITY_SCORE = 0.55
 
 # Tags/URLs que indicam gameplay, stock genérico ou aparência amadora.

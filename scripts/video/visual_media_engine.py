@@ -1388,38 +1388,44 @@ def _resolve_scene_media(
 
     # --- Prioridade 2: Fallback editorial (Ken Burns, motion graphics) ---
     if stock_failed:
-        print(f"  📐 Cena {scene_num}: tentando fallback editorial...")
-        _dbg_scene1_var(scene_num, "scene", scene)
-        duration = float(scene.get("duration_seconds", 5) or 5)
-        saved_images = [p for p in (saved_assets or []) if p.suffix.lower() in {".jpg", ".jpeg", ".png"}]
-        editorial_ok, editorial_type, strategy = execute_editorial_fallback(
-            scene, query_item,
-            scene_image=scene_image,
-            scene_video=scene_video,
-            saved_images=saved_images,
-            duration=min(duration, 12),
-        )
-        if editorial_ok:
-            if ledger:
-                ledger.register_asset(
-                    source="generated",
-                    provider="generated",
-                    license_text="Editorial composite",
-                    media_type=editorial_type,
-                    scene_id=scene_num,
-                    local_path=scene_video,
-                    visual_quality_score=0.75,
-                )
-            result.update({
-                "saved": True,
-                "media_type": editorial_type,
-                "source": f"editorial:{strategy}",
-                "provedor": "generated",
-                "quality_score": 0.75,
-                "fallback_strategy": strategy,
-            })
-            print(f"📐 Cena {scene_num} ({tipo}): fallback editorial — {strategy}")
-            return result
+        if platform == "youtube_dark":
+            print(
+                "[Media] Editorial fallback desativado para youtube_dark "
+                "— usando Flux direto"
+            )
+        else:
+            print(f"  📐 Cena {scene_num}: tentando fallback editorial...")
+            _dbg_scene1_var(scene_num, "scene", scene)
+            duration = float(scene.get("duration_seconds", 5) or 5)
+            saved_images = [p for p in (saved_assets or []) if p.suffix.lower() in {".jpg", ".jpeg", ".png"}]
+            editorial_ok, editorial_type, strategy = execute_editorial_fallback(
+                scene, query_item,
+                scene_image=scene_image,
+                scene_video=scene_video,
+                saved_images=saved_images,
+                duration=min(duration, 12),
+            )
+            if editorial_ok:
+                if ledger:
+                    ledger.register_asset(
+                        source="generated",
+                        provider="generated",
+                        license_text="Editorial composite",
+                        media_type=editorial_type,
+                        scene_id=scene_num,
+                        local_path=scene_video,
+                        visual_quality_score=0.75,
+                    )
+                result.update({
+                    "saved": True,
+                    "media_type": editorial_type,
+                    "source": f"editorial:{strategy}",
+                    "provedor": "generated",
+                    "quality_score": 0.75,
+                    "fallback_strategy": strategy,
+                })
+                print(f"📐 Cena {scene_num} ({tipo}): fallback editorial — {strategy}")
+                return result
 
     # --- Prioridade 3: T2V seletivo (máx. 2 cenas) ---
     _dbg_scene1_var(scene_num, "result", result)
@@ -1545,23 +1551,26 @@ def _resolve_scene_media(
                 print(f"🤖 Cena {scene_num} ({tipo}): vídeo T2V {label}")
                 return result
 
-            print(f"  ⚠️ Cena {scene_num}: T2V falhou — fallback editorial")
-            fb_ok, fb_type, fb_strategy = execute_editorial_fallback(
-                scene, query_item,
-                scene_image=scene_image, scene_video=scene_video,
-                saved_images=[p for p in (saved_assets or []) if p.suffix.lower() in {".jpg", ".jpeg", ".png"}],
-            )
-            if fb_ok:
-                result.update({
-                    "saved": True,
-                    "media_type": fb_type,
-                    "source": f"editorial:{fb_strategy}",
-                    "provedor": "generated",
-                    "quality_score": 0.70,
-                    "t2v_fallback": True,
-                })
-                print(f"📐 Cena {scene_num} ({tipo}): fallback pós-T2V — {fb_strategy}")
-                return result
+            if platform == "youtube_dark":
+                print(f"  ⚠️ Cena {scene_num}: T2V falhou — indo para Flux")
+            else:
+                print(f"  ⚠️ Cena {scene_num}: T2V falhou — fallback editorial")
+                fb_ok, fb_type, fb_strategy = execute_editorial_fallback(
+                    scene, query_item,
+                    scene_image=scene_image, scene_video=scene_video,
+                    saved_images=[p for p in (saved_assets or []) if p.suffix.lower() in {".jpg", ".jpeg", ".png"}],
+                )
+                if fb_ok:
+                    result.update({
+                        "saved": True,
+                        "media_type": fb_type,
+                        "source": f"editorial:{fb_strategy}",
+                        "provedor": "generated",
+                        "quality_score": 0.70,
+                        "t2v_fallback": True,
+                    })
+                    print(f"📐 Cena {scene_num} ({tipo}): fallback pós-T2V — {fb_strategy}")
+                    return result
 
     # --- Prioridade 4: Imagem IA documental ---
     _dbg_scene1_var(scene_num, "query_item", query_item)
