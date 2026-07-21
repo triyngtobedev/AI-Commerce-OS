@@ -11,9 +11,9 @@ _groq_client = None
 
 GROQ_MODEL_DEFAULT = "llama-3.1-8b-instant"
 GROQ_MODEL_SCRIPT = "llama-3.3-70b-versatile"
-OPENROUTER_MODEL = "mistralai/mistral-7b-instruct-v0.3"
+OPENROUTER_MODEL = "mistralai/mistral-7b-instruct-v0.2"
 OPENROUTER_FALLBACK_MODELS = [
-    "mistralai/mistral-7b-instruct-v0.3",
+    "mistralai/mistral-7b-instruct-v0.2",
     "groq/gemma2-9b-it",
 ]
 
@@ -204,11 +204,6 @@ class AIRouter:
         missing: list[str] = []
         if not any(ai.values()):
             missing.append("IA: defina GROQ_API_KEY ou OPENROUTER_API_KEY")
-        if not (footage["pexels"] or footage["pixabay"]):
-            missing.append(
-                "Footage opcional: PEXELS_API_KEY ou PIXABAY_API_KEY "
-                "(Wikimedia Commons funciona sem chave)"
-            )
         if not tts["azure"]:
             missing.append(
                 "TTS: defina AZURE_SPEECH_KEY + AZURE_SPEECH_REGION "
