@@ -181,10 +181,16 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
         if getattr(section, "section_key", "")
     }
 
+    topic_name = produto if isinstance(produto, str) else str(produto)
+    topic_en = localize_search_query(topic_name, append_documentary=False)
+
     for index, scene in enumerate(scenes.get("cenas", [])):
 
         tipo = scene.get("tipo", "")
         visual = scene.get("visual", "")
+
+        # Extrai contexto narrativo rico da cena para enriquecer queries visuais
+        narr_context = scene.get("narracao", scene.get("texto", ""))[:120]
 
         if lofi_template:
             visual = lofi_background_query(index)
@@ -192,8 +198,6 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
             scene.setdefault("emotion", "calm")
             scene.setdefault("camera_motion", "slow_pan")
         else:
-            # Casa por section_key (com os mesmos aliases usados no render) e,
-            # só se não houver correspondência, recorre ao índice posicional.
             section_key = SCENE_SECTION_ALIASES.get(tipo, tipo)
             section = sections_by_key.get(section_key)
             if section is None and index < len(timeline_sections):
@@ -208,9 +212,6 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
         visual_intent = scene.get("visual_intent", "general_narrative")
         emotion = scene.get("emotion", "calm")
 
-        # Spec resolvida a partir dos metadados já existentes na cena.
-        # Fornece sinais narrativos (visual_goal, camera, style, avoid) para o
-        # ranking story-aware — de forma neutra entre todos os providers.
         spec = resolve_visual_intent({
             "visual_intent": visual_intent,
             "emotion": emotion,
@@ -221,20 +222,29 @@ def generate_asset_queries(scenes, platform: str = "", timeline=None):
         direction_dict = direction.to_dict()
         scene.setdefault("visual_direction", direction_dict)
 
-        localized_visual = localize_search_query(visual or produto)
+        # Constrói query contextualizada: SEMPRE prefixa com o nome do tópico
+        # para que buscas em Pexels/Wikimedia/Pixabay retornem mídia relevante
+        # ao tema, não genérica.
+        raw_query = visual or narr_context or topic_name
+        localized_visual = localize_search_query(raw_query, append_documentary=False)
+        # Prefixa com o tópico em inglês para dar contexto semântico
+        contextual_busca = f"{topic_en} {localized_visual}".strip()
+
         if lofi_template:
             thematic = lofi_background_query((index + 1) % 10)
             atmosphere = lofi_background_query((index + 2) % 10)
             fallback = lofi_background_query((index + 3) % 10)
         else:
-            thematic = _build_thematic_query(localized_visual, tipo, angulo)
+            thematic = _build_thematic_query(contextual_busca, tipo, angulo)
             atmosphere = _build_atmosphere_query(emotion, tipo)
             fallback = _build_fallback(angulo, produto, tipo)
 
         query = {
             "tempo": scene.get("tempo", ""),
             "tipo": tipo,
-            "busca": localized_visual,
+            "busca": contextual_busca,
+            "busca_raw": raw_query,
+            "topic": topic_name,
             "busca_tematica": localize_search_query(thematic, append_documentary=False),
             "busca_atmosfera": localize_search_query(atmosphere, append_documentary=False),
             "busca_fallback": localize_search_query(fallback, append_documentary=False),

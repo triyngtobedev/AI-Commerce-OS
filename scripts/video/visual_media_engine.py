@@ -1573,13 +1573,25 @@ def _resolve_scene_media(
                     return result
 
     # --- Prioridade 4: Imagem IA documental ---
+    # Constrói prompt rico com contexto narrativo completo para o Flux Schnell
+    # Inclui: tópico, query visual, descrição narrativa e emoção
+    scene_narrative = (scene or {}).get("narracao", "") or (scene or {}).get("texto", "")
+    rich_scene_desc = query_item.get("visual_goal", query_item.get("visual", busca))
+    # Enriquece com o tópico e trecho da narração para contexto semântico
+    if topic and rich_scene_desc:
+        rich_scene_desc = f"{topic}: {rich_scene_desc}"
+    if scene_narrative and len(scene_narrative) > 10:
+        narr_preview = scene_narrative[:100].strip()
+        if narr_preview not in rich_scene_desc:
+            rich_scene_desc = f"{rich_scene_desc} - {narr_preview}"
+
     _dbg_scene1_var(scene_num, "query_item", query_item)
     ai_saved, ai_provider = _try_ai_image(
         busca,
         scene_image,
         allow_upscale=True,
         allow_pollinations=allow_pollinations,
-        scene_description=query_item.get("visual_goal", query_item.get("visual", busca)),
+        scene_description=rich_scene_desc,
         scene_tipo=tipo,
         emotion=query_item.get("emotion", ""),
         platform=platform,
@@ -1609,7 +1621,7 @@ def _resolve_scene_media(
         ", atmospheric wide establishing shot, epic scale",
         allow_upscale=True,
         allow_pollinations=allow_pollinations,
-        scene_description=query_item.get("visual_goal", query_item.get("visual", busca)),
+        scene_description=rich_scene_desc,
         scene_tipo=tipo,
         emotion=query_item.get("emotion", ""),
         platform=platform,

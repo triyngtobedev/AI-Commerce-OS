@@ -18,6 +18,9 @@ from pathlib import Path
 # Modelos: tiny/base/small/medium. "small" equilibra precisão e custo em CPU.
 _MODEL_SIZE = os.getenv("WHISPER_MODEL_SIZE", "small")
 _LANGUAGE = os.getenv("WHISPER_LANGUAGE", "pt")
+# Cache directory for Whisper models — Railway usa /tmp/whisper_cache (efêmero mas
+# persiste durante o ciclo de vida do container, evitando redownload em todo request).
+_MODEL_CACHE_DIR = os.getenv("WHISPER_CACHE_DIR", "").strip() or None
 
 _model = None
 
@@ -38,7 +41,10 @@ def _get_model():
     if _model is None:
         from faster_whisper import WhisperModel
 
-        _model = WhisperModel(_MODEL_SIZE, device="cpu", compute_type="int8")
+        kwargs = {"device": "cpu", "compute_type": "int8"}
+        if _MODEL_CACHE_DIR:
+            kwargs["download_root"] = _MODEL_CACHE_DIR
+        _model = WhisperModel(_MODEL_SIZE, **kwargs)
     return _model
 
 
