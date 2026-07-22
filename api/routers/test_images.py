@@ -10,6 +10,7 @@ POST /api/v1/test/images
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from typing import Any
 
