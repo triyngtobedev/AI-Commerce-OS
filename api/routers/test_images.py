@@ -131,14 +131,17 @@ def _search_pexels(query: str) -> list[dict]:
     from scripts.video.pexels_provider import search_pexels
 
     api_key = os.getenv("PEXELS_API_KEY")
+    pexels_diag = f"key_present={bool(api_key)}"
     if not api_key:
-        return [{"provider": "pexels", "query_original": query, "erro": "PEXELS_API_KEY não configurada"}]
+        return [{"provider": "pexels", "query_original": query, "query_usada": query, "erro": f"PEXELS_API_KEY não configurada ({pexels_diag})"}]
 
     query_usada = _simplify_for_stock(query)
     results: list[dict] = []
     try:
         data = search_pexels(query_usada, orientation="landscape", per_page=5)
+        erro_provider = data.get("erro", "")
         photos = data.get("photos", [])
+        videos = data.get("videos", [])
         if photos:
             for p in photos[:3]:
                 src = p.get("src", {})
@@ -150,10 +153,23 @@ def _search_pexels(query: str) -> list[dict]:
                     "resolucao": f"{p.get('width', '?')}x{p.get('height', '?')}",
                     "preview_url": src.get("medium") or src.get("small") or "",
                 })
+        elif videos:
+            for v in videos[:3]:
+                video_files = v.get("video_files", [])
+                best = video_files[0] if video_files else {}
+                results.append({
+                    "provider": "pexels",
+                    "query_original": query,
+                    "query_usada": query_usada,
+                    "url": best.get("link", ""),
+                    "resolucao": f"{v.get('width', '?')}x{v.get('height', '?')}",
+                    "erro": None,
+                })
         else:
-            results.append({"provider": "pexels", "query_original": query, "query_usada": query_usada, "erro": "sem resultados"})
+            diag = erro_provider or "sem resultados (nenhum video/photo retornado)"
+            results.append({"provider": "pexels", "query_original": query, "query_usada": query_usada, "erro": f"{diag} ({pexels_diag})"})
     except Exception as e:
-        results.append({"provider": "pexels", "query_original": query, "query_usada": query_usada, "erro": str(e)})
+        results.append({"provider": "pexels", "query_original": query, "query_usada": query_usada, "erro": f"{e} ({pexels_diag})"})
 
     return results
 
@@ -161,11 +177,15 @@ def _search_pexels(query: str) -> list[dict]:
 def _search_pixabay(query: str) -> list[dict]:
     from scripts.video.pixabay_provider import search_pixabay
 
+    api_key = os.getenv("PIXABAY_API_KEY")
+    pixabay_diag = f"key_present={bool(api_key)}"
     query_usada = _simplify_for_stock(query)
     results: list[dict] = []
     try:
         data = search_pixabay(query_usada, orientation="horizontal", per_page=5)
+        erro_provider = data.get("erro", "")
         photos = data.get("photos", [])
+        videos = data.get("videos", [])
         if photos:
             for p in photos[:3]:
                 results.append({
@@ -176,10 +196,21 @@ def _search_pixabay(query: str) -> list[dict]:
                     "resolucao": f"{p.get('imageWidth', '?')}x{p.get('imageHeight', '?')}",
                     "preview_url": p.get("previewURL") or "",
                 })
+        elif videos:
+            for v in videos[:3]:
+                results.append({
+                    "provider": "pixabay",
+                    "query_original": query,
+                    "query_usada": query_usada,
+                    "url": v.get("url", ""),
+                    "resolucao": f"{v.get('width', '?')}x{v.get('height', '?')}",
+                    "erro": None,
+                })
         else:
-            results.append({"provider": "pixabay", "query_original": query, "query_usada": query_usada, "erro": "sem resultados"})
+            diag = erro_provider or "sem resultados (nenhum video/photo retornado)"
+            results.append({"provider": "pixabay", "query_original": query, "query_usada": query_usada, "erro": f"{diag} ({pixabay_diag})"})
     except Exception as e:
-        results.append({"provider": "pixabay", "query_original": query, "query_usada": query_usada, "erro": str(e)})
+        results.append({"provider": "pixabay", "query_original": query, "query_usada": query_usada, "erro": f"{e} ({pixabay_diag})"})
 
     return results
 
