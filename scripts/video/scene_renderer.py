@@ -187,52 +187,79 @@ def _run_ffmpeg(
     return True
 
 
+def _ease_in_out(t: float) -> float:
+    """Cubic ease-in-out: suave no início e no fim, aceleração no meio."""
+    if t < 0.5:
+        return 4.0 * t * t * t
+    return 1.0 - ((-2.0 * t + 2.0) ** 3) / 2.0
+
+
 def _ken_burns_filter(
     width: int,
     height: int,
     duration: float,
     motion: str = "zoom_in_center",
     fps: int = 30,
-    zoom_max: float = 1.22,
+    zoom_max: float = 1.25,
 ) -> str:
-    """Ken Burns com parallax — nenhuma imagem permanece estática."""
+    """Ken Burns com easing cúbico — movimento cinematográfico suave."""
 
     frames = max(1, int(duration * fps))
-    zoom_step = (zoom_max - 1.0) / frames
-    base_zoom = min(1.08, zoom_max - 0.04)
+    zoom_range = zoom_max - 1.0
+    base_zoom = min(1.06, zoom_max - 0.06)
 
+    # Easing cúbico: zoom acelera e desacelera suavemente
+    # zoom(t) = 1.0 + zoom_range * ease_in_out(t/duration)
+    z_expr = (
+        f"1+{zoom_range:.4f}*"
+        f"if(lt(on/{frames},0.5),"
+        f"4*((on/{frames})^3),"
+        f"1-((-2*(on/{frames})+2)^3)/2)"
+    )
+
+    # Movimentos com easing suave
     if motion == "zoom_out_center":
-        z_expr = f"max(1.0,zoom-{zoom_step:.6f})"
+        z_expr = (
+            f"1+{zoom_range:.4f}*"
+            f"(1-if(lt(on/{frames},0.5),"
+            f"4*((on/{frames})^3),"
+            f"1-((-2*(on/{frames})+2)^3)/2))"
+        )
         x_expr = "iw/2-(iw/zoom/2)"
         y_expr = "ih/2-(ih/zoom/2)"
     elif motion == "pan_left":
         z_expr = f"{base_zoom + 0.04:.2f}"
-        x_expr = f"max(0,(iw-iw/zoom)*(on/{frames}))"
-        y_expr = f"max(0,(ih-ih/zoom)*(0.5+0.15*sin(on/{max(frames, 1)})))"
+        x_expr = f"max(0,(iw-iw/zoom)*((on/{frames})^2))"
+        y_expr = f"max(0,(ih-ih/zoom)*(0.5+0.12*sin(on/{max(frames, 1)})))"
     elif motion == "pan_right":
         z_expr = f"{base_zoom + 0.04:.2f}"
-        x_expr = f"max(0,(iw-iw/zoom)*(1-on/{frames}))"
-        y_expr = f"max(0,(ih-ih/zoom)*(0.5-0.15*sin(on/{max(frames, 1)})))"
+        x_expr = f"max(0,(iw-iw/zoom)*(1-((on/{frames})^2)))"
+        y_expr = f"max(0,(ih-ih/zoom)*(0.5-0.12*sin(on/{max(frames, 1)})))"
     elif motion == "parallax_left":
-        z_expr = f"min(zoom+{zoom_step * 0.8:.6f},{zoom_max})"
-        x_expr = f"max(0,(iw-iw/zoom)*(on/{frames}))"
-        y_expr = f"max(0,(ih-ih/zoom)*on/{frames * 2})"
+        z_expr = f"1+{zoom_range * 0.7:.4f}*if(lt(on/{frames},0.5),4*((on/{frames})^3),1-((-2*(on/{frames})+2)^3)/2)"
+        x_expr = f"max(0,(iw-iw/zoom)*((on/{frames})^2))"
+        y_expr = f"max(0,(ih-ih/zoom)*(on/({frames * 2})))"
     elif motion == "parallax_right":
-        z_expr = f"min(zoom+{zoom_step * 0.8:.6f},{zoom_max})"
-        x_expr = f"max(0,(iw-iw/zoom)*(1-on/{frames}))"
-        y_expr = f"max(0,(ih-ih/zoom)*(1-on/{frames * 2}))"
+        z_expr = f"1+{zoom_range * 0.7:.4f}*if(lt(on/{frames},0.5),4*((on/{frames})^3),1-((-2*(on/{frames})+2)^3)/2)"
+        x_expr = f"max(0,(iw-iw/zoom)*(1-((on/{frames})^2)))"
+        y_expr = f"max(0,(ih-ih/zoom)*(1-(on/({frames * 2}))))"
     elif motion == "drift_up":
         z_expr = f"{base_zoom:.2f}"
         x_expr = "iw/2-(iw/zoom/2)"
-        y_expr = f"max(0,(ih-ih/zoom)*(1-on/{frames}))"
+        y_expr = f"max(0,(ih-ih/zoom)*(1-((on/{frames})^2)))"
     elif motion == "drift_down":
         z_expr = f"{base_zoom:.2f}"
         x_expr = "iw/2-(iw/zoom/2)"
-        y_expr = f"max(0,(ih-ih/zoom)*on/{frames})"
+        y_expr = f"max(0,(ih-ih/zoom)*((on/{frames})^2))"
     else:
-        z_expr = f"min(zoom+{zoom_step:.6f},{zoom_max})"
-        x_expr = "iw/2-(iw/zoom/2)+10*sin(on/30)"
-        y_expr = "ih/2-(ih/zoom/2)+6*sin(on/45)"
+        z_expr = (
+            f"1+{zoom_range:.4f}*"
+            f"if(lt(on/{frames},0.5),"
+            f"4*((on/{frames})^3),"
+            f"1-((-2*(on/{frames})+2)^3)/2)"
+        )
+        x_expr = "iw/2-(iw/zoom/2)+8*sin(on/30)"
+        y_expr = "ih/2-(ih/zoom/2)+5*sin(on/45)"
 
     return (
         f"zoompan=z='{z_expr}':"
@@ -463,8 +490,8 @@ def render_scene_clip(
             "-t", str(duration),
             "-vf", vf,
             "-c:v", "libx264",
-            "-preset", "medium",
-            "-crf", "20",
+            "-preset", "slow",
+            "-crf", "18",
             "-pix_fmt", "yuv420p",
             "-an",
             str(output_path),
@@ -502,8 +529,8 @@ def render_scene_clip(
             "-t", str(duration),
             "-vf", vf,
             "-c:v", "libx264",
-            "-preset", "medium",
-            "-crf", "20",
+            "-preset", "slow",
+            "-crf", "18",
             "-pix_fmt", "yuv420p",
             "-an",
             str(output_path),
@@ -530,15 +557,38 @@ def render_scene_clip(
 def concat_scene_clips(
     clip_paths: list,
     output_path: Path,
-    crossfade: float = 0.0,
+    crossfade: float = 0.45,
     scene_types: list | None = None,
     platform: str = "youtube_dark",
     width: int = 1920,
     height: int = 1080,
 ) -> bool:
-    """Concatena clips via FFmpeg demuxer (-f concat), sem crossfade."""
+    """Concatena clips com crossfade suave entre cenas adjacentes."""
     from scripts.video.renderer import concat_video_clips
 
+    if len(clip_paths) < 2 or crossfade <= 0.01:
+        return concat_video_clips(clip_paths, output_path)
+
+    durations = []
+    for clip in clip_paths:
+        d = probe_duration(clip)
+        if d <= 0:
+            d = 5.0  # fallback seguro
+        durations.append(d)
+
+    # Usa crossfade variável: mais longo em transições lentas, mais curto em rápidas
+    if scene_types:
+        fade_map = {"hook": 0.3, "contexto": 0.5, "encerramento": 0.6}
+        crossfades = [fade_map.get(t, crossfade) for t in scene_types[:-1]]
+    else:
+        crossfades = [crossfade] * (len(clip_paths) - 1)
+
+    if _concat_with_variable_crossfade(
+        clip_paths, output_path, crossfades, durations, width, height,
+    ):
+        return True
+
+    print("⚠️ Crossfade falhou, usando concat simples.")
     return concat_video_clips(clip_paths, output_path)
 
 
@@ -887,8 +937,8 @@ def mux_video_audio_subtitles(
     cmd.extend([
         "-vf", video_filter,
         "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "21",
+        "-preset", "slow",
+        "-crf", "18",
         "-pix_fmt", "yuv420p",
     ])
 

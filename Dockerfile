@@ -11,7 +11,12 @@ FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
+    # Whisper e Hugging Face cache em /tmp (Railway: efêmero mas dentro do ciclo de vida)
+    WHISPER_CACHE_DIR=/tmp/whisper_cache \
+    HF_HOME=/tmp/huggingface \
+    HF_HUB_CACHE=/tmp/huggingface/hub \
+    XDG_CACHE_HOME=/tmp/cache
 
 WORKDIR /app
 
@@ -23,6 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     espeak-ng \
     && rm -rf /var/lib/apt/lists/*
+
+# Cria diretórios de cache no /tmp (garantido existir antes de qualquer processo)
+RUN mkdir -p /tmp/whisper_cache /tmp/huggingface/hub /tmp/cache /tmp/output
 
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt

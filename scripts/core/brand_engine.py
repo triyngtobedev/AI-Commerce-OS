@@ -16,10 +16,10 @@ from scripts.core.brand_profile import BrandProfile, get_brand
 @dataclass(frozen=True)
 class SubtitleStyle:
     font_name: str = "Arial"
-    font_size: int = 16
-    margin_v: int = 70
-    outline: int = 2
-    shadow: int = 2
+    font_size: int = 54
+    margin_v: int = 80
+    outline: int = 3
+    shadow: int = 1
     max_words_per_block: int = 5
     max_chars: int = 42
     bold: bool = True
@@ -30,14 +30,14 @@ class SubtitleStyle:
 class RenderStyle:
     transition_seconds: float = 0.7
     crossfade_seconds: float = 0.45
-    ken_burns_zoom_max: float = 1.14
-    color_grade: str = "eq=contrast=1.08:brightness=-0.03:saturation=1.08"
-    vignette: str = "vignette=PI/4.5"
+    ken_burns_zoom_max: float = 1.25
+    color_grade: str = "eq=contrast=1.15:brightness=-0.04:saturation=1.12"
+    vignette: str = "vignette=PI/4.0"
     opening_fade_seconds: float = 0.8
     closing_fade_seconds: float = 2.0
     intro_seconds: float = 2.0
     outro_seconds: float = 2.5
-    film_grain: str = "noise=alls=8:allf=t+u"
+    film_grain: str = "noise=alls=6:allf=t+u"
 
 
 @dataclass(frozen=True)

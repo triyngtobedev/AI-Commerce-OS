@@ -11,6 +11,15 @@ echo "Commit: ${RAILWAY_GIT_COMMIT_SHA:-${GIT_COMMIT:-desconhecido}}"
 echo "Data:   $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 echo "Python: $(python --version 2>&1 || echo 'indisponível')"
 
+# ── Caches temporários (Railway: filesystem efêmero, persiste no ciclo de vida) ──
+export WHISPER_CACHE_DIR="${WHISPER_CACHE_DIR:-/tmp/whisper_cache}"
+export HF_HOME="${HF_HOME:-/tmp/huggingface}"
+export HF_HUB_CACHE="${HF_HUB_CACHE:-/tmp/huggingface/hub}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-/tmp/cache}"
+
+mkdir -p "$WHISPER_CACHE_DIR" "$HF_HOME" "$HF_HUB_CACHE" "$XDG_CACHE_HOME"
+
+# ── Volume persistente (Railway Volume mount) ──
 PERSISTENT_BASE="${PERSISTENT_DIR:-/app/persistent}"
 
 if [ -d "$PERSISTENT_BASE" ]; then
@@ -23,7 +32,11 @@ else
   echo "Sem volume persistente — dados serão perdidos em restart."
   echo "Configure um volume em /app/persistent no Railway (docs/railway-volume.md)."
   mkdir -p /app/database /app/output /app/reports /app/logs /app/cache /app/debug
+  export OUTPUT_DIR="${OUTPUT_DIR:-/app/output}"
 fi
+
+# Garante que o diretório de output existe e é gravável
+mkdir -p "$OUTPUT_DIR"
 
 echo ""
 echo "=== Configuração ==="

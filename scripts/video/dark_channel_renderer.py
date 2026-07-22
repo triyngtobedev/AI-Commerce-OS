@@ -396,14 +396,16 @@ def _try_wikimedia_replacement(query: str, dest: Path) -> bool:
     return False
 
 
-def download_scene_image(query: str, dest: Path, scene_index: int = 0) -> bool:
+def download_scene_image(query: str, dest: Path, scene_index: int = 0, *, topic: str = "") -> bool:
     """Baixa Picsum como base garantida, depois tenta Wikimedia como substituição."""
     picsum_url = f"https://picsum.photos/1920/1080?random={scene_index}&blur=0"
     print(f"[STEP 3] Baixando imagem base (Picsum): {picsum_url}")
     if not _download_image_from_url(picsum_url, dest):
         return False
 
-    _try_wikimedia_replacement(query, dest)
+    # Query enriquecida com o nome do tópico para Wikimedia achar imagens relevantes
+    wikimedia_query = f"{topic} {query}" if topic else query
+    _try_wikimedia_replacement(wikimedia_query, dest)
     return True
 
 
@@ -434,7 +436,7 @@ def create_ken_burns_clip(image_path: Path, output_path: Path, duration: float) 
     )
 
 
-def fetch_footage_for_scenes(scenes: list[dict[str, Any]], work_dir: Path) -> list[Path]:
+def fetch_footage_for_scenes(scenes: list[dict[str, Any]], work_dir: Path, *, topic: str = "") -> list[Path]:
     """STEP 3 — Picsum (base) + Wikimedia (opcional) + Ken Burns por cena."""
     images_dir = work_dir / "images"
     raw_dir = work_dir / "raw_clips"
@@ -449,7 +451,7 @@ def fetch_footage_for_scenes(scenes: list[dict[str, Any]], work_dir: Path) -> li
         raw_path = raw_dir / f"{index:02d}_{scene_id}.mp4"
 
         print(f"[STEP 3] Cena {scene_id}: duration={duration}s, query={scene['visual_query']!r}")
-        if not download_scene_image(scene["visual_query"], image_path, scene_index=index):
+        if not download_scene_image(scene["visual_query"], image_path, scene_index=index, topic=topic):
             print(f"[STEP 3] Cena {scene_id}: Picsum falhou — usando gradiente escuro")
             create_gradient_image(image_path)
 
@@ -536,9 +538,9 @@ def _drawtext_filters_for_scene(
         escaped = _escape_drawtext(text)
         filters.append(
             f"drawtext=text='{escaped}'{font_opt}"
-            f":fontsize=38:fontcolor=white:borderw=3:bordercolor=black"
-            f":box=1:boxcolor=black@0.4:boxborderw=8"
-            f":x=(w-text_w)/2:y=h-120"
+            f":fontsize=52:fontcolor=white:borderw=4:bordercolor=black"
+            f":box=1:boxcolor=black@0.35:boxborderw=10"
+            f":x=(w-text_w)/2:y=h-140"
             f":enable='between(t\\,{local_start:.3f}\\,{local_end:.3f})'"
         )
     return ",".join(filters)
@@ -747,7 +749,7 @@ def render_dark_channel_video(
     narration_text = full_narration_text(scenes)
 
     # STEP 3
-    raw_clips = fetch_footage_for_scenes(scenes, work_dir)
+    raw_clips = fetch_footage_for_scenes(scenes, work_dir, topic=topic)
 
     # STEP 4 + 6
     graded_clips = burn_subtitles_on_scenes(

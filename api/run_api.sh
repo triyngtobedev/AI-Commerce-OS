@@ -26,13 +26,14 @@ if [ -f .env ]; then
 fi
 
 HOST="${API_HOST:-0.0.0.0}"
-PORT="${API_PORT:-8000}"
+# Aceita API_PORT (dev) ou PORT (Railway) — Railway sempre define PORT
+API_PORT_VAL="${API_PORT:-${PORT:-8000}}"
 WORKERS="${API_WORKERS:-1}"
 
-echo "Starting AI-Commerce-OS Pipeline API on ${HOST}:${PORT} (workers=${WORKERS})"
+echo "Starting AI-Commerce-OS Pipeline API on ${HOST}:${API_PORT_VAL} (workers=${WORKERS})"
 
 exec uvicorn api.main_api:app \
   --host "$HOST" \
-  --port "$PORT" \
+  --port "$API_PORT_VAL" \
   --workers "$WORKERS" \
   --log-level info

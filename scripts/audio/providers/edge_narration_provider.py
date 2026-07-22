@@ -1,12 +1,110 @@
-"""Provedor Edge-TTS — vozes neurais gratuitas PT-BR."""
+"""Provedor Edge-TTS — vozes neurais gratuitas PT-BR com SSML e pós-processamento."""
 
 from __future__ import annotations
 
 import asyncio
+import subprocess
 from pathlib import Path
+from typing import Any
 
 from scripts.audio.narration_models import AudioResult, NarrationRequest
 from scripts.audio.narration_provider import NarrationProvider
+
+
+# Pós-processamento: EQ + compressão + normalização LUFS -16 (padrão YouTube)
+def post_process_audio(input_path: Path, output_path: Path | None = None) -> Path:
+    """
+    Aplica EQ (boost 2-4kHz para presença vocal), compressão suave
+    e normalização LUFS -16 integrada para YouTube.
+    """
+    target = output_path or input_path
+    if target == input_path:
+        temp = input_path.with_suffix(".tmp.mp3")
+    else:
+        temp = target
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(input_path),
+        # EQ: presença vocal 2-4kHz, corta sub 80Hz, shelve suave em 8kHz
+        "-af",
+        "equalizer=f=80:t=h:width=0.5:g=-6,"
+        "equalizer=f=2500:t=q:width=1:g=4,"
+        "equalizer=f=6000:t=q:width=1:g=2,"
+        # Compressão suave: threshold baixo, ratio moderado
+        "acompressor=threshold=0.3:ratio=3:attack=5:release=50,"
+        # Normalização LUFS -16 (padrão YouTube)
+        "loudnorm=I=-16:TP=-1.5:LRA=7",
+        "-c:a", "libmp3lame",
+        "-q:a", "2",
+        str(temp),
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        if temp != target:
+            temp.replace(target)
+    except subprocess.CalledProcessError:
+        print("  ⚠️ Pós-processamento de áudio falhou — usando áudio bruto")
+        if temp.exists():
+            temp.unlink()
+
+    return target
+
+
+def _escape_ssml(text: str) -> str:
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
+
+
+def _build_edge_ssml(request: NarrationRequest) -> str:
+    """Constrói SSML compatível com Edge TTS a partir das seções narradas.
+
+    Edge TTS suporta: <prosody>, <break>, <emphasis>, <phoneme>.
+    NÃO suporta: <mstts:express-as> (Azure-only).
+    """
+    parts: list[str] = []
+
+    for index, section in enumerate(request.sections):
+        text = section.text if hasattr(section, "text") else section.get("text", "")
+        if not text:
+            continue
+
+        escaped = _escape_ssml(text)
+
+        rate = getattr(section, "rate", "") or request.rate
+        pitch = getattr(section, "pitch", "") or request.pitch
+        pause_before = float(getattr(section, "pause_before", 0) if hasattr(section, "pause_before") else section.get("pause_before", 0))
+        pause_after = float(getattr(section, "pause_after", 0) if hasattr(section, "pause_after") else section.get("pause_after", 0))
+
+        if pause_before > 0:
+            parts.append(f'<break time="{int(pause_before * 1000)}ms"/>')
+        elif index > 0:
+            parts.append('<break time="400ms"/>')
+
+        parts.append(
+            f'<prosody rate="{rate}" pitch="{pitch}">'
+            f'{escaped}'
+            f'</prosody>'
+        )
+
+        if index < len(request.sections) - 1:
+            if pause_after > 0:
+                parts.append(f'<break time="{int(pause_after * 1000)}ms"/>')
+
+    body = "\n    ".join(parts)
+    return (
+        f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
+        f'xml:lang="{request.language}">\n'
+        f'  <voice name="{request.voice}">\n'
+        f"    {body}\n"
+        f"  </voice>\n"
+        f"</speak>"
+    )
 
 
 class EdgeNarrationProvider(NarrationProvider):
@@ -34,12 +132,19 @@ class EdgeNarrationProvider(NarrationProvider):
             )
 
         async def _run():
-            communicate = edge_tts.Communicate(
-                text=request.text,
-                voice=request.voice,
-                rate=request.rate,
-                pitch=request.pitch,
-            )
+            if request.ssml_enabled and request.sections:
+                ssml = _build_edge_ssml(request)
+                communicate = edge_tts.Communicate(
+                    ssml=ssml,
+                    voice=request.voice,
+                )
+            else:
+                communicate = edge_tts.Communicate(
+                    text=request.text,
+                    voice=request.voice,
+                    rate=request.rate,
+                    pitch=request.pitch,
+                )
             await communicate.save(str(output))
 
         try:
@@ -50,6 +155,9 @@ class EdgeNarrationProvider(NarrationProvider):
             loop.close()
 
         success = output.exists() and output.stat().st_size > 0
+        if success:
+            post_process_audio(output)
+
         return AudioResult(
             audio_path=str(output),
             provider=self.name,

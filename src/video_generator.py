@@ -127,7 +127,8 @@ KLING_PROMO_CLOSE_SELECTORS = (
 
 # --- Config via ambiente ---
 
-VIDEO_OUTPUT_DIR = Path(os.getenv("VIDEO_OUTPUT_DIR", "./output/videos"))
+_OUTPUT_BASE = os.getenv("OUTPUT_DIR", "/app/output")
+VIDEO_OUTPUT_DIR = Path(os.getenv("VIDEO_OUTPUT_DIR", f"{_OUTPUT_BASE}/videos"))
 VIDEO_MAX_RETRIES = int(os.getenv("VIDEO_MAX_RETRIES", "3"))
 VIDEO_POLL_INTERVAL = float(os.getenv("VIDEO_POLL_INTERVAL", "10"))
 VIDEO_TIMEOUT = float(os.getenv("VIDEO_TIMEOUT", "300"))

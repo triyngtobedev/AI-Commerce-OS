@@ -194,15 +194,21 @@ def _escape_ass_text(text: str) -> str:
 
 def _build_karaoke_ass_text(words: list[dict]) -> str:
     """
-    Legenda estilo karaoke: cada palavra ganha duração \\k (centésimos de segundo)
-    e cor de destaque enquanto é falada (padrão template n8n dark).
+    Legenda estilo karaoke ASS padrão.
+
+    Cada palavra recebe \\k (centésimos de segundo) ANTES dela.
+    O renderer ASS usa SecondaryColour para destacar a sílaba ativa
+    automaticamente — a cor de destaque é definida no style header,
+    não precisa de \\c inline.
     """
 
     if not words:
         return ""
 
-    highlight = HIGHLIGHT_ASS_COLORS.get(KARAOKE_HIGHLIGHT_COLOR, HIGHLIGHT_ASS_COLORS["gold"])
     parts: list[str] = []
+    # O primeiro \\k da linha é ignorado pelo renderer, então inserimos
+    # um \\k dummy para que a primeira palavra seja destacada corretamente
+    first = True
 
     for item in words:
         word = _escape_ass_text((item.get("word") or "").strip())
@@ -211,7 +217,11 @@ def _build_karaoke_ass_text(words: list[dict]) -> str:
         start = float(item.get("start", 0.0))
         end = float(item.get("end", start))
         duration_cs = max(1, int(round((end - start) * 100)))
-        parts.append(f"{{\\k{duration_cs}\\c{highlight}&\\b1}}{word}{{\\r\\b0}}")
+        if first:
+            parts.append(f"{{\\k{duration_cs}}}{word}")
+            first = False
+        else:
+            parts.append(f"{{\\k{duration_cs}}}{word}")
 
     return " ".join(parts)
 
@@ -529,16 +539,17 @@ def _format_ass_time(seconds: float) -> str:
 
 def _build_ass_header(style: dict, *, karaoke: bool = False) -> str:
     font = style.get("font_name", "Arial")
-    size = style.get("font_size", 52)
-    margin_v = style.get("margin_v", 110)
-    outline = style.get("outline", 2)
-    shadow = style.get("shadow", 2)
+    size = style.get("font_size", 54)
+    margin_v = style.get("margin_v", 80)
+    outline = style.get("outline", 3)
+    shadow = style.get("shadow", 1)
     bold = -1 if style.get("bold", True) else 0
+    # Branco para texto inativo, amarelo dourado para sílaba ativa (karaoke)
     primary = "&H00FFFFFF"
     secondary = (
         HIGHLIGHT_ASS_COLORS.get(KARAOKE_HIGHLIGHT_COLOR, HIGHLIGHT_ASS_COLORS["gold"])
         if karaoke
-        else "&H000000FF"
+        else "&H0000D7FF"
     )
 
     return f"""[Script Info]
