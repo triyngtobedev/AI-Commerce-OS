@@ -7,6 +7,7 @@ Busca, baixa e (opcionalmente) anima imagens estáticas com Ken Burns.
 from __future__ import annotations
 
 import logging
+import re
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -21,6 +22,9 @@ from scripts.video.media_quality import MIN_IMAGE_WIDTH_FALLBACK
 logger = logging.getLogger(__name__)
 
 COMMONS_API_URL = "https://commons.wikimedia.org/w/api.php"
+
+# Apenas extensões de imagem utilizáveis como frame de vídeo
+_IMAGE_EXTENSIONS = re.compile(r"\.(jpg|jpeg|png|gif|webp|tiff?|bmp)$", re.IGNORECASE)
 REQUEST_TIMEOUT = 15
 USER_AGENT = (
     "AI-Commerce-OS/1.0 "
@@ -61,6 +65,11 @@ def _build_credit(extmetadata: dict) -> str:
     return " — ".join(parts)
 
 
+def _is_image_url(url: str) -> bool:
+    """True se a URL termina em extensão de imagem utilizável como frame."""
+    return bool(_IMAGE_EXTENSIONS.search(url))
+
+
 def _parse_pages(pages: dict, limit: int) -> list[dict]:
     photos = []
 
@@ -81,6 +90,10 @@ def _parse_pages(pages: dict, limit: int) -> list[dict]:
 
         url = info.get("url", "")
         if not url:
+            continue
+
+        # Filtra .djvu, .pdf, .ogg, .ogv, .webm e outros não-imagem
+        if not _is_image_url(url):
             continue
 
         extmetadata = info.get("extmetadata", {})

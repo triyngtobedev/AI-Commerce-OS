@@ -7,6 +7,7 @@ Requer PIXABAY_API_KEY no .env (gratuito em pixabay.com/api/docs).
 from __future__ import annotations
 
 import os
+import re
 
 import requests
 from dotenv import load_dotenv
@@ -14,6 +15,28 @@ from dotenv import load_dotenv
 from scripts.core.production.retry import retry_with_backoff
 
 load_dotenv()
+
+# Mesmo conjunto de stopwords abstratas usado no Pexels
+_ABSTRACT_STOPWORDS = frozenset({
+    "invasion", "corruption", "decline", "consequence", "impact", "mystery",
+    "legacy", "revelation", "investigation", "discovery", "truth", "secrets",
+    "hidden", "forgotten", "ancient", "historical", "documentary", "cinematic",
+    "dramatic", "atmospheric", "moody", "tension", "conflict", "struggle",
+    "destruction", "devastation", "aftermath", "crisis", "conspiracy",
+    "theory", "evidence", "research", "analysis", "exploration",
+    "phenomenon", "enigma", "cover-up", "reveal", "exposed", "classified",
+    "unsolved", "enduring", "profound", "unveiled", "untold",
+})
+
+
+def _simplify_for_stock(query: str, max_words: int = 3) -> str:
+    words = query.strip().split()
+    if not words:
+        return query
+    filtered = [w for w in words if w.lower() not in _ABSTRACT_STOPWORDS]
+    if not filtered:
+        filtered = words[:max_words]
+    return " ".join(filtered[:max_words]).strip()
 
 PIXABAY_VIDEO_URL = "https://pixabay.com/api/videos/"
 PIXABAY_PHOTO_URL = "https://pixabay.com/api/"
@@ -117,7 +140,11 @@ def search_pixabay(
 
     print(f"[Pixabay] Searching: {query!r}")
 
-    query = _shorten_pixabay_query(query)
+    # Simplifica para termos visuais antes de encurtar
+    simplified = _simplify_for_stock(query)
+    if simplified != query:
+        print(f"[Pixabay] Query simplificada: {query!r} -> {simplified!r}")
+    query = _shorten_pixabay_query(simplified)
 
     params = {
         "key": api_key,

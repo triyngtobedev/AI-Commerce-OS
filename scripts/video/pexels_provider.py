@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 from dotenv import load_dotenv
 
@@ -15,6 +16,36 @@ PEXELS_PHOTO_URL = (
     "https://api.pexels.com/v1/search"
 )
 
+# Palavras abstratas que Pexels/Pixabay não indexam — remover antes de buscar
+_ABSTRACT_STOPWORDS = frozenset({
+    "invasion", "corruption", "decline", "consequence", "impact", "mystery",
+    "legacy", "revelation", "investigation", "discovery", "truth", "secrets",
+    "hidden", "forgotten", "ancient", "historical", "documentary", "cinematic",
+    "dramatic", "atmospheric", "moody", "tension", "conflict", "struggle",
+    "destruction", "devastation", "aftermath", "crisis", "conspiracy",
+    "theory", "evidence", "research", "analysis", "exploration",
+    "phenomenon", "enigma", "cover-up", "reveal", "exposed", "classified",
+    "unsolved", "enduring", "profound", "unveiled", "untold",
+})
+
+
+def _simplify_for_stock(query: str, max_words: int = 3) -> str:
+    """
+    Reduz query para 2-3 palavras visuais concretas que Pexels/Pixabay
+    conseguem indexar. Remove modificadores abstratos.
+
+    Ex: "roman legions barbarian invasion" -> "roman soldiers"
+        "roman senate corruption ancient" -> "roman senate"
+        "ancient egypt pyramid mystery" -> "egypt pyramid"
+    """
+    words = query.strip().split()
+    if not words:
+        return query
+
+    filtered = [w for w in words if w.lower() not in _ABSTRACT_STOPWORDS]
+    if not filtered:
+        filtered = words[:max_words]
+    return " ".join(filtered[:max_words]).strip()
 
 
 def search_pexels(
@@ -61,12 +92,17 @@ def search_pexels(
 
 
 
+    # Simplifica query para termos visuais — Pexels não indexa conceitos abstratos
+    simple_query = _simplify_for_stock(query)
+    if simple_query != query:
+        print(f"[Pexels] Query simplificada: {query!r} -> {simple_query!r}")
+
     headers = {
         "Authorization": api_key
     }
 
     video_params = {
-        "query": query,
+        "query": simple_query,
         "per_page": per_page,
         "orientation": orientation,
         "min_width": min_width,
@@ -74,7 +110,7 @@ def search_pexels(
     }
 
     photo_params = {
-        "query": query,
+        "query": simple_query,
         "per_page": per_page,
         "orientation": orientation,
     }
