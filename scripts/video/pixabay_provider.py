@@ -16,30 +16,82 @@ from scripts.core.production.retry import retry_with_backoff
 
 load_dotenv()
 
-# Mesmo conjunto de stopwords abstratas usado no Pexels
-_ABSTRACT_STOPWORDS = frozenset({
-    "invasion", "corruption", "decline", "consequence", "impact", "mystery",
-    "legacy", "revelation", "investigation", "discovery", "truth", "secrets",
-    "hidden", "forgotten", "ancient", "historical", "documentary", "cinematic",
-    "dramatic", "atmospheric", "moody", "tension", "conflict", "struggle",
-    "destruction", "devastation", "aftermath", "crisis", "conspiracy",
-    "theory", "evidence", "research", "analysis", "exploration",
-    "phenomenon", "enigma", "cover-up", "reveal", "exposed", "classified",
-    "unsolved", "enduring", "profound", "unveiled", "untold",
-    "barbarian", "barbarians", "legion", "legions",
-    "senate", "senatorial", "emperor", "emperors",
-    "empire", "kingdom", "republic",
-})
+# Mapeamento de temas históricos/específicos → queries stock visuais
+# (mesmo mapping usado no Pexels)
+_HISTORICAL_STOCK_MAP = {
+    "rome": "ancient rome",
+    "roman": "ancient rome",
+    "egito": "ancient egypt",
+    "egypt": "ancient egypt",
+    "egipcio": "ancient egypt",
+    "egípcio": "ancient egypt",
+    "grecia": "ancient greece",
+    "greece": "ancient greece",
+    "greek": "ancient greece",
+    "medieval": "medieval castle",
+    "idade media": "medieval castle",
+    "temple": "ancient temple",
+    "templo": "ancient temple",
+    "pyramid": "egypt pyramid",
+    "piramide": "egypt pyramid",
+    "pirâmide": "egypt pyramid",
+    "soldier": "roman soldier",
+    "soldiers": "soldiers army",
+    "soldado": "soldiers army",
+    "war": "war battle soldiers",
+    "guerra": "war battle",
+    "battle": "battle soldiers",
+    "batalha": "battle soldiers",
+    "king": "king crown throne",
+    "rei": "king crown throne",
+    "queen": "queen crown",
+    "rainha": "queen crown",
+    "emperor": "emperor crown",
+    "imperador": "emperor crown",
+    "sword": "sword weapon",
+    "espada": "sword weapon",
+    "ship": "ship ocean sailing",
+    "navio": "ship ocean sailing",
+    "horse": "horse riding",
+    "cavalo": "horse riding",
+    "castle": "medieval castle",
+    "castelo": "medieval castle",
+    "ruins": "ancient ruins",
+    "ruina": "ancient ruins",
+    "ruínas": "ancient ruins",
+    "forest": "forest nature",
+    "floresta": "forest nature",
+    "desert": "desert landscape",
+    "deserto": "desert landscape",
+    "mountains": "mountain landscape",
+    "montanha": "mountain landscape",
+    "ocean": "ocean sea waves",
+    "oceano": "ocean sea waves",
+    "city": "city architecture",
+    "cidade": "city architecture",
+    "map": "world map",
+    "mapa": "world map",
+    "fire": "fire flame",
+    "fogo": "fire flame",
+    "explosion": "explosion fire",
+    "explosão": "explosion fire",
+    "explosao": "explosion fire",
+    "meteor": "meteor sky",
+}
 
 
-def _simplify_for_stock(query: str, max_words: int = 3) -> str:
-    words = query.strip().split()
-    if not words:
+def _simplify_for_stock(query: str) -> str:
+    query_lower = query.strip().lower()
+    if not query_lower:
         return query
-    filtered = [w for w in words if w.lower() not in _ABSTRACT_STOPWORDS]
-    if not filtered:
-        filtered = words[:max_words]
-    return " ".join(filtered[:max_words]).strip()
+    if query_lower in _HISTORICAL_STOCK_MAP:
+        return _HISTORICAL_STOCK_MAP[query_lower]
+    words = query.strip().split()
+    for word in words:
+        word_lower = word.lower().strip(".,!?;:")
+        if word_lower in _HISTORICAL_STOCK_MAP:
+            return _HISTORICAL_STOCK_MAP[word_lower]
+    return " ".join(words[:3]).strip()
 
 PIXABAY_VIDEO_URL = "https://pixabay.com/api/videos/"
 PIXABAY_PHOTO_URL = "https://pixabay.com/api/"

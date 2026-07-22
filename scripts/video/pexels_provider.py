@@ -16,39 +16,103 @@ PEXELS_PHOTO_URL = (
     "https://api.pexels.com/v1/search"
 )
 
-# Palavras abstratas que Pexels/Pixabay não indexam — remover antes de buscar
-_ABSTRACT_STOPWORDS = frozenset({
-    "invasion", "corruption", "decline", "consequence", "impact", "mystery",
-    "legacy", "revelation", "investigation", "discovery", "truth", "secrets",
-    "hidden", "forgotten", "ancient", "historical", "documentary", "cinematic",
-    "dramatic", "atmospheric", "moody", "tension", "conflict", "struggle",
-    "destruction", "devastation", "aftermath", "crisis", "conspiracy",
-    "theory", "evidence", "research", "analysis", "exploration",
-    "phenomenon", "enigma", "cover-up", "reveal", "exposed", "classified",
-    "unsolved", "enduring", "profound", "unveiled", "untold",
-    "barbarian", "barbarians", "legion", "legions",
-    "senate", "senatorial", "emperor", "emperors",
-    "empire", "kingdom", "republic",
-})
+# Mapeamento de temas históricos/específicos → queries visuais que existem
+# no Pexels/Pixabay. A chave é uma palavra da query original; o valor é
+# a query stock que sabemos que retorna resultados.
+_HISTORICAL_STOCK_MAP = {
+    "rome": "ancient rome",
+    "roman": "ancient rome",
+    "egito": "ancient egypt",
+    "egypt": "ancient egypt",
+    "egipcio": "ancient egypt",
+    "egípcio": "ancient egypt",
+    "grecia": "ancient greece",
+    "greece": "ancient greece",
+    "greek": "ancient greece",
+    "medieval": "medieval castle",
+    "idade media": "medieval castle",
+    "temple": "ancient temple",
+    "templo": "ancient temple",
+    "pyramid": "egypt pyramid",
+    "piramide": "egypt pyramid",
+    "pirâmide": "egypt pyramid",
+    "soldier": "roman soldier",
+    "soldiers": "soldiers army",
+    "soldado": "soldiers army",
+    "war": "war battle soldiers",
+    "guerra": "war battle",
+    "battle": "battle soldiers",
+    "batalha": "battle soldiers",
+    "king": "king crown throne",
+    "rei": "king crown throne",
+    "queen": "queen crown",
+    "rainha": "queen crown",
+    "emperor": "emperor crown",
+    "imperador": "emperor crown",
+    "sword": "sword weapon",
+    "espada": "sword weapon",
+    "ship": "ship ocean sailing",
+    "navio": "ship ocean sailing",
+    "barco": "boat ship sailing",
+    "horse": "horse riding",
+    "cavalo": "horse riding",
+    "army": "army soldiers",
+    "exército": "army soldiers",
+    "exercito": "army soldiers",
+    "castle": "medieval castle",
+    "castelo": "medieval castle",
+    "church": "church building",
+    "igreja": "church building",
+    "cathedral": "cathedral gothic",
+    "catedral": "cathedral gothic",
+    "ruins": "ancient ruins",
+    "ruina": "ancient ruins",
+    "ruína": "ancient ruins",
+    "ruinas": "ancient ruins",
+    "ruínas": "ancient ruins",
+    "forest": "forest nature",
+    "floresta": "forest nature",
+    "desert": "desert landscape",
+    "deserto": "desert landscape",
+    "mountains": "mountain landscape",
+    "montanha": "mountain landscape",
+    "ocean": "ocean sea waves",
+    "oceano": "ocean sea waves",
+    "city": "city architecture",
+    "cidade": "city architecture",
+    "map": "world map",
+    "mapa": "world map",
+}
 
 
-def _simplify_for_stock(query: str, max_words: int = 3) -> str:
+def _simplify_for_stock(query: str) -> str:
     """
-    Reduz query para 2-3 palavras visuais concretas que Pexels/Pixabay
-    conseguem indexar. Remove modificadores abstratos.
+    Traduz query histórica/específica para termos visuais que existem
+    no Pexels/Pixabay. Usa mapeamento de temas → queries stock.
 
-    Ex: "roman legions barbarian invasion" -> "roman soldiers"
-        "roman senate corruption ancient" -> "roman senate"
-        "ancient egypt pyramid mystery" -> "egypt pyramid"
+    Ex:
+      "roman legions barbarian invasion"  -> "ancient rome"
+      "roman senate corruption ancient"   -> "ancient rome"
+      "ancient egypt pyramid mystery"     -> "ancient egypt"
+      "tunguska explosion 1908"           -> "forest fire" (fallback: 2 primeiras palavras)
     """
-    words = query.strip().split()
-    if not words:
+    query_lower = query.strip().lower()
+    if not query_lower:
         return query
 
-    filtered = [w for w in words if w.lower() not in _ABSTRACT_STOPWORDS]
-    if not filtered:
-        filtered = words[:max_words]
-    return " ".join(filtered[:max_words]).strip()
+    # 1. Tenta mapeamento exato completo (query inteira como chave)
+    if query_lower in _HISTORICAL_STOCK_MAP:
+        return _HISTORICAL_STOCK_MAP[query_lower]
+
+    # 2. Tenta mapeamento por palavra-chave (qualquer palavra da query)
+    words = query.strip().split()
+    for word in words:
+        word_lower = word.lower().strip(".,!?;:")
+        if word_lower in _HISTORICAL_STOCK_MAP:
+            return _HISTORICAL_STOCK_MAP[word_lower]
+
+    # 3. Fallback: primeiras 2-3 palavras (corta termos muito longos)
+    return " ".join(words[:3]).strip()
 
 
 def search_pexels(

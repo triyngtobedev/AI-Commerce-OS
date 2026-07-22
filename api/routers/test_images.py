@@ -65,30 +65,64 @@ class TestImagesResponse(BaseModel):
 
 _TIMEOUT = 15
 
-# Mesmo filtro de stopwords usado nos providers (Pexels/Pixabay)
-_ABSTRACT_STOPWORDS = frozenset({
-    "invasion", "corruption", "decline", "consequence", "impact", "mystery",
-    "legacy", "revelation", "investigation", "discovery", "truth", "secrets",
-    "hidden", "forgotten", "ancient", "historical", "documentary", "cinematic",
-    "dramatic", "atmospheric", "moody", "tension", "conflict", "struggle",
-    "destruction", "devastation", "aftermath", "crisis", "conspiracy",
-    "theory", "evidence", "research", "analysis", "exploration",
-    "phenomenon", "enigma", "cover-up", "reveal", "exposed", "classified",
-    "unsolved", "enduring", "profound", "unveiled", "untold",
-    "barbarian", "barbarians", "legion", "legions",
-    "senate", "senatorial", "emperor", "emperors",
-    "empire", "kingdom", "republic",
-})
+# Mapeamento de temas históricos → queries stock (mesmo dos providers)
+_HISTORICAL_STOCK_MAP = {
+    "rome": "ancient rome",
+    "roman": "ancient rome",
+    "egypt": "ancient egypt",
+    "egito": "ancient egypt",
+    "greece": "ancient greece",
+    "grecia": "ancient greece",
+    "greek": "ancient greece",
+    "medieval": "medieval castle",
+    "temple": "ancient temple",
+    "templo": "ancient temple",
+    "pyramid": "egypt pyramid",
+    "piramide": "egypt pyramid",
+    "pirâmide": "egypt pyramid",
+    "soldier": "roman soldier",
+    "soldiers": "soldiers army",
+    "war": "war battle soldiers",
+    "battle": "battle soldiers",
+    "king": "king crown throne",
+    "queen": "queen crown",
+    "emperor": "emperor crown",
+    "sword": "sword weapon",
+    "ship": "ship ocean sailing",
+    "horse": "horse riding",
+    "castle": "medieval castle",
+    "ruins": "ancient ruins",
+    "ruinas": "ancient ruins",
+    "forest": "forest nature",
+    "floresta": "forest nature",
+    "desert": "desert landscape",
+    "deserto": "desert landscape",
+    "mountains": "mountain landscape",
+    "montanha": "mountain landscape",
+    "ocean": "ocean sea waves",
+    "city": "city architecture",
+    "cidade": "city architecture",
+    "map": "world map",
+    "mapa": "world map",
+    "fire": "fire flame",
+    "fogo": "fire flame",
+    "explosion": "explosion fire",
+    "meteor": "meteor sky",
+}
 
 
-def _simplify_for_stock(query: str, max_words: int = 3) -> str:
-    words = query.strip().split()
-    if not words:
+def _simplify_for_stock(query: str) -> str:
+    query_lower = query.strip().lower()
+    if not query_lower:
         return query
-    filtered = [w for w in words if w.lower() not in _ABSTRACT_STOPWORDS]
-    if not filtered:
-        filtered = words[:max_words]
-    return " ".join(filtered[:max_words]).strip()
+    if query_lower in _HISTORICAL_STOCK_MAP:
+        return _HISTORICAL_STOCK_MAP[query_lower]
+    words = query.strip().split()
+    for word in words:
+        word_lower = word.lower().strip(".,!?;:")
+        if word_lower in _HISTORICAL_STOCK_MAP:
+            return _HISTORICAL_STOCK_MAP[word_lower]
+    return " ".join(words[:3]).strip()
 
 
 def _search_pexels(query: str) -> list[dict]:
