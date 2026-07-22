@@ -134,8 +134,10 @@ class EdgeNarrationProvider(NarrationProvider):
         async def _run():
             if request.ssml_enabled and request.sections:
                 ssml = _build_edge_ssml(request)
+                # edge-tts aceita SSML como primeiro argumento (text=)
+                # rate/pitch não são passados pois já estão nas tags <prosody>
                 communicate = edge_tts.Communicate(
-                    ssml=ssml,
+                    ssml,
                     voice=request.voice,
                 )
             else:
