@@ -26,6 +26,9 @@ _ABSTRACT_STOPWORDS = frozenset({
     "theory", "evidence", "research", "analysis", "exploration",
     "phenomenon", "enigma", "cover-up", "reveal", "exposed", "classified",
     "unsolved", "enduring", "profound", "unveiled", "untold",
+    "barbarian", "barbarians", "legion", "legions",
+    "senate", "senatorial", "emperor", "emperors",
+    "empire", "kingdom", "republic",
 })
 
 

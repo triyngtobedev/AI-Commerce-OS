@@ -39,6 +39,7 @@ class TestImagesRequest(BaseModel):
 
 class ProviderResult(BaseModel):
     provider: str
+    query_original: str
     query_usada: str
     url: str | None = None
     resolucao: str | None = None
@@ -64,6 +65,31 @@ class TestImagesResponse(BaseModel):
 
 _TIMEOUT = 15
 
+# Mesmo filtro de stopwords usado nos providers (Pexels/Pixabay)
+_ABSTRACT_STOPWORDS = frozenset({
+    "invasion", "corruption", "decline", "consequence", "impact", "mystery",
+    "legacy", "revelation", "investigation", "discovery", "truth", "secrets",
+    "hidden", "forgotten", "ancient", "historical", "documentary", "cinematic",
+    "dramatic", "atmospheric", "moody", "tension", "conflict", "struggle",
+    "destruction", "devastation", "aftermath", "crisis", "conspiracy",
+    "theory", "evidence", "research", "analysis", "exploration",
+    "phenomenon", "enigma", "cover-up", "reveal", "exposed", "classified",
+    "unsolved", "enduring", "profound", "unveiled", "untold",
+    "barbarian", "barbarians", "legion", "legions",
+    "senate", "senatorial", "emperor", "emperors",
+    "empire", "kingdom", "republic",
+})
+
+
+def _simplify_for_stock(query: str, max_words: int = 3) -> str:
+    words = query.strip().split()
+    if not words:
+        return query
+    filtered = [w for w in words if w.lower() not in _ABSTRACT_STOPWORDS]
+    if not filtered:
+        filtered = words[:max_words]
+    return " ".join(filtered[:max_words]).strip()
+
 
 def _search_pexels(query: str) -> list[dict]:
     import os
@@ -72,26 +98,28 @@ def _search_pexels(query: str) -> list[dict]:
 
     api_key = os.getenv("PEXELS_API_KEY")
     if not api_key:
-        return [{"provider": "pexels", "query_usada": query, "erro": "PEXELS_API_KEY não configurada"}]
+        return [{"provider": "pexels", "query_original": query, "erro": "PEXELS_API_KEY não configurada"}]
 
+    query_usada = _simplify_for_stock(query)
     results: list[dict] = []
     try:
-        data = search_pexels(query, orientation="landscape", per_page=5)
+        data = search_pexels(query_usada, orientation="landscape", per_page=5)
         photos = data.get("photos", [])
         if photos:
             for p in photos[:3]:
                 src = p.get("src", {})
                 results.append({
                     "provider": "pexels",
-                    "query_usada": query,
+                    "query_original": query,
+                    "query_usada": query_usada,
                     "url": src.get("original") or src.get("large") or "",
                     "resolucao": f"{p.get('width', '?')}x{p.get('height', '?')}",
                     "preview_url": src.get("medium") or src.get("small") or "",
                 })
         else:
-            results.append({"provider": "pexels", "query_usada": query, "erro": "sem resultados"})
+            results.append({"provider": "pexels", "query_original": query, "query_usada": query_usada, "erro": "sem resultados"})
     except Exception as e:
-        results.append({"provider": "pexels", "query_usada": query, "erro": str(e)})
+        results.append({"provider": "pexels", "query_original": query, "query_usada": query_usada, "erro": str(e)})
 
     return results
 
@@ -99,23 +127,25 @@ def _search_pexels(query: str) -> list[dict]:
 def _search_pixabay(query: str) -> list[dict]:
     from scripts.video.pixabay_provider import search_pixabay
 
+    query_usada = _simplify_for_stock(query)
     results: list[dict] = []
     try:
-        data = search_pixabay(query, orientation="horizontal", per_page=5)
+        data = search_pixabay(query_usada, orientation="horizontal", per_page=5)
         photos = data.get("photos", [])
         if photos:
             for p in photos[:3]:
                 results.append({
                     "provider": "pixabay",
-                    "query_usada": query,
+                    "query_original": query,
+                    "query_usada": query_usada,
                     "url": p.get("largeImageURL") or p.get("webformatURL") or "",
                     "resolucao": f"{p.get('imageWidth', '?')}x{p.get('imageHeight', '?')}",
                     "preview_url": p.get("previewURL") or "",
                 })
         else:
-            results.append({"provider": "pixabay", "query_usada": query, "erro": "sem resultados"})
+            results.append({"provider": "pixabay", "query_original": query, "query_usada": query_usada, "erro": "sem resultados"})
     except Exception as e:
-        results.append({"provider": "pixabay", "query_usada": query, "erro": str(e)})
+        results.append({"provider": "pixabay", "query_original": query, "query_usada": query_usada, "erro": str(e)})
 
     return results
 
@@ -123,6 +153,7 @@ def _search_pixabay(query: str) -> list[dict]:
 def _search_wikimedia(query: str) -> list[dict]:
     from scripts.video.media_providers.wikimedia_provider import search_wikimedia
 
+    # Wikimedia mantém query completa (indexa conteúdo histórico)
     results: list[dict] = []
     try:
         data = search_wikimedia(query, limit=5)
@@ -132,15 +163,16 @@ def _search_wikimedia(query: str) -> list[dict]:
                 src = p.get("src", {})
                 results.append({
                     "provider": "wikimedia",
+                    "query_original": query,
                     "query_usada": query,
                     "url": src.get("original") or "",
                     "resolucao": f"{p.get('width', '?')}x{p.get('height', '?')}",
                     "preview_url": src.get("thumb") or src.get("medium", src.get("small", "")),
                 })
         else:
-            results.append({"provider": "wikimedia", "query_usada": query, "erro": "sem resultados"})
+            results.append({"provider": "wikimedia", "query_original": query, "query_usada": query, "erro": "sem resultados"})
     except Exception as e:
-        results.append({"provider": "wikimedia", "query_usada": query, "erro": str(e)})
+        results.append({"provider": "wikimedia", "query_original": query, "query_usada": query, "erro": str(e)})
 
     return results
 
