@@ -18,10 +18,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from scripts.pipeline.product_pipeline import run_pipeline
-from scripts.pipeline.youtube_pipeline import run_youtube_pipeline
-from scripts.publisher.youtube_publish_config import resolve_upload_visibility
-
 
 def run_youtube_auth():
     """Executa fluxo OAuth interativo do YouTube."""
@@ -343,6 +339,7 @@ def run():
 
     if args.platform in ("tiktok_shop", "all") and not args.production:
         print("▶️ Pipeline TikTok Shop")
+        from scripts.pipeline.product_pipeline import run_pipeline
         tiktok_results = run_pipeline()
         all_results.extend(tiktok_results)
     elif args.production and args.platform == "tiktok_shop":
@@ -354,6 +351,7 @@ def run():
 
         production = args.production
         auto_upload = args.upload or production
+        from scripts.publisher.youtube_publish_config import resolve_upload_visibility
         privacy, visibility_ctx = resolve_upload_visibility(
             cli_privacy=args.privacy,
         )
@@ -362,6 +360,7 @@ def run():
             print("🏭 Modo PRODUÇÃO ativo\n")
             print(f"   Visibilidade: {privacy} ({visibility_ctx['reason']})\n")
 
+        from scripts.pipeline.youtube_pipeline import run_youtube_pipeline
         youtube_results = run_youtube_pipeline(
             auto_research=args.research or production,
             max_videos=max_videos,
