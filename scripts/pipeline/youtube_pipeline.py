@@ -96,6 +96,60 @@ from scripts.core.emotional_effects import apply_effect_hints_to_scenes
 from scripts.utils.slug import content_output_dir
 from scripts.strategy.shorts_extractor import maybe_extract_short
 
+# ── Tradutor de queries via Groq ────────────────────────────────────────
+
+_GROQ_TRANSLATE_MODEL = os.getenv("GROQ_TRANSLATE_MODEL", "llama-3.1-8b-instant")
+
+
+def _translate_queries_batch(queries: list[str]) -> list[str]:
+    """
+    Traduz queries de busca de imagens do português para inglês
+    otimizado para stock photos históricas. Usa 1 chamada Groq por job.
+
+    Fallback silencioso: retorna queries originais se Groq falhar.
+    """
+    if not queries:
+        return queries
+
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not api_key:
+        return queries
+
+    try:
+        from groq import Groq
+        import json
+
+        client = Groq(api_key=api_key)
+        prompt = (
+            "Translate these image search queries to English optimized for "
+            "historical stock photo search. Return ONLY a JSON object "
+            'with key "queries". '
+            'Example: {"queries": ["roman empire fall", "roman senate building"]}\n\n'
+            f"Queries to translate:\n{json.dumps(queries, ensure_ascii=False)}"
+        )
+
+        response = client.chat.completions.create(
+            model=_GROQ_TRANSLATE_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.1,
+        )
+
+        raw = response.choices[0].message.content
+        if "```" in raw:
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        result = json.loads(raw.strip())
+        translated = result.get("queries", [])
+        if len(translated) != len(queries):
+            return queries
+        print(f"[Tradução] {len(translated)} queries traduzidas via Groq")
+        return translated
+    except Exception as exc:
+        print(f"[Tradução] Falha ao traduzir queries ({exc}) — usando originais")
+        return queries
+
 
 def _is_dark_channel_mode() -> bool:
     return os.getenv("DARK_CHANNEL_MODE", "false").lower() in ("true", "1", "yes")
@@ -532,6 +586,17 @@ def run_youtube_pipeline(
             videos_dir = output_dir / "assets" / "videos"
             videos_dir.mkdir(parents=True, exist_ok=True)
             scene_list = extract_scenes(scenes)
+
+            # Traduz queries das cenas para inglês (otimizado para stock histórico)
+            raw_queries = [
+                (s.get("visual") or s.get("visual_query") or s.get("tipo", "") or "")
+                for s in scene_list
+            ]
+            translated = _translate_queries_batch(raw_queries)
+            for i, s in enumerate(scene_list):
+                if i < len(translated) and translated[i] and isinstance(s, dict):
+                    s["visual"] = translated[i]
+
             clips = get_footage_for_scenes(scene_list, str(videos_dir))
             for i, clip in enumerate(clips):
                 target = videos_dir / f"scene-{i + 1:02d}.mp4"
