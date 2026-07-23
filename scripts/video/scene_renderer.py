@@ -498,7 +498,7 @@ def render_scene_clip(
     _overlay_parts = ["colorchannelmixer=aa=0.25"]
 
     if _raw_title:
-        _safe = str(_raw_title).strip().replace("'", "\\'").replace(":", "\\:")
+        _safe = str(_raw_title).strip().replace("'", "\\'").replace(":", "\u2014")
         _overlay_parts.append(
             f"drawtext="
             f"text='{_safe}':"
@@ -601,6 +601,7 @@ def render_scene_clip(
         # Loga comando completo para debug
         safe_cmd = " ".join(str(c) for c in cmd)
         print(f"  CMD: {safe_cmd[:400]}")
+        print(f"  VF: {vf[:600]}")
         return False
 
 
