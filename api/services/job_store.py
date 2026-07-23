@@ -73,6 +73,27 @@ class JobStore:
                 except sqlite3.OperationalError:
                     pass
                 conn.commit()
+            except sqlite3.DatabaseError:
+                # Banco corrompido (ex: disco cheio durante escrita) — recria
+                conn.close()
+                self.db_path.unlink(missing_ok=True)
+                conn = self._connect()
+                conn.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS jobs (
+                        job_id TEXT PRIMARY KEY,
+                        status TEXT NOT NULL,
+                        output_path TEXT,
+                        error_message TEXT,
+                        stdout_tail TEXT,
+                        metadata TEXT,
+                        scenes TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
+                    """
+                )
+                conn.commit()
             finally:
                 conn.close()
 
@@ -82,6 +103,40 @@ class JobStore:
         with self._lock:
             conn = self._connect()
             try:
+                conn.execute(
+                    """
+                    INSERT INTO jobs (job_id, status, metadata, scenes, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        str(job_id),
+                        JobStatus.QUEUED.value,
+                        json.dumps(metadata or {}),
+                        json.dumps({}),
+                        now,
+                        now,
+                    ),
+                )
+                conn.commit()
+            except sqlite3.DatabaseError:
+                conn.close()
+                self.db_path.unlink(missing_ok=True)
+                conn = self._connect()
+                conn.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS jobs (
+                        job_id TEXT PRIMARY KEY,
+                        status TEXT NOT NULL,
+                        output_path TEXT,
+                        error_message TEXT,
+                        stdout_tail TEXT,
+                        metadata TEXT,
+                        scenes TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
+                    """
+                )
                 conn.execute(
                     """
                     INSERT INTO jobs (job_id, status, metadata, scenes, created_at, updated_at)
