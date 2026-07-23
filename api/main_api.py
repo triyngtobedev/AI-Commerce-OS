@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from api import __version__
 from api.config import get_pipeline_api_key
 from api.models.schemas import HealthResponse
-from api.routers import analytics, pipeline, scenes, test_images, youtube
+from api.routers import admin, analytics, pipeline, scenes, test_images, youtube
 from api.services.output_videos import get_latest_video_final, is_allowed_output_path
 
 load_dotenv()
@@ -208,3 +208,4 @@ app.include_router(scenes.router, prefix="/api/v1")
 app.include_router(youtube.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
 app.include_router(test_images.router, prefix="/api/v1")
+app.include_router(admin.router, prefix="/api/v1")
