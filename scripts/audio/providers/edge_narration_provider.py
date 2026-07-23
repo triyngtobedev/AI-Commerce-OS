@@ -16,7 +16,12 @@ def post_process_audio(input_path: Path, output_path: Path | None = None) -> Pat
     """
     Aplica EQ (boost 2-4kHz para presença vocal), compressão suave
     e normalização LUFS -16 integrada para YouTube.
+
+    Em caso de falha (ffmpeg, disco, permissão), retorna o áudio original intacto.
     """
+    if not input_path.exists():
+        return input_path
+
     target = output_path or input_path
     if target == input_path:
         temp = input_path.with_suffix(".tmp.mp3")
@@ -26,14 +31,11 @@ def post_process_audio(input_path: Path, output_path: Path | None = None) -> Pat
     cmd = [
         "ffmpeg", "-y",
         "-i", str(input_path),
-        # EQ: presença vocal 2-4kHz, corta sub 80Hz, shelve suave em 8kHz
         "-af",
         "equalizer=f=80:t=h:width=0.5:g=-6,"
         "equalizer=f=2500:t=q:width=1:g=4,"
         "equalizer=f=6000:t=q:width=1:g=2,"
-        # Compressão suave: threshold baixo, ratio moderado
         "acompressor=threshold=0.3:ratio=3:attack=5:release=50,"
-        # Normalização LUFS -16 (padrão YouTube)
         "loudnorm=I=-16:TP=-1.5:LRA=7",
         "-c:a", "libmp3lame",
         "-q:a", "2",
@@ -41,10 +43,14 @@ def post_process_audio(input_path: Path, output_path: Path | None = None) -> Pat
     ]
     try:
         subprocess.run(cmd, check=True, capture_output=True)
-        if temp != target:
-            temp.replace(target)
-    except subprocess.CalledProcessError:
-        print("  ⚠️ Pós-processamento de áudio falhou — usando áudio bruto")
+        if temp.exists():
+            if temp != target:
+                temp.replace(target)
+        else:
+            print("  ⚠️ Pós-processamento de áudio: ffmpeg não produziu saída — usando áudio bruto")
+            return target
+    except Exception as exc:
+        print(f"  ⚠️ Pós-processamento de áudio falhou ({exc}) — usando áudio bruto")
         if temp.exists():
             temp.unlink()
 
