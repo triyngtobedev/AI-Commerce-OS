@@ -9,22 +9,16 @@ Retorne APENAS JSON no formato:
 {
   "schema_version": "1.1",
   "produto": "nome do tema",
-  "angulo": "revelacao_historica | fato_surpreendente | impacto_historico | misterio_nao_resolvido | cronologia_epica",
+  "angulo": "revelacao_historica",
   "gancho": "Frase de abertura que prende nos primeiros 5 segundos",
-  "estilo_video": "documentario_narrado | cronologia_visual | antes_depois_historico | revelacao_progressiva",
+  "estilo_video": "documentario_narrado",
   "cta": "Inscreva-se e ative o sininho para mais histórias incríveis",
   "objetivo": "maximizar watch time e retenção",
   "formato": "video_horizontal_youtube_documentario",
-  "roteiro_template": "documentario | dark5 | lofi_dark",
+  "roteiro_template": "documentario",
   "queries_contexto": [
-    "ancient stone temple ruins, cinematic aerial establishing shot, golden hour, dramatic god rays, atmospheric fog",
-    "archaeological excavation site, slow dolly shot, warm dust particles floating in light beams, shallow depth of field",
-    "ancient carved stone reliefs, extreme close-up, dramatic side lighting revealing texture, photorealistic",
-    "lone figure silhouette in vast desert, cinematic wide shot at dusk, epic scale, moody lighting",
-    "misty mountain ranges, sweeping drone shot, cold blue tones, sense of mystery and scale",
-    "ancient artifact on dark background, macro shot, museum rim lighting, photorealistic, shallow focus",
-    "modern city skyline over historical ruins, cinematic timelapse, warm-to-cool color grade, high contrast",
-    "starry night sky over ancient monument, long exposure closing shot, awe-inspiring atmosphere"
+    "ruins aerial golden hour dramatic lighting",
+    "close-up artifact museum rim light photorealistic"
   ],
   "duracao_alvo": "8 minutos",
   "tom_narracao": "documentario_envolvente"

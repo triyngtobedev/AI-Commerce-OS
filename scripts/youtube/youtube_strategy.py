@@ -66,6 +66,9 @@ Oportunidade:
 """
 
 
+    token_estimate = int(len(full_prompt.split()) * 1.3)
+    print(f"[Strategy] prompt chars={len(full_prompt)} tokens~{token_estimate}")
+
     response = ask_ai(
         full_prompt,
         "strategy",
