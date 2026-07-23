@@ -112,6 +112,19 @@ async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> 
 
     Marca o job como running → completed/failed conforme exit code e stdout.
     """
+    # Lock de concorrência: só um job por vez
+    if job_store.has_running_job():
+        job_store.update_job_status(
+            job_id,
+            JobStatus.FAILED,
+            error_message=(
+                "Já existe um job em execução. "
+                "O pipeline atual suporta apenas um job por vez. "
+                "Aguarde o job atual terminar antes de disparar outro."
+            ),
+        )
+        return
+
     job_store.update_job_status(job_id, JobStatus.RUNNING)
     cli_args = build_cli_args(request)
 
@@ -182,6 +195,42 @@ async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> 
             JobStatus.FAILED,
             error_message=str(exc),
         )
+
+    # Auto-cleanup: remove arquivos intermediários, mantém vídeo final + reports
+    _cleanup_job_output(job_id)
+
+
+def _cleanup_job_output(job_id: UUID) -> None:
+    """Remove diretórios intermediários do job, mantém video_final.mp4 e reports."""
+    job = job_store.get_job(job_id)
+    if not job:
+        return
+    output_path = job.get("output_path")
+    if not output_path:
+        return
+
+    output_dir = Path(output_path).parent
+    if not output_dir.exists():
+        return
+
+    # Mantém estes arquivos
+    keep_patterns = {"video_final.mp4", "thumbnail.jpg", "*.json", "*.srt", "*.ass"}
+    # Remove estes diretórios (intermediários)
+    remove_dirs = [
+        output_dir / "assets" / "scene_clips",
+        output_dir / "dark_channel_work",
+        output_dir / "assets" / "videos",
+        output_dir / "assets" / "images",
+        output_dir / "assets" / "audio",
+    ]
+
+    for d in remove_dirs:
+        if d.exists():
+            try:
+                import shutil
+                shutil.rmtree(d)
+            except Exception:
+                pass
 
 
 def _stderr_tail(stderr: str, lines: int = 20) -> str:

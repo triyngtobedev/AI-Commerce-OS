@@ -234,6 +234,51 @@ class JobStore:
         if event is not None:
             event.set()
 
+    def mark_running_as_failed(self) -> list[str]:
+        """Marca todos os jobs 'running' como 'failed' (boot recovery)."""
+        affected: list[str] = []
+        now = _utcnow().isoformat()
+        with self._lock:
+            conn = self._connect()
+            try:
+                rows = conn.execute(
+                    "SELECT job_id FROM jobs WHERE status = ?",
+                    (JobStatus.RUNNING.value,),
+                ).fetchall()
+                for row in rows:
+                    affected.append(str(row["job_id"]))
+                conn.execute(
+                    """
+                    UPDATE jobs SET status = ?, error_message = ?, updated_at = ?
+                    WHERE status = ?
+                    """,
+                    (
+                        JobStatus.FAILED.value,
+                        "container_restart: job interrompido por reinicialização do servidor",
+                        now,
+                        JobStatus.RUNNING.value,
+                    ),
+                )
+                conn.commit()
+            except sqlite3.DatabaseError:
+                pass
+            finally:
+                conn.close()
+        return affected
+
+    def has_running_job(self) -> bool:
+        """True se existe algum job com status running."""
+        with self._lock:
+            conn = self._connect()
+            try:
+                row = conn.execute(
+                    "SELECT 1 FROM jobs WHERE status = ? LIMIT 1",
+                    (JobStatus.RUNNING.value,),
+                ).fetchone()
+                return row is not None
+            finally:
+                conn.close()
+
     def get_job(self, job_id: UUID) -> Optional[dict[str, Any]]:
         """Retorna registro completo do job ou None."""
         conn = self._connect()

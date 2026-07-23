@@ -104,7 +104,48 @@ async def security_middleware(request: Request, call_next: Callable):
 
 
 @app.on_event("startup")
-async def log_auth_config() -> None:
+async def startup_recovery() -> None:
+    """Recuperação de jobs órfãos + limpeza de outputs antigos na inicialização."""
+    from api.services.job_store import job_store
+
+    # 1. Marca jobs running como failed (restart/crash recovery)
+    affected = job_store.mark_running_as_failed()
+    if affected:
+        print(
+            f"[startup] {len(affected)} job(s) órfão(s) marcados como failed: "
+            f"{', '.join(affected[:3])}{'...' if len(affected) > 3 else ''}",
+            flush=True,
+        )
+    else:
+        print("[startup] Nenhum job órfão encontrado.", flush=True)
+
+    # 2. Remove outputs com mais de 7 dias (retenção)
+    import shutil
+    from pathlib import Path
+
+    output_dir = Path(os.getenv("OUTPUT_DIR", "/app/persistent/output"))
+    if output_dir.exists():
+        import time
+        now = time.time()
+        max_age = 7 * 86400  # 7 dias em segundos
+        removed = 0
+        for entry in output_dir.iterdir():
+            if entry.is_dir():
+                # Verifica se o diretório tem video_final.mp4 + verifica idade
+                video = entry / "video_final.mp4"
+                if video.exists():
+                    age = now - video.stat().st_mtime
+                    if age > max_age:
+                        shutil.rmtree(entry, ignore_errors=True)
+                        removed += 1
+                        print(f"[startup] Output expirado removido: {entry.name} ({age/86400:.0f}d)", flush=True)
+        if removed:
+            print(f"[startup] {removed} output(s) antigo(s) removido(s).", flush=True)
+
+    log_auth_config()
+
+
+def log_auth_config() -> None:
     """Avisa no log do Railway se a chave de API não estiver configurada."""
     git_commit = os.getenv("RAILWAY_GIT_COMMIT_SHA", "unknown")
     print(f"GIT_COMMIT: {git_commit}", flush=True)
