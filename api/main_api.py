@@ -127,7 +127,7 @@ async def startup_recovery() -> None:
     else:
         print("[startup] Nenhum job órfão encontrado.", flush=True)
 
-    # 2. Remove outputs com mais de 7 dias (retenção)
+    # 2. Remove outputs órfãos (sem video_final.mp4) + outputs com >7 dias
     import shutil
     from pathlib import Path
 
@@ -139,7 +139,6 @@ async def startup_recovery() -> None:
         removed = 0
         for entry in output_dir.iterdir():
             if entry.is_dir():
-                # Verifica se o diretório tem video_final.mp4 + verifica idade
                 video = entry / "video_final.mp4"
                 if video.exists():
                     age = now - video.stat().st_mtime
@@ -147,8 +146,13 @@ async def startup_recovery() -> None:
                         shutil.rmtree(entry, ignore_errors=True)
                         removed += 1
                         print(f"[startup] Output expirado removido: {entry.name} ({age/86400:.0f}d)", flush=True)
+                else:
+                    # Diretório sem video_final = job falhou antes de renderizar
+                    shutil.rmtree(entry, ignore_errors=True)
+                    removed += 1
+                    print(f"[startup] Output órfão removido: {entry.name} (sem video_final)", flush=True)
         if removed:
-            print(f"[startup] {removed} output(s) antigo(s) removido(s).", flush=True)
+            print(f"[startup] {removed} output(s) órfão(s)/expirado(s) removido(s).", flush=True)
 
     log_auth_config()
 
