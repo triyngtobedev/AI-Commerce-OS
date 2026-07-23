@@ -145,6 +145,7 @@ async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> 
             *cli_args,
             cwd=str(PROJECT_ROOT),
             env=env,
+            stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
