@@ -66,64 +66,27 @@ class TestImagesResponse(BaseModel):
 
 _TIMEOUT = 15
 
-# Mapeamento de temas históricos → queries stock (mesmo dos providers)
-_HISTORICAL_STOCK_MAP = {
-    "rome": "ancient rome",
-    "roman": "ancient rome",
-    "egypt": "ancient egypt",
-    "egito": "ancient egypt",
-    "greece": "ancient greece",
-    "grecia": "ancient greece",
-    "greek": "ancient greece",
-    "medieval": "medieval castle",
-    "temple": "ancient temple",
-    "templo": "ancient temple",
-    "pyramid": "egypt pyramid",
-    "piramide": "egypt pyramid",
-    "pirâmide": "egypt pyramid",
-    "soldier": "roman soldier",
-    "soldiers": "soldiers army",
-    "war": "war battle soldiers",
-    "battle": "battle soldiers",
-    "king": "king crown throne",
-    "queen": "queen crown",
-    "emperor": "emperor crown",
-    "sword": "sword weapon",
-    "ship": "ship ocean sailing",
-    "horse": "horse riding",
-    "castle": "medieval castle",
-    "ruins": "ancient ruins",
-    "ruinas": "ancient ruins",
-    "forest": "forest nature",
-    "floresta": "forest nature",
-    "desert": "desert landscape",
-    "deserto": "desert landscape",
-    "mountains": "mountain landscape",
-    "montanha": "mountain landscape",
-    "ocean": "ocean sea waves",
-    "city": "city architecture",
-    "cidade": "city architecture",
-    "map": "world map",
-    "mapa": "world map",
-    "fire": "fire flame",
-    "fogo": "fire flame",
-    "explosion": "explosion fire",
-    "meteor": "meteor sky",
-}
+# Termos de estilo cinematográfico — queries chegam em inglês via Groq
+_STYLE_NOISE = frozenset({
+    "dark", "documentary", "cinematic", "reveal", "dramatic", "mystery",
+    "conspiracy", "investigation", "footage", "close", "up", "closeup",
+    "unexplained", "truth", "discovery", "forensic", "evidence", "secret",
+    "shocking", "revealed", "exclusive", "inside", "story", "real",
+    "unknown", "bizarre", "strange", "weird",
+    "incredible", "amazing", "ultimate", "complete", "full", "hidden",
+})
 
 
 def _simplify_for_stock(query: str) -> str:
-    query_lower = query.strip().lower()
-    if not query_lower:
-        return query
-    if query_lower in _HISTORICAL_STOCK_MAP:
-        return _HISTORICAL_STOCK_MAP[query_lower]
+    """Remove ruído cinematográfico de queries em inglês, mantém contexto histórico."""
     words = query.strip().split()
-    for word in words:
-        word_lower = word.lower().strip(".,!?;:")
-        if word_lower in _HISTORICAL_STOCK_MAP:
-            return _HISTORICAL_STOCK_MAP[word_lower]
-    return " ".join(words[:3]).strip()
+    if not words:
+        return query
+    filtered = [w for w in words if w.lower().strip(".,!?;:") not in _STYLE_NOISE]
+    if not filtered:
+        filtered = words[:3]
+    simplified = " ".join(filtered[:4]).strip()
+    return simplified if len(simplified) > 3 else " ".join(words[:3])
 
 
 def _search_pexels(query: str) -> list[dict]:

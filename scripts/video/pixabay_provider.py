@@ -16,82 +16,26 @@ from scripts.core.production.retry import retry_with_backoff
 
 load_dotenv()
 
-# Mapeamento de temas históricos/específicos → queries stock visuais
-# (mesmo mapping usado no Pexels)
-_HISTORICAL_STOCK_MAP = {
-    "rome": "ancient rome",
-    "roman": "ancient rome",
-    "egito": "ancient egypt",
-    "egypt": "ancient egypt",
-    "egipcio": "ancient egypt",
-    "egípcio": "ancient egypt",
-    "grecia": "ancient greece",
-    "greece": "ancient greece",
-    "greek": "ancient greece",
-    "medieval": "medieval castle",
-    "idade media": "medieval castle",
-    "temple": "ancient temple",
-    "templo": "ancient temple",
-    "pyramid": "egypt pyramid",
-    "piramide": "egypt pyramid",
-    "pirâmide": "egypt pyramid",
-    "soldier": "roman soldier",
-    "soldiers": "soldiers army",
-    "soldado": "soldiers army",
-    "war": "war battle soldiers",
-    "guerra": "war battle",
-    "battle": "battle soldiers",
-    "batalha": "battle soldiers",
-    "king": "king crown throne",
-    "rei": "king crown throne",
-    "queen": "queen crown",
-    "rainha": "queen crown",
-    "emperor": "emperor crown",
-    "imperador": "emperor crown",
-    "sword": "sword weapon",
-    "espada": "sword weapon",
-    "ship": "ship ocean sailing",
-    "navio": "ship ocean sailing",
-    "horse": "horse riding",
-    "cavalo": "horse riding",
-    "castle": "medieval castle",
-    "castelo": "medieval castle",
-    "ruins": "ancient ruins",
-    "ruina": "ancient ruins",
-    "ruínas": "ancient ruins",
-    "forest": "forest nature",
-    "floresta": "forest nature",
-    "desert": "desert landscape",
-    "deserto": "desert landscape",
-    "mountains": "mountain landscape",
-    "montanha": "mountain landscape",
-    "ocean": "ocean sea waves",
-    "oceano": "ocean sea waves",
-    "city": "city architecture",
-    "cidade": "city architecture",
-    "map": "world map",
-    "mapa": "world map",
-    "fire": "fire flame",
-    "fogo": "fire flame",
-    "explosion": "explosion fire",
-    "explosão": "explosion fire",
-    "explosao": "explosion fire",
-    "meteor": "meteor sky",
-}
+# Termos de estilo cinematográfico — queries chegam em inglês via Groq
+_STYLE_NOISE = frozenset({
+    "dark", "documentary", "cinematic", "reveal", "dramatic", "mystery",
+    "conspiracy", "investigation", "footage", "close", "up", "closeup",
+    "unexplained", "truth", "discovery", "forensic", "evidence", "secret",
+    "shocking", "revealed", "exclusive", "inside", "story", "real",
+    "unknown", "bizarre", "strange", "weird",
+    "incredible", "amazing", "ultimate", "complete", "full", "hidden",
+})
 
 
 def _simplify_for_stock(query: str) -> str:
-    query_lower = query.strip().lower()
-    if not query_lower:
-        return query
-    if query_lower in _HISTORICAL_STOCK_MAP:
-        return _HISTORICAL_STOCK_MAP[query_lower]
     words = query.strip().split()
-    for word in words:
-        word_lower = word.lower().strip(".,!?;:")
-        if word_lower in _HISTORICAL_STOCK_MAP:
-            return _HISTORICAL_STOCK_MAP[word_lower]
-    return " ".join(words[:3]).strip()
+    if not words:
+        return query
+    filtered = [w for w in words if w.lower().strip(".,!?;:") not in _STYLE_NOISE]
+    if not filtered:
+        filtered = words[:3]
+    simplified = " ".join(filtered[:4]).strip()
+    return simplified if len(simplified) > 3 else " ".join(words[:3])
 
 PIXABAY_VIDEO_URL = "https://pixabay.com/api/videos/"
 PIXABAY_PHOTO_URL = "https://pixabay.com/api/"

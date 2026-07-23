@@ -16,103 +16,42 @@ PEXELS_PHOTO_URL = (
     "https://api.pexels.com/v1/search"
 )
 
-# Mapeamento de temas históricos/específicos → queries visuais que existem
-# no Pexels/Pixabay. A chave é uma palavra da query original; o valor é
-# a query stock que sabemos que retorna resultados.
-_HISTORICAL_STOCK_MAP = {
-    "rome": "ancient rome",
-    "roman": "ancient rome",
-    "egito": "ancient egypt",
-    "egypt": "ancient egypt",
-    "egipcio": "ancient egypt",
-    "egípcio": "ancient egypt",
-    "grecia": "ancient greece",
-    "greece": "ancient greece",
-    "greek": "ancient greece",
-    "medieval": "medieval castle",
-    "idade media": "medieval castle",
-    "temple": "ancient temple",
-    "templo": "ancient temple",
-    "pyramid": "egypt pyramid",
-    "piramide": "egypt pyramid",
-    "pirâmide": "egypt pyramid",
-    "soldier": "roman soldier",
-    "soldiers": "soldiers army",
-    "soldado": "soldiers army",
-    "war": "war battle soldiers",
-    "guerra": "war battle",
-    "battle": "battle soldiers",
-    "batalha": "battle soldiers",
-    "king": "king crown throne",
-    "rei": "king crown throne",
-    "queen": "queen crown",
-    "rainha": "queen crown",
-    "emperor": "emperor crown",
-    "imperador": "emperor crown",
-    "sword": "sword weapon",
-    "espada": "sword weapon",
-    "ship": "ship ocean sailing",
-    "navio": "ship ocean sailing",
-    "barco": "boat ship sailing",
-    "horse": "horse riding",
-    "cavalo": "horse riding",
-    "army": "army soldiers",
-    "exército": "army soldiers",
-    "exercito": "army soldiers",
-    "castle": "medieval castle",
-    "castelo": "medieval castle",
-    "church": "church building",
-    "igreja": "church building",
-    "cathedral": "cathedral gothic",
-    "catedral": "cathedral gothic",
-    "ruins": "ancient ruins",
-    "ruina": "ancient ruins",
-    "ruína": "ancient ruins",
-    "ruinas": "ancient ruins",
-    "ruínas": "ancient ruins",
-    "forest": "forest nature",
-    "floresta": "forest nature",
-    "desert": "desert landscape",
-    "deserto": "desert landscape",
-    "mountains": "mountain landscape",
-    "montanha": "mountain landscape",
-    "ocean": "ocean sea waves",
-    "oceano": "ocean sea waves",
-    "city": "city architecture",
-    "cidade": "city architecture",
-    "map": "world map",
-    "mapa": "world map",
-}
+# Termos de estilo cinematográfico que Pixabay/Pexels não indexam.
+# Queries agora chegam em inglês via Groq — só precisamos limpar ruído.
+_STYLE_NOISE = frozenset({
+    "dark", "documentary", "cinematic", "reveal", "dramatic", "mystery",
+    "conspiracy", "investigation", "footage", "close", "up", "closeup",
+    "unexplained", "truth", "discovery", "forensic", "evidence", "secret",
+    "shocking", "revealed", "exclusive", "inside", "story", "real",
+    "unknown", "bizarre", "strange", "weird",
+    "incredible", "amazing", "ultimate", "complete", "full", "hidden",
+})
 
 
 def _simplify_for_stock(query: str) -> str:
     """
-    Traduz query histórica/específica para termos visuais que existem
-    no Pexels/Pixabay. Usa mapeamento de temas → queries stock.
+    Remove termos de estilo cinematográfico de queries em inglês,
+    mantendo sujeito histórico + contexto relevante para busca stock.
 
     Ex:
-      "roman legions barbarian invasion"  -> "ancient rome"
-      "roman senate corruption ancient"   -> "ancient rome"
-      "ancient egypt pyramid mystery"     -> "ancient egypt"
-      "tunguska explosion 1908"           -> "forest fire" (fallback: 2 primeiras palavras)
+      "roman empire forensic evidence documents investigation close up"
+        -> "roman empire documents"
+      "roman empire dramatic revelation truth discovery"
+        -> "roman empire"
+      "ancient egypt burial ritual ceremony"
+        -> "ancient egypt burial ritual"
+      "tunguska explosion 1908 documentary footage"
+        -> "tunguska explosion 1908"
     """
-    query_lower = query.strip().lower()
-    if not query_lower:
+    words = query.strip().split()
+    if not words:
         return query
 
-    # 1. Tenta mapeamento exato completo (query inteira como chave)
-    if query_lower in _HISTORICAL_STOCK_MAP:
-        return _HISTORICAL_STOCK_MAP[query_lower]
-
-    # 2. Tenta mapeamento por palavra-chave (qualquer palavra da query)
-    words = query.strip().split()
-    for word in words:
-        word_lower = word.lower().strip(".,!?;:")
-        if word_lower in _HISTORICAL_STOCK_MAP:
-            return _HISTORICAL_STOCK_MAP[word_lower]
-
-    # 3. Fallback: primeiras 2-3 palavras (corta termos muito longos)
-    return " ".join(words[:3]).strip()
+    filtered = [w for w in words if w.lower().strip(".,!?;:") not in _STYLE_NOISE]
+    if not filtered:
+        filtered = words[:3]
+    simplified = " ".join(filtered[:4]).strip()
+    return simplified if len(simplified) > 3 else " ".join(words[:3])
 
 
 def search_pexels(
