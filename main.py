@@ -399,4 +399,7 @@ def run():
 
 
 if __name__ == "__main__":
+    import sys
+    print("main.py started", flush=True)
+    sys.stdout.flush()
     run()
