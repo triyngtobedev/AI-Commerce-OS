@@ -1,5 +1,4 @@
 import time
-import logging
 
 _groq_call_log = []
 
@@ -26,7 +25,7 @@ def groq_call_tracked(groq_client, etapa: str, **kwargs):
     }
     _groq_call_log.append(entrada)
 
-    logging.info(
+    print(
         f"[Groq] chamada {entrada['n']} — {etapa} — "
         f"intervalo: {entrada['intervalo_anterior']}s"
     )
@@ -36,14 +35,14 @@ def groq_call_tracked(groq_client, etapa: str, **kwargs):
 
 def log_groq_summary():
     if not _groq_call_log:
-        logging.info("[Groq] nenhuma chamada registrada")
+        print("[Groq] nenhuma chamada registrada")
         return
     n = len(_groq_call_log)
-    logging.info(f"[Groq] total: {n} chamadas")
-    logging.info(
+    print(f"[Groq] total: {n} chamadas")
+    print(
         f"[Groq] janela total: "
         f"{_groq_call_log[-1]['timestamp'] - _groq_call_log[0]['timestamp']:.1f}s"
     )
     if n > 1:
         menor = min(e["intervalo_anterior"] for e in _groq_call_log[1:])
-        logging.info(f"[Groq] menor intervalo: {menor:.2f}s")
+        print(f"[Groq] menor intervalo: {menor:.2f}s")
