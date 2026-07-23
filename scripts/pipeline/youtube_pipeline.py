@@ -125,13 +125,25 @@ def _translate_queries_batch(queries: list[str]) -> list[str]:
         import json
 
         client = Groq(api_key=api_key)
-        prompt = (
-            "Translate these image search queries to English optimized for "
-            "historical stock photo search. Return ONLY a JSON object "
-            'with key "queries". '
-            'Example: {"queries": ["roman empire fall", "roman senate building"]}\n\n'
-            f"Queries to translate:\n{json.dumps(queries, ensure_ascii=False)}"
-        )
+        prompt = f"""Translate these image search queries to English optimized for stock photo search.
+
+Rules:
+- Preserve proper nouns exactly (names of people, places, operations, battles)
+- Preserve historical periods with correct era terms:
+  * Events before 1500 CE \u2192 use "ancient", "medieval"
+  * Events 1500-1899 \u2192 use "renaissance", "colonial", "victorian", "napoleonic"
+  * Events 1900-1945 \u2192 use "world war", "wwi", "wwii", "1920s", "1930s"
+  * Events after 1945 \u2192 use "cold war", "modern", specific decade
+- Do NOT use "ancient" for events after 1500 CE
+- Keep specific event names (e.g. "ghost army", "operation fortitude", "d-day")
+- Remove cinematic style words (dramatic, dark, mystery, revelation, cinematic, footage)
+- Output 3-5 words per query, optimized for image search
+
+Return ONLY a JSON object in this exact format, no explanation:
+{{"queries": ["translated query 1", "translated query 2", ...]}}
+
+Queries to translate:
+{json.dumps(queries, ensure_ascii=False)}"""
 
         response = groq_call_tracked(
             client,

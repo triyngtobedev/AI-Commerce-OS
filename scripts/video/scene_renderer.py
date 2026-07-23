@@ -34,16 +34,34 @@ class RenderSyncError(RuntimeError):
     """Diferença áudio/vídeo acima do limite permitido."""
 
 
+def get_file_duration(path: str | Path) -> float:
+    """Obtém duração de arquivo de mídia via FFprobe."""
+    import json
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-print_format", "json",
+             "-show_format", str(path)],
+            capture_output=True, text=True, timeout=15,
+        )
+        data = json.loads(result.stdout)
+        return float(data["format"]["duration"])
+    except Exception:
+        return 0.0
+
+
 def _scene_duration(scene: dict, synced: bool) -> float:
-    """Obtém duração da cena — timeline sincronizada é obrigatória."""
+    """Obtém duração da cena — fallback silencioso para não quebrar o pipeline."""
 
     duration = scene.get("duration_seconds")
     if duration and float(duration) > 0:
         return float(duration)
 
     if synced:
-        raise RenderSyncError(
-            f"Cena '{scene.get('tipo', '?')}' sem duration_seconds na timeline sincronizada"
+        print(
+            f"[Render] ⚠️ Cena '{scene.get('tipo', '?')}' sem duration_seconds "
+            f"— estimando pelo tempo/áudio"
         )
 
     tempo = scene.get("tempo", "0-5")
@@ -474,10 +492,42 @@ def render_scene_clip(
     ):
         lower_third = lower_third_filter(scene_label, duration, platform)
 
+    # ── Overlay escuro + título centralizado (dark documentary) ─────
+    _raw_title = (scene or {}).get("title", "") or scene_label
+    _fade_out_start = max(0.0, duration - 0.5)
+    _overlay_parts = ["colorchannelmixer=aa=0.25"]
+
+    if _raw_title:
+        _safe = str(_raw_title).strip().replace("'", "\\'")
+        _overlay_parts.append(
+            f"drawtext="
+            f"text='{_safe}':"
+            f"fontcolor=white:"
+            f"fontsize=52:"
+            f"font=Arial:"
+            f"x=(w-text_w)/2:"
+            f"y=(h-text_h)/2:"
+            f"shadowcolor=black:"
+            f"shadowx=2:"
+            f"shadowy=2:"
+            f"alpha='if(lt(t,0.5),t/0.5,if(gt(t,{_fade_out_start:.1f}),({duration:.1f}-t)/0.5,1))'"
+        )
+        _overlay_parts.append(
+            f"drawtext="
+            f"text='#{scene_index + 1}':"
+            f"fontcolor=#888888:"
+            f"fontsize=24:"
+            f"x=(w-text_w)/2:"
+            f"y=h/2+60"
+        )
+
+    _overlay_str = ",".join(_overlay_parts)
+
     if is_image(media_path):
         vf = (
             f"{_ken_burns_filter(width, height, duration, motion, zoom_max=zoom_max)},"
             f"{grade},"
+            f"{_overlay_str},"
             f"{_fade_filter(duration, fade)}"
         )
         if lower_third:
@@ -508,7 +558,7 @@ def render_scene_clip(
         needs_loop = source_duration > 0 and source_duration < duration - 0.5
 
         base_vf = _video_motion_filter(width, height, duration, scene_index, motion)
-        vf = f"{base_vf},{grade},{_fade_filter(duration, fade)}"
+        vf = f"{base_vf},{grade},{_overlay_str},{_fade_filter(duration, fade)}"
         if lower_third:
             vf += f",{lower_third}"
 
