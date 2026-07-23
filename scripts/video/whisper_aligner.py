@@ -91,3 +91,18 @@ def transcribe_words(audio_path, language: str | None = None) -> list[dict]:
     except Exception as error:
         print(f"  ⚠️ Whisper indisponível/falhou ({error}); usando timing estimado.")
         return []
+    finally:
+        # Libera o modelo da memória e limpa cache se for Railway (disco limitado)
+        _cleanup_whisper_cache()
+
+
+def _cleanup_whisper_cache() -> None:
+    """Remove cache do Whisper para liberar disco em ambientes com espaço limitado."""
+    global _model
+    if _model is not None:
+        try:
+            _model = None
+            import gc
+            gc.collect()
+        except Exception:
+            pass

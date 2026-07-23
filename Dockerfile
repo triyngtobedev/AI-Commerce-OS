@@ -14,6 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DEBIAN_FRONTEND=noninteractive \
     # Whisper e Hugging Face cache em /tmp (Railway: efêmero mas dentro do ciclo de vida)
     WHISPER_CACHE_DIR=/tmp/whisper_cache \
+    WHISPER_MODEL_SIZE=tiny \
     HF_HOME=/tmp/huggingface \
     HF_HUB_CACHE=/tmp/huggingface/hub \
     XDG_CACHE_HOME=/tmp/cache

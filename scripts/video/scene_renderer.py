@@ -490,8 +490,8 @@ def render_scene_clip(
             "-t", str(duration),
             "-vf", vf,
             "-c:v", "libx264",
-            "-preset", "slow",
-            "-crf", "18",
+            "-preset", "medium",
+            "-crf", "20",
             "-pix_fmt", "yuv420p",
             "-an",
             str(output_path),
@@ -529,8 +529,8 @@ def render_scene_clip(
             "-t", str(duration),
             "-vf", vf,
             "-c:v", "libx264",
-            "-preset", "slow",
-            "-crf", "18",
+            "-preset", "medium",
+            "-crf", "20",
             "-pix_fmt", "yuv420p",
             "-an",
             str(output_path),
@@ -852,6 +852,14 @@ def render_scenes_video(
         if _trim_video_duration(video_only, trimmed, expected):
             video_only = trimmed
 
+    # Libera espaço: remove clips intermediários após concatenação
+    try:
+        for clip in clip_paths:
+            if clip.exists() and clip != video_only:
+                clip.unlink()
+    except Exception:
+        pass
+
     return video_only
 
 
@@ -939,8 +947,8 @@ def mux_video_audio_subtitles(
     cmd.extend([
         "-vf", video_filter,
         "-c:v", "libx264",
-        "-preset", "slow",
-        "-crf", "18",
+        "-preset", "medium",
+        "-crf", "20",
         "-pix_fmt", "yuv420p",
     ])
 
