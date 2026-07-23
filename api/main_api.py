@@ -116,6 +116,14 @@ async def startup_recovery() -> None:
             f"{', '.join(affected[:3])}{'...' if len(affected) > 3 else ''}",
             flush=True,
         )
+        # Para cada job órfão: limpa outputs parciais (scene_clips, assets temporários)
+        from api.services.pipeline_runner import _cleanup_job_output
+        from uuid import UUID
+        for jid in affected:
+            try:
+                _cleanup_job_output(UUID(jid))
+            except Exception:
+                pass
     else:
         print("[startup] Nenhum job órfão encontrado.", flush=True)
 
