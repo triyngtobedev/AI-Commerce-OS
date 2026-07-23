@@ -159,10 +159,14 @@ def concat_video_clips(clip_paths: list, output_path: Path) -> bool:
     """
     Concatena clips de vídeo via FFmpeg demuxer (-f concat).
 
-    Tenta stream copy (-c copy) primeiro; se falhar por mismatch de codec,
-    re-encoda com libx264.
+    Usa apenas scene_*.mp4 encontrados no diretório de saída —
+    ignora clip_paths (que pode conter intro.mp4/outro.mp4 não gerados).
+    Tenta stream copy (-c copy) primeiro; se falhar, re-encoda com libx264.
     """
-    paths = [Path(clip) for clip in clip_paths]
+    clips_dir = output_path.parent
+    clips_dir.mkdir(parents=True, exist_ok=True)
+
+    paths = sorted(clips_dir.glob("scene_*.mp4"))
     if not paths:
         return False
 
@@ -170,8 +174,7 @@ def concat_video_clips(clip_paths: list, output_path: Path) -> bool:
         shutil.copy2(paths[0], output_path)
         return output_path.exists()
 
-    list_file = output_path.parent / "concat_list.txt"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    list_file = clips_dir / "concat_list.txt"
     with open(list_file, "w", encoding="utf-8") as file:
         for clip in paths:
             path = str(clip.resolve()).replace("\\", "/")
