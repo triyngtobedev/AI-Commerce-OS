@@ -498,7 +498,7 @@ def render_scene_clip(
     _overlay_parts = ["colorchannelmixer=aa=0.25"]
 
     if _raw_title:
-        _safe = str(_raw_title).strip().replace("'", "\\'")
+        _safe = str(_raw_title).strip().replace("'", "\\'").replace(":", "\\:")
         _overlay_parts.append(
             f"drawtext="
             f"text='{_safe}':"
