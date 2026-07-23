@@ -231,6 +231,22 @@ async def health_check() -> HealthResponse:
     )
 
 
+@app.get("/api/v1/admin/jobs", tags=["admin"])
+async def admin_list_jobs() -> dict:
+    """Lista últimos 20 jobs com status, ordenados por created_at desc."""
+    from api.services.job_store import job_store
+
+    jobs = job_store.list_all_jobs()
+    return {"jobs": jobs}
+
+
+@app.post("/api/v1/admin/recovery", tags=["admin"])
+async def admin_force_recovery() -> dict:
+    """Força o mesmo recovery do startup: marca running→failed, limpa órfãos."""
+    await startup_recovery()
+    return {"result": "recovery concluído"}
+
+
 @app.get("/download/latest-video", tags=["download"])
 @app.head("/download/latest-video", tags=["download"])
 def download_latest_video() -> FileResponse:

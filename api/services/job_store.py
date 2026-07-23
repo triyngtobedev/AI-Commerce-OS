@@ -279,6 +279,29 @@ class JobStore:
             finally:
                 conn.close()
 
+    def list_all_jobs(self) -> list[dict[str, Any]]:
+        """Lista últimos 20 jobs ordenados por created_at desc."""
+        with self._lock:
+            conn = self._connect()
+            try:
+                cursor = conn.execute(
+                    "SELECT job_id, status, error_message, created_at, updated_at "
+                    "FROM jobs ORDER BY created_at DESC LIMIT 20"
+                )
+                rows = cursor.fetchall()
+                return [
+                    {
+                        "job_id": r[0],
+                        "status": r[1],
+                        "error_message": r[2],
+                        "created_at": r[3],
+                        "updated_at": r[4],
+                    }
+                    for r in rows
+                ]
+            finally:
+                conn.close()
+
     def get_job(self, job_id: UUID) -> Optional[dict[str, Any]]:
         """Retorna registro completo do job ou None."""
         conn = self._connect()

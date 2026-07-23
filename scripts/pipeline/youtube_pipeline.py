@@ -95,6 +95,11 @@ from scripts.core.visual_intent_engine import apply_visual_intents
 from scripts.core.emotional_effects import apply_effect_hints_to_scenes
 from scripts.utils.slug import content_output_dir
 from scripts.strategy.shorts_extractor import maybe_extract_short
+from scripts.ai.groq_tracker import (
+    groq_call_tracked,
+    log_groq_summary,
+    reset_groq_tracker,
+)
 
 # ── Tradutor de queries via Groq ────────────────────────────────────────
 
@@ -128,7 +133,9 @@ def _translate_queries_batch(queries: list[str]) -> list[str]:
             f"Queries to translate:\n{json.dumps(queries, ensure_ascii=False)}"
         )
 
-        response = client.chat.completions.create(
+        response = groq_call_tracked(
+            client,
+            etapa="traducao_queries",
             model=_GROQ_TRANSLATE_MODEL,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=500,
@@ -248,6 +255,8 @@ def run_youtube_pipeline(
     print(
         "\n🎬 Pipeline YouTube Dark iniciado\n"
     )
+
+    reset_groq_tracker()
 
     template_override = get_template_override()
     if template_override:
@@ -915,5 +924,6 @@ def run_youtube_pipeline(
         "=============================="
     )
 
+    log_groq_summary()
 
     return results

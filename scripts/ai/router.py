@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from groq import Groq
 
+from scripts.ai.groq_tracker import groq_call_tracked
 from scripts.ai.providers.openrouter import generate as openrouter_generate
 
 load_dotenv()
@@ -97,13 +98,11 @@ def _groq_models_for(context_type: str) -> list[str]:
 
 def _groq_complete(prompt: str, model: str, context_type: str = "") -> str:
     max_tokens = GROQ_MAX_TOKENS.get(context_type, 4096)
-    completion = _get_groq_client().chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
+    client = _get_groq_client()
+    completion = groq_call_tracked(
+        client,
+        etapa=context_type or "groq_complete",
+        messages=[{"role": "user", "content": prompt}],
         model=model,
         max_tokens=max_tokens,
     )
