@@ -171,6 +171,7 @@ def concat_video_clips(clip_paths: list, output_path: Path) -> bool:
         return output_path.exists()
 
     list_file = output_path.parent / "concat_list.txt"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(list_file, "w", encoding="utf-8") as file:
         for clip in paths:
             path = str(clip.resolve()).replace("\\", "/")
