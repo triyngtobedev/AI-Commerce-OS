@@ -39,7 +39,7 @@ def _get_groq_client() -> Groq:
         api_key = os.getenv("GROQ_API_KEY", "").strip()
         if not api_key:
             raise Exception("GROQ_API_KEY não configurada")
-        _groq_client = Groq(api_key=api_key)
+        _groq_client = Groq(api_key=api_key, timeout=120)
     return _groq_client
 
 

@@ -148,7 +148,19 @@ async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> 
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout_bytes, stderr_bytes = await process.communicate()
+        try:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                process.communicate(), timeout=900
+            )
+        except asyncio.TimeoutError:
+            process.kill()
+            stdout_bytes, stderr_bytes = await process.communicate()
+            job_store.update_job_status(
+                job_id,
+                JobStatus.FAILED,
+                error_message="Pipeline excedeu 15 minutos — subprocesso encerrado",
+            )
+            return
         stdout = stdout_bytes.decode("utf-8", errors="replace")
         stderr = stderr_bytes.decode("utf-8", errors="replace")
 

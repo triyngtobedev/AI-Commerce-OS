@@ -326,6 +326,13 @@ def run():
     if args.youtube_branding:
         sys.exit(run_youtube_branding(apply=args.apply))
 
+    try:
+        import resource
+        kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        print(f"[Memory] startup RSS: {kb/1024:.1f} MB")
+    except ImportError:
+        pass
+
     print("\n🚀 Iniciando AI-Commerce-OS\n")
     print(f"Plataforma: {args.platform}\n")
 
@@ -347,6 +354,11 @@ def run():
 
     if args.platform in ("youtube_dark", "all"):
         print("▶️ Pipeline YouTube Dark")
+        try:
+            import resource
+            print(f"[Memory] before youtube_pipeline import: {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024:.1f} MB")
+        except ImportError:
+            pass
         max_videos = args.max_videos or 1
 
         production = args.production
