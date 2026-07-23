@@ -1,25 +1,24 @@
 """
-Executor de pipeline — invoca main.py como subprocess assíncrono.
-
-Não altera main.py; apenas monta argumentos CLI compatíveis e monitora saída.
+Executor de pipeline — executa pipeline in-process (thread) para evitar
+problemas de pipe/stdio no Railway.
 """
 
 from __future__ import annotations
 
 import asyncio
+import io
 import os
 import re
 import sys
+import traceback
+from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 from uuid import UUID
 
 from api.models.schemas import JobStatus, PipelineRunRequest
 from api.services.job_store import job_store
-from scripts.youtube.template_override import ENV_ROTEIRO_TEMPLATE
 
-# Raiz do projeto (dois níveis acima de api/services/)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-MAIN_PY = PROJECT_ROOT / "main.py"
 
 # main.py não expõe --output-dir; o path final vem do log de render_video_project:
 # scripts/video/renderer.py → "🎬 Vídeo final criado: {output}"
@@ -29,7 +28,6 @@ FINAL_VIDEO_LOG_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# Marcadores de falha no stdout — usados para diagnóstico quando exit code é 0
 _FAILURE_STDOUT_MARKERS = (
     "❌ Pipeline concluiu sem produzir vídeo final.",
     "❌ Vídeo não criado",
@@ -80,136 +78,97 @@ _AI_ROUTER_MARKERS = (
 )
 
 
-def build_cli_args(request: PipelineRunRequest) -> list[str]:
-    """
-    Converte PipelineRunRequest em argumentos CLI para main.py.
-
-    Apenas flags suportadas nativamente por main.py são incluídas.
-    """
-    args = [sys.executable, str(MAIN_PY)]
-
-    if request.platform:
-        args.extend(["--platform", request.platform])
-    if request.production:
-        args.append("--production")
-    if request.research:
-        args.append("--research")
-    if request.upload:
-        args.append("--upload")
-    if request.privacy:
-        args.extend(["--privacy", request.privacy])
-    if request.max_videos is not None:
-        args.extend(["--max-videos", str(request.max_videos)])
-    if request.force or request.topic:
-        args.append("--force")
-
-    return args
-
-
 async def run_pipeline_subprocess(job_id: UUID, request: PipelineRunRequest) -> None:
     """
-    Executa main.py em background e atualiza job_store com o resultado.
+    Executa pipeline YouTube in-process (numa thread) e atualiza job_store.
 
-    Marca o job como running → completed/failed conforme exit code e stdout.
+    Evita subprocesso — que estava travando sem stdout no Railway.
     """
-    # Lock de concorrência: só um job por vez
     if job_store.has_running_job():
         job_store.update_job_status(
             job_id,
             JobStatus.FAILED,
-            error_message=(
-                "Já existe um job em execução. "
-                "O pipeline atual suporta apenas um job por vez. "
-                "Aguarde o job atual terminar antes de disparar outro."
-            ),
+            error_message="Já existe um job em execução.",
         )
         return
 
     job_store.update_job_status(job_id, JobStatus.RUNNING)
-    cli_args = build_cli_args(request)
 
-    env = os.environ.copy()
-    env["PIPELINE_JOB_ID"] = str(job_id)
-    # topic/language não têm flag CLI em main.py — repassados via env para integrações
-    if request.topic:
-        env["PIPELINE_TOPIC_OVERRIDE"] = str(request.topic)
-    if request.template:
-        env[ENV_ROTEIRO_TEMPLATE] = str(request.template)
-    if request.language:
-        env["PIPELINE_LANGUAGE"] = request.language
-    for key, value in request.metadata.items():
-        env[f"PIPELINE_META_{key.upper()}"] = str(value)
+    def _run():
+        buf = io.StringIO()
+        with redirect_stdout(buf), redirect_stderr(buf):
+            try:
+                os.environ["PIPELINE_JOB_ID"] = str(job_id)
+                if request.topic:
+                    os.environ["PIPELINE_TOPIC_OVERRIDE"] = str(request.topic)
+                if request.template:
+                    os.environ["YOUTUBE_ROTEIRO_TEMPLATE"] = str(request.template)
+                if request.language:
+                    os.environ["PIPELINE_LANGUAGE"] = str(request.language)
+
+                from scripts.pipeline.youtube_pipeline import run_youtube_pipeline
+                from scripts.publisher.youtube_publish_config import resolve_upload_visibility
+
+                max_videos = request.max_videos or 1
+                auto_upload = request.upload or request.production
+                privacy, _ = resolve_upload_visibility(cli_privacy=request.privacy)
+
+                results = run_youtube_pipeline(
+                    auto_research=request.research or request.production,
+                    max_videos=max_videos,
+                    auto_upload=auto_upload,
+                    privacy_status=privacy,
+                    production_mode=request.production,
+                    force=request.force or bool(request.topic),
+                )
+
+                videos = sum(1 for r in results if r.get("video"))
+                if request.platform in ("youtube_dark",) and videos == 0:
+                    print("❌ Pipeline concluiu sem produzir vídeo final.")
+            except Exception:
+                traceback.print_exc()
+        return buf.getvalue()
 
     try:
-        process = await asyncio.create_subprocess_exec(
-            *cli_args,
-            cwd=str(PROJECT_ROOT),
-            env=env,
-            stdin=asyncio.subprocess.DEVNULL,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+        loop = asyncio.get_running_loop()
+        stdout = await asyncio.wait_for(
+            loop.run_in_executor(None, _run), timeout=1800
         )
-        try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                process.communicate(), timeout=900
-            )
-        except asyncio.TimeoutError:
-            process.kill()
-            stdout_bytes, stderr_bytes = await process.communicate()
-            job_store.update_job_status(
-                job_id,
-                JobStatus.FAILED,
-                error_message="Pipeline excedeu 15 minutos — subprocesso encerrado",
-            )
-            return
-        stdout = stdout_bytes.decode("utf-8", errors="replace")
-        stderr = stderr_bytes.decode("utf-8", errors="replace")
-
-        _emit_subprocess_logs(job_id, stdout, stderr)
-        stdout_excerpt = _stdout_for_job(stdout)
-
-        if process.returncode == 0:
-            try:
-                output_path = _resolve_output_path(stdout, request)
-            except ValueError as exc:
-                reason = _extract_failure_reason(stdout, stderr)
-                diagnostic = _failure_diagnostic(stdout, stderr)
-                error_msg = str(exc)
-                if reason:
-                    error_msg = f"{error_msg}\nCausa provável: {reason}"
-                job_store.update_job_status(
-                    job_id,
-                    JobStatus.FAILED,
-                    error_message=f"{error_msg}\n\n{diagnostic}"[:4000],
-                    stdout_tail=stdout_excerpt,
-                )
-            else:
-                job_store.update_job_status(
-                    job_id,
-                    JobStatus.COMPLETED,
-                    output_path=output_path,
-                    stdout_tail=stdout_excerpt,
-                )
-        else:
-            reason = _extract_failure_reason(stdout, stderr)
-            diagnostic = _failure_diagnostic(stdout, stderr)
-            error_msg = reason or f"Exit code {process.returncode}"
-            if diagnostic:
-                error_msg = f"{error_msg}\n\n{diagnostic}"
-            job_store.update_job_status(
-                job_id,
-                JobStatus.FAILED,
-                error_message=error_msg[:4000],
-                stdout_tail=stdout_excerpt,
-            )
-    except Exception as exc:
+    except asyncio.TimeoutError:
         job_store.update_job_status(
             job_id,
             JobStatus.FAILED,
-            error_message=str(exc),
+            error_message="Pipeline excedeu 30 minutos — execução encerrada",
         )
+        return
 
-    # Auto-cleanup: remove arquivos intermediários, mantém vídeo final + reports
+    stdout_excerpt = _stdout_for_job(stdout)
+    _emit_subprocess_logs(job_id, stdout, "")
+
+    if "❌ Pipeline concluiu sem produzir vídeo final." in stdout:
+        job_store.update_job_status(
+            job_id,
+            JobStatus.FAILED,
+            error_message="Pipeline não produziu vídeo final",
+            stdout_tail=stdout_excerpt,
+        )
+    else:
+        try:
+            output_path = _resolve_output_path(stdout, request)
+            job_store.update_job_status(
+                job_id,
+                JobStatus.COMPLETED,
+                output_path=output_path,
+                stdout_tail=stdout_excerpt,
+            )
+        except ValueError:
+            job_store.update_job_status(
+                job_id,
+                JobStatus.FAILED,
+                error_message="Pipeline executou mas vídeo final não encontrado",
+                stdout_tail=stdout_excerpt,
+            )
+
     _cleanup_job_output(job_id)
 
 
