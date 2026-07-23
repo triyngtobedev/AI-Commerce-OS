@@ -1,5 +1,6 @@
 """Simple Wikimedia Commons footage downloader — bypasses visual_media_engine."""
 
+import os
 import subprocess
 import time
 
@@ -8,6 +9,54 @@ import requests
 WIKIMEDIA_MAX_RETRIES = 3
 WIKIMEDIA_RETRY_DELAY = 2
 GRADIENT_FILTER = "gradients=s=1920x1080:c0=0x0a0a1a:c1=0x1a1a3e"
+
+# Mapeamento de temas históricos → queries stock (mesmo usado no Pexels/Pixabay)
+_HISTORICAL_STOCK_MAP = {
+    "rome": "ancient rome",
+    "roman": "ancient rome",
+    "egypt": "ancient egypt",
+    "egito": "ancient egypt",
+    "greece": "ancient greece",
+    "grecia": "ancient greece",
+    "medieval": "medieval castle",
+    "temple": "ancient temple",
+    "pyramid": "egypt pyramid",
+    "soldier": "roman soldier",
+    "soldiers": "soldiers army",
+    "war": "war battle soldiers",
+    "battle": "battle soldiers",
+    "king": "king crown throne",
+    "queen": "queen crown",
+    "emperor": "emperor crown",
+    "sword": "sword weapon",
+    "ship": "ship ocean sailing",
+    "horse": "horse riding",
+    "castle": "medieval castle",
+    "ruins": "ancient ruins",
+    "forest": "forest nature",
+    "desert": "desert landscape",
+    "mountains": "mountain landscape",
+    "ocean": "ocean sea waves",
+    "city": "city architecture",
+    "fire": "fire flame",
+    "explosion": "explosion fire",
+    "meteor": "meteor sky",
+}
+
+
+def _simplify_for_stock(query: str) -> str:
+    """Traduz query histórica para termos visuais que existem em stock."""
+    query_lower = query.strip().lower()
+    if not query_lower:
+        return query
+    if query_lower in _HISTORICAL_STOCK_MAP:
+        return _HISTORICAL_STOCK_MAP[query_lower]
+    words = query.strip().split()
+    for word in words:
+        word_lower = word.lower().strip(".,!?;:")
+        if word_lower in _HISTORICAL_STOCK_MAP:
+            return _HISTORICAL_STOCK_MAP[word_lower]
+    return " ".join(words[:3]).strip()
 
 
 def _wikimedia_get_json(url: str, params: dict | None = None) -> dict:
@@ -86,12 +135,64 @@ def _download_image(url: str, dest: str) -> bool:
         return False
 
 
+def _search_pixabay_image(query: str) -> str | None:
+    """Search Pixabay for a photo URL, or return None."""
+    api_key = os.getenv("PIXABAY_API_KEY", "").strip()
+    if not api_key:
+        return None
+    try:
+        r = requests.get(
+            "https://pixabay.com/api/",
+            params={
+                "key": api_key, "q": query, "per_page": 5,
+                "safesearch": "true", "orientation": "horizontal",
+                "image_type": "photo", "min_width": 1920,
+            },
+            timeout=10,
+        )
+        hits = r.json().get("hits", [])
+        if hits:
+            url = hits[0].get("largeImageURL") or hits[0].get("webformatURL")
+            if url:
+                print(f"[Pixabay] Foto encontrada para {query!r}")
+                return url
+    except Exception as exc:
+        print(f"[Pixabay] Falha na busca ({query!r}): {exc}")
+    return None
+
+
+def _search_pexels_image(query: str) -> str | None:
+    """Search Pexels for a photo URL, or return None."""
+    api_key = os.getenv("PEXELS_API_KEY", "").strip()
+    if not api_key:
+        return None
+    try:
+        r = requests.get(
+            "https://api.pexels.com/v1/search",
+            headers={"Authorization": api_key},
+            params={"query": query, "per_page": 5, "orientation": "landscape"},
+            timeout=10,
+        )
+        photos = r.json().get("photos", [])
+        if photos:
+            src = photos[0].get("src", {})
+            url = src.get("original") or src.get("large") or src.get("medium")
+            if url:
+                print(f"[Pexels] Foto encontrada para {query!r}")
+                return url
+    except Exception as exc:
+        print(f"[Pexels] Falha na busca ({query!r}): {exc}")
+    return None
+
+
 def _resolve_image_url(query: str, scene_index: int = 0) -> str | None:
-    """Try Wikimedia, then 2-word query, then Lorem Picsum."""
+    """Try Wikimedia, Pixabay, Pexels, then Lorem Picsum."""
+    # 1. Wikimedia (query completa)
     image_url = _search_wikimedia_image(query)
     if image_url:
         return image_url
 
+    # 2. Wikimedia (2 primeiras palavras)
     words = query.strip().split()
     if len(words) > 2:
         short_query = " ".join(words[:2])
@@ -100,6 +201,20 @@ def _resolve_image_url(query: str, scene_index: int = 0) -> str | None:
         if image_url:
             return image_url
 
+    # 3. Pixabay (query simplificada para stock)
+    stock_query = _simplify_for_stock(query)
+    if stock_query != query:
+        print(f"[Footage] Pixabay query simplificada: {query!r} -> {stock_query!r}")
+    image_url = _search_pixabay_image(stock_query)
+    if image_url:
+        return image_url
+
+    # 4. Pexels (query simplificada para stock)
+    image_url = _search_pexels_image(stock_query)
+    if image_url:
+        return image_url
+
+    # 5. Fallback: Lorem Picsum
     picsum_url = f"https://picsum.photos/1920/1080?random={scene_index}"
     print(f"[Footage] Using Lorem Picsum fallback: {picsum_url}")
     return picsum_url
