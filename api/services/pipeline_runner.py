@@ -185,9 +185,7 @@ def _cleanup_job_output(job_id: UUID) -> None:
     if not output_dir.exists():
         return
 
-    # Mantém estes arquivos
-    keep_patterns = {"video_final.mp4", "thumbnail.jpg", "*.json", "*.srt", "*.ass"}
-    # Remove estes diretórios (intermediários)
+    # Safety: nunca remove o diretório raiz do job, só subpastas temporárias
     remove_dirs = [
         output_dir / "assets" / "scene_clips",
         output_dir / "dark_channel_work",
@@ -196,11 +194,12 @@ def _cleanup_job_output(job_id: UUID) -> None:
         output_dir / "assets" / "audio",
     ]
 
+    import shutil
     for d in remove_dirs:
-        if d.exists():
+        if d.exists() and d != output_dir:
             try:
-                import shutil
                 shutil.rmtree(d)
+                print(f"[Cleanup] Removido: {d.name}")
             except Exception:
                 pass
 
