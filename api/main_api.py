@@ -247,6 +247,40 @@ async def admin_force_recovery() -> dict:
     return {"result": "recovery concluído"}
 
 
+@app.get("/api/v1/admin/download/{job_id}", tags=["admin"])
+async def admin_download_video(job_id: str) -> FileResponse:
+    """Baixa o video_final.mp4 de um job específico pelo job_id."""
+    from api.services.job_store import job_store
+
+    job = job_store.get_job(job_id)
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} não encontrado",
+        )
+
+    video_path = job.get("output_path")
+    if not video_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} não possui vídeo (status: {job.get('status', '?')})",
+        )
+
+    from pathlib import Path
+    path_obj = Path(video_path)
+    if not path_obj.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Arquivo de vídeo não encontrado em: {video_path}",
+        )
+
+    return FileResponse(
+        path=str(path_obj),
+        media_type="video/mp4",
+        filename="video_final.mp4",
+    )
+
+
 @app.get("/download/latest-video", tags=["download"])
 @app.head("/download/latest-video", tags=["download"])
 def download_latest_video() -> FileResponse:
